@@ -75,6 +75,10 @@ const topRisk = globalRiskSignals
   }));
 
 const overview = data?.marketOverview || {};
+const marketIntel = data?.marketIntel || {};
+const policySignals = Array.isArray(data?.policySignals) ? data.policySignals : [];
+const ratesIntel = data?.ratesIntel || {};
+const liquidityIntel = data?.liquidityIntel || {};
 
 function headLines(text, max = 6) {
   return String(text || "")
@@ -110,3 +114,25 @@ console.log(JSON.stringify(topCrypto, null, 2));
 
 console.log("\n=== TOP_EXTERNAL_RISK ===");
 console.log(JSON.stringify(topRisk, null, 2));
+
+console.log("\n=== MARKET_INTEL (summary) ===");
+console.log(JSON.stringify({
+  updatedAt: marketIntel?.updatedAt || null,
+  sources: marketIntel?.sources || {},
+  global: marketIntel?.global || null,
+  sentiment: marketIntel?.sentiment || null
+}, null, 2));
+
+console.log("\n=== POLICY_SIGNALS (summary) ===");
+console.log(JSON.stringify({
+  count: policySignals.length,
+  latest: policySignals
+    .slice()
+    .sort((a, b) => new Date(b.time) - new Date(a.time))[0] || null
+}, null, 2));
+
+console.log("\n=== RATES_INTEL (summary) ===");
+console.log(JSON.stringify(ratesIntel, null, 2));
+
+console.log("\n=== LIQUIDITY_INTEL (summary) ===");
+console.log(JSON.stringify(liquidityIntel, null, 2));

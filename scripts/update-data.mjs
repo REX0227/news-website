@@ -269,7 +269,9 @@ async function main() {
         "https://www.cftc.gov/PressRoom/PressReleases/rss"
       ],
       rates: [
-        "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/Datasets/yield.csv"
+        "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS10",
+        "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS2",
+        "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS3MO"
       ],
       liquidity: [
         "https://stablecoins.llama.fi/stablecoincharts/all",
