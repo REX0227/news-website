@@ -9,6 +9,7 @@
   - 協作規則/專案約束/工作流程 → 更新本檔案（`/.github/copilot-instructions.md`）。
   - 使用方式、安裝、執行命令、部署步驟、對外說明 → 更新 `README.md`。
 - 避免「只在聊天紀錄存在」：能寫進 repo 的規則就寫進去，確保未來回頭看得懂、跑得起來。
+- 硬性規則：只要涉及 **push/部署策略** 的任何變更（例如「主 repo 暫時不推」、「只推 `.deploy-site/`」），必須在同一回合把決策寫進本檔案，並在主 repo 立刻 commit（依當前決策可不 push）。
 
 ## Repo layout (V1 is canonical)
 - V1 app (source of truth): `v1/`
