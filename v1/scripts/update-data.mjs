@@ -1,6 +1,7 @@
 ﻿import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
 import dayjs from "dayjs";
 import dotenv from "dotenv";
 import { collectUsMacroEvents } from "../src/collectors/usMacroCollector.js";
@@ -16,10 +17,15 @@ import { enrichRecentMacroResults } from "../src/lib/macroResults.js";
 import { eventStatus } from "../src/lib/utils.js";
 import { upstashSetJson } from "../src/lib/upstash.js";
 import { fetchRateCutData } from "../src/lib/rateCutData.js";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const PROJECT_ROOT = path.resolve(__dirname, "..");
 
-dotenv.config();
+let dotenvResult = dotenv.config();
+if (dotenvResult.error) dotenvResult = dotenv.config({ path: path.join(PROJECT_ROOT, ".env") });
+if (dotenvResult.error) dotenvResult = dotenv.config({ path: path.join(PROJECT_ROOT, "..", ".env") });
 
-const DATA_FILE = path.resolve("docs/data/latest.json");
+const DATA_FILE = path.join(PROJECT_ROOT, "docs", "data", "latest.json");
 const SHOULD_WRITE_LOCAL = process.argv.includes("--write-local") || process.env.WRITE_LOCAL_JSON === "true";
 const SHOULD_PRESERVE_MANUAL = process.env.PRESERVE_MANUAL_ASSESSMENT !== "false";
 

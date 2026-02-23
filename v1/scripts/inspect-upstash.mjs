@@ -1,5 +1,15 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import dayjs from "dayjs";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const PROJECT_ROOT = path.resolve(__dirname, "..");
+
+let dotenvResult = dotenv.config();
+if (dotenvResult.error) dotenvResult = dotenv.config({ path: path.join(PROJECT_ROOT, ".env") });
+if (dotenvResult.error) dotenvResult = dotenv.config({ path: path.join(PROJECT_ROOT, "..", ".env") });
 
 const baseUrl = process.env.UPSTASH_REDIS_REST_URL;
 const readToken = process.env.UPSTASH_REDIS_REST_TOKEN_READ;

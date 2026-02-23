@@ -6,7 +6,7 @@ const SYSTEM_PROMPT = "You are a crypto macro trading analyst. Return concise Tr
 const TREND_PROMPT_VERSION = "v1.2";
 const TREND_SYSTEM_PROMPT = "You are a senior crypto trader and macro strategist. Return concise Traditional Chinese JSON with keys: shortTermTrend, midTermTrend, longTermTrend, shortReason, midReason, longReason. Trend must be one of 偏漲/偏跌/震盪. Horizons: shortTerm=next 1-7 days, midTerm=next 2-6 weeks, longTerm=next 1-3 months. Each reason must be concrete and causal: (1) cite at least 2-3 specific drivers with time tags (date or 幾天前/幾天後), (2) explain transmission path to BTC/ETH risk appetite/liquidity/USDT demand/yields, (3) explain why this supports your direction, (4) explicitly state stale signals are down-weighted. You must synthesize macro events, crypto signals, and external risks together as one portfolio view. Never justify trend using only counts like 多訊息>空訊息.";
 
-const OPENAI_DISABLED_NOTICE = "已依設定取消 OpenAI 自動評估：請使用『人工交易員評估』手動回寫（scripts/manual-ai-update.mjs）。";
+const OPENAI_DISABLED_NOTICE = "已依設定取消 OpenAI 自動評估：請使用『人工交易員評估』手動回寫（v1/scripts/manual-ai-update.mjs）。";
 
 function withAiMeta(payload, meta) {
   return {

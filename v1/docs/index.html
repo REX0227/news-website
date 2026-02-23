@@ -9,10 +9,12 @@
   <body>
     <main class="container">
       <header class="hero">
+        <nav class="top-nav">
+          <a class="badge medium" href="./v2/index.html">前往 V2</a>
+        </nav>
         <h1>Crypto 關鍵節點儀表板</h1>
         <p>追蹤美國、日本重要數據與政策時間點，搭配近期幣圈事件，定位交易高波動窗口。</p>
         <div id="meta"></div>
-        <div id="overall-trend" class="trend-banner"></div>
       </header>
 
       <section id="overview-section">
@@ -23,6 +25,11 @@
       <section id="ai-section">
         <h2>AI 重點摘要</h2>
         <ul id="ai-insights" class="card-list"></ul>
+      </section>
+
+      <section id="trend-section">
+        <h2>短/中/長線總趨勢（交易員判斷）</h2>
+        <div id="overall-trend" class="trend-banner"></div>
       </section>
 
       <section id="windows-section">
@@ -75,6 +82,6 @@
       </section>
     </main>
 
-    <script defer src="./app.js?v=20260224-10"></script>
+    <script defer src="./app.js?v=20260224-11"></script>
   </body>
 </html>

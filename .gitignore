@@ -3,8 +3,11 @@ node_modules/
 .DS_Store
 npm-debug.log*
 docs/data/latest.json
+v1/docs/data/latest.json
 .deploy-site/
+v1/.deploy-site/
 .tmp_*
+tmp/
 tmp_*/
 tmp_*
 *.xlsx

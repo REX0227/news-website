@@ -150,6 +150,78 @@ function probabilitySpan(probability) {
   return `<span class="${cls}">${probability}%</span>`;
 }
 
+function signedSpan(value, { digits = 2, unit = "", reverse = false, prefix = "" } = {}) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "—";
+  const cls = n > 0 ? (reverse ? "bias-down" : "bias-up") : n < 0 ? (reverse ? "bias-up" : "bias-down") : "bias-side";
+  const sign = n > 0 ? "+" : "";
+  const text = `${prefix}${sign}${n.toFixed(digits)}${unit}`;
+  return `<span class="${cls}">${text}</span>`;
+}
+
+function colorizeBiasWordsKeepHtml(text = "") {
+  return String(text)
+    .replace(/待公布後判讀|待公布|待確認|待判讀|判讀中|待AI評估/g, '<span class="bias-muted">$&</span>')
+    .replace(/偏漲|偏多|上漲|多頭/g, '<span class="bias-up">$&</span>')
+    .replace(/偏跌|偏空|下跌|空頭/g, '<span class="bias-down">$&</span>')
+    .replace(/震盪/g, '<span class="bias-side">$&</span>');
+}
+
+function translateFngClassification(value = "") {
+  const v = String(value || "").toLowerCase();
+  if (v.includes("extreme fear")) return "極度恐懼";
+  if (v.includes("fear")) return "恐懼";
+  if (v.includes("neutral")) return "中性";
+  if (v.includes("extreme greed")) return "極度貪婪";
+  if (v.includes("greed")) return "貪婪";
+  return String(value || "");
+}
+
+function translatePolicyTitle(text = "") {
+  let t = stripHtml(text);
+  const replacements = [
+    [/Federal Reserve Board/gi, "聯準會理事會"],
+    [/Federal Reserve/gi, "聯準會"],
+    [/White House/gi, "白宮"],
+    [/U\.S\. Treasury/gi, "美國財政部"],
+    [/Treasury/gi, "財政部"],
+    [/SEC\b/gi, "SEC"],
+    [/CFTC\b/gi, "CFTC"],
+    [/announces?/gi, "宣布"],
+    [/announced/gi, "宣布"],
+    [/approval of application/gi, "批准申請"],
+    [/approves?/gi, "批准"],
+    [/application/gi, "申請"],
+    [/final rule/gi, "最終規則"],
+    [/press release/gi, "新聞稿"],
+    [/statement/gi, "聲明"],
+    [/charges?/gi, "指控"],
+    [/lawsuit/gi, "訴訟"],
+    [/settlement/gi, "和解"],
+    [/penalt(y|ies)/gi, "罰款"],
+    [/sanctions?/gi, "制裁"],
+    [/tariffs?/gi, "關稅"],
+    [/crypto/gi, "加密"],
+    [/\s{2,}/g, " "]
+  ];
+
+  for (const [re, rep] of replacements) {
+    t = t.replace(re, rep);
+  }
+  const out = t.replace(/\s+/g, " ").trim();
+  return out || stripHtml(text);
+}
+
+function translatePolicySourceName(text = "") {
+  const t = String(text || "").toLowerCase();
+  if (t.includes("whitehouse")) return "白宮";
+  if (t.includes("treasury")) return "美國財政部";
+  if (t.includes("federal reserve")) return "聯準會";
+  if (t === "sec") return "SEC";
+  if (t === "cftc") return "CFTC";
+  return stripHtml(text) || "官方來源";
+}
+
 function translateRiskText(text = "") {
   const clean = stripHtml(text)
     .replace(/\s+-\s+[^-]+$/g, "")
@@ -461,6 +533,32 @@ function renderOverview(data) {
     ? `${fmt.format(new Date(nextHigh.datetime))} ${nextHigh.title}`
     : "未來 7 天暫無高影響事件";
 
+  const inferUpcomingExpectation = (event) => {
+    if (!event) return { bias: "震盪", note: "目前無高影響事件" };
+    const type = String(event.eventType || "").toLowerCase();
+
+    const base = type === "cpi"
+      ? "通膨數據常直接改變降息預期，事件前後易急波動"
+      : type === "nfp"
+        ? "就業數據常改變美元/利率預期，事件前後易急波動"
+        : type === "central-bank"
+          ? "央行決議/措辭是最強波動觸發點之一"
+          : "高影響事件，注意波動放大";
+
+    let bias = "震盪";
+    if (Number.isFinite(rateCutOutlook?.probability)) {
+      if (rateCutOutlook.probability >= 60) bias = "偏漲";
+      if (rateCutOutlook.probability <= 40) bias = "偏跌";
+    }
+
+    if (String(overview.externalRiskBias || "").includes("偏空") && bias === "震盪") bias = "偏跌";
+
+    const note = `依據：降息機率 ${Number.isFinite(rateCutOutlook?.probability) ? rateCutOutlook.probability : "—"}%／${overview.externalRiskBias || "外部風險中性"}；${base}`;
+    return { bias, note };
+  };
+
+  const nextExpect = inferUpcomingExpectation(nextHigh);
+
   const global = marketIntel.global;
   const sentiment = marketIntel.sentiment;
 
@@ -471,13 +569,13 @@ function renderOverview(data) {
     ? `$${Math.round(global.totalVolumeUsd / 1e9).toLocaleString()}B`
     : "—";
   const capChgText = Number.isFinite(global?.marketCapChangePct24hUsd)
-    ? `${global.marketCapChangePct24hUsd.toFixed(2)}%`
+    ? signedSpan(global.marketCapChangePct24hUsd, { digits: 2, unit: "%" })
     : "—";
   const btcDomText = Number.isFinite(global?.btcDominancePct)
     ? `${global.btcDominancePct.toFixed(1)}%`
     : "—";
   const fngText = Number.isFinite(sentiment?.fearGreedValue)
-    ? `${sentiment.fearGreedValue}（${sentiment.fearGreedClassification || ""}）`
+    ? `${sentiment.fearGreedValue}（${translateFngClassification(sentiment.fearGreedClassification || "")}）`
     : "—";
 
   const y10Text = Number.isFinite(ratesLatest?.y10y) ? `${ratesLatest.y10y.toFixed(2)}%` : "—";
@@ -493,24 +591,20 @@ function renderOverview(data) {
     ? `$${Math.round(stable.totalMcapUsd / 1e9).toLocaleString()}B`
     : "—";
   const stableChgText = Number.isFinite(stable?.change7dPct)
-    ? `${stable.change7dPct.toFixed(2)}%`
+    ? signedSpan(stable.change7dPct, { digits: 2, unit: "%" })
     : "—";
   const defiTvlText = Number.isFinite(defi?.totalTvlUsd)
     ? `$${Math.round(defi.totalTvlUsd / 1e9).toLocaleString()}B`
     : "—";
   const defiChgText = Number.isFinite(defi?.change7dPct)
-    ? `${defi.change7dPct.toFixed(2)}%`
+    ? signedSpan(defi.change7dPct, { digits: 2, unit: "%" })
     : "—";
 
-  const nowTs = Date.now();
-  const policy7dCount = (policySignals || []).filter((s) => {
-    const t = new Date(s.time).getTime();
-    return Number.isFinite(t) && (nowTs - t) <= 7 * 24 * 60 * 60 * 1000;
-  }).length;
   const latestPolicy = (policySignals || [])
     .slice()
     .sort((a, b) => new Date(b.time) - new Date(a.time))[0] || null;
-  const latestPolicyTitle = latestPolicy ? stripHtml(latestPolicy.title || latestPolicy.keyChange) : "—";
+  const latestPolicyTitle = latestPolicy ? translatePolicyTitle(latestPolicy.title || latestPolicy.keyChange) : "—";
+  const latestPolicyBias = latestPolicy ? stripHtml(latestPolicy.shortTermBias || "震盪") : "震盪";
 
   const cards = [
     {
@@ -519,7 +613,7 @@ function renderOverview(data) {
       subLines: [
         `24h 市值變化：${capChgText}`,
         `24h 成交量：${volText}`,
-        `BTC Dominance：${btcDomText}`
+        `BTC 市佔：${btcDomText}`
       ]
     },
     {
@@ -528,44 +622,44 @@ function renderOverview(data) {
       subLines: ["僅供情緒參考，建議搭配資金流/槓桿與宏觀事件判讀。"]
     },
     {
-      title: "利率 / 殖利率（US Treasury）",
+      title: "利率 / 殖利率（FRED）",
       valueHtml: `10Y：${y10Text}`,
       subLines: [
         `2Y：${y2Text}｜3M：${y3mText}`,
-        `10Y-2Y：${spread10y2yText}｜10Y-3M：${spread10y3mText}`,
+        `10Y-2Y：${signedSpan(ratesLatest?.spread10y2y, { digits: 2, unit: "%" })}｜10Y-3M：${signedSpan(ratesLatest?.spread10y3m, { digits: 2, unit: "%" })}`,
         ratesLatest?.date ? `資料日：${ratesLatest.date}` : ""
       ]
     },
     {
       title: "穩定幣流動性（DeFiLlama）",
       valueHtml: stableMcapText,
-      subLines: [`近 7 日變化：${stableChgText}`]
+      subLines: Number.isFinite(stable?.change7dPct) ? [`近 7 日變化：${stableChgText}`] : []
     },
     {
       title: "DeFi TVL（DeFiLlama）",
       valueHtml: defiTvlText,
-      subLines: [Number.isFinite(defi?.change7dPct) ? `近 7 日變化：${defiChgText}` : "（未提供 7D 變化）"]
+      subLines: Number.isFinite(defi?.change7dPct) ? [`近 7 日變化：${defiChgText}`] : []
     },
     {
-      title: "政策 / 監管熱度（7D）",
-      valueHtml: `${policy7dCount} 則`,
+      title: "政策 / 監管（官方）",
+      valueHtml: latestPolicy ? biasSpan(latestPolicyBias) : "—",
       subLines: latestPolicy ? [`最新：${latestPolicyTitle}`] : ["—"],
       targetId: "policy-section"
     },
     {
       title: "ETF / 機構流向（7D，訊號整合）",
-      valueHtml: etfNetFlowText,
-      subLines: [
-        etfCountWithAmount > 0 ? `含金額訊號：${etfCountWithAmount} 則` : "（近 7 日未抓到可解析金額的 ETF 流向訊號）"
-      ],
+      valueHtml: etfCountWithAmount > 0
+        ? signedSpan(etfNetFlowUsd / 1e6, { digits: 0, unit: "M", prefix: "$" })
+        : "—",
+      subLines: [etfCountWithAmount > 0 ? "近 7 日淨流向彙總（以可解析金額訊號估算）" : "近 7 日未抓到可解析金額的 ETF 流向訊號"],
       targetId: "crypto-section"
     },
     {
       title: "槓桿清算規模（7D，訊號整合）",
-      valueHtml: liquidationText,
-      subLines: [
-        liquidationCountWithAmount > 0 ? `含金額訊號：${liquidationCountWithAmount} 則` : "（近 7 日未抓到可解析金額的清算訊號）"
-      ],
+      valueHtml: liquidationCountWithAmount > 0
+        ? `<span class="${liquidationTotalUsd >= 200e6 ? "bias-down" : liquidationTotalUsd >= 80e6 ? "bias-side" : "bias-muted"}">$${Math.round(liquidationTotalUsd / 1e6).toLocaleString()}M</span>`
+        : "—",
+      subLines: [liquidationCountWithAmount > 0 ? "近 7 日清算彙總（以可解析金額訊號估算）" : "近 7 日未抓到可解析金額的清算訊號"],
       targetId: "crypto-section"
     },
     {
@@ -587,7 +681,11 @@ function renderOverview(data) {
     {
       title: "下一個高影響事件",
       valueHtml: nextEventText,
-      subLines: [nextHigh?.result?.cryptoImpact || "重點看事件前後 1-2 小時波動"],
+      subLines: [
+        `當前預期：${biasSpan(nextExpect.bias)}`,
+        nextExpect.note,
+        nextHigh?.impactHint ? `事件影響：${stripHtml(nextHigh.impactHint)}` : ""
+      ],
       targetId: "macro-section"
     },
     {
@@ -628,7 +726,7 @@ function renderOverview(data) {
       ? item.subLines.filter(Boolean)
       : (item.sub ? String(item.sub).split("｜").map((part) => part.trim()).filter(Boolean) : []);
     const subHtml = normalizedSubLines.length
-      ? `<div class="kv">${normalizedSubLines.map((line) => `<div>${colorizeBiasWords(line)}</div>`).join("")}</div>`
+      ? `<div class="kv">${normalizedSubLines.map((line) => `<div>${colorizeBiasWordsKeepHtml(String(line))}</div>`).join("")}</div>`
       : "";
     card.innerHTML = `${titleHtml}${valueHtml}${subHtml}`;
     root.appendChild(card);
@@ -653,8 +751,8 @@ function renderPolicySignals(data) {
   }
 
   items.forEach((item) => {
-    const title = stripHtml(item.title || item.keyChange || "");
-    const sourceName = stripHtml(item.sourceName || "官方來源");
+    const title = translatePolicyTitle(item.title || item.keyChange || "");
+    const sourceName = translatePolicySourceName(item.sourceName || "官方來源");
     const impact = stripHtml(item.impact || "medium");
     const bias = stripHtml(item.shortTermBias || "震盪");
 

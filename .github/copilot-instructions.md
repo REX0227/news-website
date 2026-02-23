@@ -1,0 +1,63 @@
+# Copilot Instructions (CryptoPulse)
+
+## Repo layout (V1 is canonical)
+- V1 app (source of truth): `v1/`
+  - Frontend static site: `v1/docs/` (`index.html`, `app.js`, `styles.css`)
+  - Data pipeline (Node ESM): `v1/scripts/` + `v1/src/collectors/` + `v1/src/lib/`
+- V2 (currently placeholder UI): `v2/index.html`
+  - V2 will have its **own** data pipeline later; keep all V2 pipeline code under `v2/` (do not mix into `v1/`).
+- Deployment working copy (separate git repo for GitHub Pages): `.deploy-site/`
+  - Website root files live here (`index.html`, `app.js`, `styles.css`, `.nojekyll`)
+  - V2 is deployed at `.deploy-site/v2/index.html`
+
+## Big picture data flow
+- `v1/scripts/update-data.mjs` collects from multiple sources → builds payload → writes Upstash keys:
+  - `crypto_dashboard:latest` (JSON payload)
+  - `crypto_dashboard:last_updated`
+- Frontend (`v1/docs/app.js` and deployed `.deploy-site/app.js`) reads Upstash and renders sections.
+
+## Non-negotiable product constraints (do not break)
+- No price scraping/display anywhere (no CoinGecko `simple/price`, no BTC/ETH price cards).
+- OpenAI auto-evaluation is disabled; do not reintroduce model calls.
+  - `v1/src/lib/ai.js` intentionally returns a “disabled_manual_only” meta.
+- Manual trader output must not be overwritten by updater.
+  - `update-data.mjs` preserves `marketOverview` when `trendModelMeta.mode === "manual_trader"`.
+- Any “7D change” line must be backed by a real number; if missing, hide the line (don’t show “—/未提供”).
+
+## UX rules we agreed on (V1)
+- Overview cards must NOT show meaningless counts like “有幾則/共幾則”.
+- Important numeric deltas should be color-coded (use existing `.bias-*` classes; do not invent new colors).
+- “下一個高影響事件” must include “當前預期判定” (偏漲/偏跌/震盪) with a short basis note.
+- Liquidation is a risk metric: do not show it as green/“bullish”; small liquidation should be neutral/muted.
+- Policy/Regulatory section should display Traditional Chinese where possible (source/title translations are rule-based).
+
+## Critical workflows (how we actually run things)
+- Install deps (V1 only): run in `v1/` → `npm install`
+- Update data to Upstash: `npm run update:data` (from `v1/`) or `node v1/scripts/update-data.mjs` (from repo root)
+- Inspect current Upstash payload: `node v1/scripts/inspect-upstash.mjs`
+- Manual trader write-back (authoritative trends): `npm run update:trader` (from `v1/`)
+
+## Deployment workflow (single deploy location)
+- Sync V1 site assets:
+  - `v1/docs/*` → `.deploy-site/*`
+- Sync V2 placeholder:
+  - `v2/index.html` → `.deploy-site/v2/index.html`
+- Publish: commit/push inside `.deploy-site/` (this pushes to `Felicia980317/CryptoPulse-site`).
+- `.deploy-site/` is the ONLY allowed deploy working copy (do not create `v1/.deploy-site` or other deploy dirs).
+- Never treat `.deploy-site/` as part of this repo’s history; it’s a separate working copy.
+
+## Repo hygiene
+- Temporary artifacts belong in `tmp/` (do not scatter `tmp_*` or `.tmp_*` files in the repo root).
+
+## Conventions/patterns to follow
+- Node is ESM (`"type": "module"`). Prefer `import ... from` and avoid CommonJS.
+- Collectors return structured sections added into the Upstash payload (e.g., `ratesIntel`, `liquidityIntel`).
+  - Example: `v1/src/collectors/liquidityCollector.js` uses DeFiLlama `https://api.llama.fi/charts` for TVL 7D.
+- V2 pipeline should follow the same ESM/collector pattern as V1, but MUST remain isolated under `v2/`.
+- Local-friendly navigation must be explicit:
+  - V1 → V2 link should target `./v2/index.html`
+  - V2 → V1 link should target `../index.html`
+
+## When changing UI
+- Homepage section order is fixed in `v1/docs/index.html` (and mirrored in `.deploy-site/index.html`).
+- Keep all user-facing text in Traditional Chinese (`zh-Hant`).

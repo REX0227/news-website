@@ -20,17 +20,49 @@ async function fetchJson(url, { timeoutMs = 15000 } = {}) {
   }
 }
 
+function toMsTimestamp(value) {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "number") {
+    if (value > 1e12) return value; // ms
+    if (value > 1e9) return value * 1000; // seconds
+    return null;
+  }
+  const s = String(value).trim();
+  if (!s) return null;
+  if (/^\d+$/.test(s)) {
+    const n = Number(s);
+    if (!Number.isFinite(n)) return null;
+    if (s.length >= 13) return n;
+    if (s.length === 10) return n * 1000;
+    if (n > 1e12) return n;
+    if (n > 1e9) return n * 1000;
+    return null;
+  }
+  const t = new Date(s).getTime();
+  return Number.isFinite(t) ? t : null;
+}
+
+function stablecoinTotalUsd(point) {
+  const a = point?.totalCirculating;
+  if (Number.isFinite(Number(a))) return Number(a);
+  const pegged = a?.peggedUSD;
+  if (Number.isFinite(Number(pegged))) return Number(pegged);
+  const direct = point?.totalCirculatingUSD ?? point?.peggedUSD ?? point?.total ?? point?.mcap ?? point?.value;
+  if (Number.isFinite(Number(direct))) return Number(direct);
+  return null;
+}
+
 function pickNearestAgo(series, daysAgo) {
   if (!Array.isArray(series) || series.length === 0) return null;
   const latest = series[series.length - 1];
-  const latestDate = new Date(latest.date || latest.timestamp || latest.time || 0).getTime();
+  const latestDate = toMsTimestamp(latest.date ?? latest.timestamp ?? latest.time);
   if (!Number.isFinite(latestDate) || latestDate <= 0) return null;
   const target = latestDate - daysAgo * 24 * 60 * 60 * 1000;
 
   let best = null;
   let bestDiff = Infinity;
   for (const item of series) {
-    const t = new Date(item.date || item.timestamp || item.time || 0).getTime();
+    const t = toMsTimestamp(item.date ?? item.timestamp ?? item.time);
     if (!Number.isFinite(t) || t <= 0) continue;
     const diff = Math.abs(t - target);
     if (diff < bestDiff) {
@@ -49,9 +81,10 @@ function pctChange(now, prev) {
 export async function collectLiquidityIntel() {
   const nowIso = new Date().toISOString();
 
-  const [stableRes, chainsRes] = await Promise.all([
+  const [stableRes, chainsRes, defiChartsRes] = await Promise.all([
     fetchJson("https://stablecoins.llama.fi/stablecoincharts/all"),
-    fetchJson("https://api.llama.fi/v2/chains")
+    fetchJson("https://api.llama.fi/v2/chains"),
+    fetchJson("https://api.llama.fi/charts")
   ]);
 
   // Stablecoins (try to infer shape)
@@ -63,8 +96,8 @@ export async function collectLiquidityIntel() {
     if (series && series.length > 2) {
       const latest = series[series.length - 1];
       const prev7d = pickNearestAgo(series, 7);
-      const latestVal = toNumber(latest.totalCirculating?.peggedUSD ?? latest.totalCirculatingUSD ?? latest.peggedUSD ?? latest.total ?? latest.mcap ?? latest.value);
-      const prevVal = prev7d ? toNumber(prev7d.totalCirculating?.peggedUSD ?? prev7d.totalCirculatingUSD ?? prev7d.peggedUSD ?? prev7d.total ?? prev7d.mcap ?? prev7d.value) : null;
+      const latestVal = stablecoinTotalUsd(latest);
+      const prevVal = prev7d ? stablecoinTotalUsd(prev7d) : null;
       stableLatestMcap = latestVal;
       stableChange7dPct = (latestVal !== null && prevVal !== null) ? pctChange(latestVal, prevVal) : null;
     }
@@ -73,13 +106,22 @@ export async function collectLiquidityIntel() {
   // DeFi TVL
   let defiTotalTvl = null;
   let defiChange7dPct = null;
-  if (chainsRes.ok && Array.isArray(chainsRes.data)) {
+  if (defiChartsRes.ok && Array.isArray(defiChartsRes.data) && defiChartsRes.data.length > 10) {
+    const series = defiChartsRes.data;
+    const latest = series[series.length - 1];
+    const prev7d = pickNearestAgo(series, 7);
+    const latestVal = toNumber(latest.totalLiquidityUSD ?? latest.tvl ?? latest.value);
+    const prevVal = prev7d ? toNumber(prev7d.totalLiquidityUSD ?? prev7d.tvl ?? prev7d.value) : null;
+    defiTotalTvl = latestVal;
+    defiChange7dPct = (latestVal !== null && prevVal !== null) ? pctChange(latestVal, prevVal) : null;
+  } else if (chainsRes.ok && Array.isArray(chainsRes.data)) {
     const chains = chainsRes.data;
     const allRow = chains.find((c) => String(c?.name || "").toLowerCase() === "all");
 
     if (allRow && Number.isFinite(Number(allRow.tvl))) {
       defiTotalTvl = Number(allRow.tvl);
-      if (Number.isFinite(Number(allRow.change_7d))) defiChange7dPct = Number(allRow.change_7d);
+      // No reliable aggregate 7D change without historical series.
+      defiChange7dPct = null;
     } else {
       const sum = chains.reduce((acc, c) => {
         const tvl = Number(c?.tvl);
@@ -95,7 +137,8 @@ export async function collectLiquidityIntel() {
     updatedAt: nowIso,
     sources: {
       defiLlamaStablecoins: stableRes.ok,
-      defiLlamaChains: chainsRes.ok
+      defiLlamaChains: chainsRes.ok,
+      defiLlamaCharts: defiChartsRes.ok
     },
     stablecoins: stableLatestMcap !== null
       ? {

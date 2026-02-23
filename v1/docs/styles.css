@@ -27,6 +27,19 @@ body {
 .hero h1 { margin-bottom: 6px; }
 .hero p { color: var(--muted); margin-top: 0; }
 
+.hero {
+  position: relative;
+}
+
+.top-nav {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
 section { margin-top: 28px; }
 h2 { margin-bottom: 12px; }
 
