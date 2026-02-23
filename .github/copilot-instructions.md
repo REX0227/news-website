@@ -30,9 +30,16 @@
 
 ## Non-negotiable product constraints (do not break)
 - No price scraping/display anywhere (no CoinGecko `simple/price`, no BTC/ETH price cards).
-- V1 的「交易員評估」必須使用 LLM API（如 OpenAI）動態生成，絕對不可使用 rule-based 或寫死的邏輯。
-- V1 的「交易員評估」一律由更新流程自動重算並覆蓋。
-  - `v1/scripts/update-data.mjs` 每次更新都會刷新 `marketOverview` 與交易員重點摘要，不保留/不回寫任何人工版本。
+- V1 **絕對不使用** 任何外部 LLM API (如 OpenAI API)，也 **絕對不使用** Rule-based 寫死邏輯。
+- V1 的「專業交易員評估」由 **Copilot (你)** 親自完成。
+- 當使用者要求「更新 V1 數據」時，請執行以下標準流程：
+  1. 執行 `node v1/scripts/update-data.mjs`。腳本會抓取最新數據並輸出到 `v1/tmp/raw-data-for-copilot.json`，然後報錯暫停（提示缺少評估檔）。
+  2. 你 (Copilot) 讀取 `v1/tmp/raw-data-for-copilot.json` 的內容。
+  3. 你 (Copilot) 作為專業虛擬貨幣交易員，根據這些最新數據，思考並撰寫整體的市場評估（包含短中長線趨勢、理由、重點摘要等）。
+  4. 將你的評估結果寫入 `v1/data/copilot-evaluation.json`。
+  5. 再次執行 `node v1/scripts/update-data.mjs`，腳本會讀取你的評估並與數據結合，推送到 Upstash。
+  6. 刪除 `v1/data/copilot-evaluation.json` 以確保下次更新必須重新評估。
+  7. 提交並推送 `.deploy-site/`。
 - Any “7D change” line must be backed by a real number; if missing, hide the line (don’t show “—/未提供”).
 
 ## UX rules we agreed on (V1)

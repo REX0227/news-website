@@ -198,6 +198,27 @@ async function main() {
   const macroEvents = enrichMacroDefaultImpact(await enrichRecentMacroResults(baseMacroEvents));
 
   const whaleTrend = buildWhaleTrend(cryptoSignalsPayload);
+
+  const rawDataToEvaluate = {
+    macroEvents,
+    whaleTrend,
+    cryptoSignalMetrics7d,
+    ratesIntel,
+    liquidityIntel,
+    macroIntel: marketIntel?.macroIntel,
+    cryptoSignals: cryptoSignalsPayload,
+    globalRiskSignals
+  };
+
+  const fs = await import("node:fs");
+  const evalFile = path.join(PROJECT_ROOT, "v1/data/copilot-evaluation.json");
+  if (!fs.existsSync(evalFile)) {
+    const dumpFile = path.join(PROJECT_ROOT, "tmp/raw-data-for-copilot.json");
+    fs.writeFileSync(dumpFile, JSON.stringify(rawDataToEvaluate, null, 2));
+    console.log(`\n[Copilot Workflow] 已將最新數據匯出至 ${dumpFile}`);
+    console.log(`請 Copilot 讀取該檔案，並生成 v1/data/copilot-evaluation.json 後，再次執行此腳本。\n`);
+  }
+
   const trendOutlook = await buildTraderOutlookFromPayload({
     macroEvents,
     whaleTrend,
