@@ -53,6 +53,7 @@
 - Sync V2 placeholder:
   - `v2/index.html` → `.deploy-site/v2/index.html`
 - Publish: commit/push inside `.deploy-site/` (this pushes to `Felicia980317/CryptoPulse-site`).
+- Current decision: do NOT push the main repo for now; only push `.deploy-site/` to update the public GitHub Pages site.
 - `.deploy-site/` is the ONLY allowed deploy working copy (do not create `v1/.deploy-site` or other deploy dirs).
 - Never treat `.deploy-site/` as part of this repo’s history; it’s a separate working copy.
 
