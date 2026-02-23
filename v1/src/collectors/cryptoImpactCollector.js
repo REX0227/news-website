@@ -6,13 +6,81 @@ import { cleanText, impactScoreFromText } from "../lib/utils.js";
 const FEEDS = [
   "https://www.coindesk.com/arc/outboundfeeds/rss/",
   "https://cointelegraph.com/rss",
-  "https://news.google.com/rss/search?q=(bitcoin%20OR%20crypto)%20(trump%20OR%20tariff%20war%20sanctions%20geopolitical%20conflict%20fed%20boj%20rate)&hl=en-US&gl=US&ceid=US:en",
-  "https://news.google.com/rss/search?q=(trump%20tariff%2010%25%20OR%2015%25)%20(crypto%20OR%20bitcoin)&hl=en-US&gl=US&ceid=US:en",
-  "https://news.google.com/rss/search?q=(fomc%20rate%20cut%20probability)%20(crypto%20OR%20bitcoin)&hl=en-US&gl=US&ceid=US:en"
+  "https://news.google.com/rss/search?q=bitcoin%20after:2025-02-01&hl=en-US&gl=US&ceid=US:en",
+  "https://news.google.com/rss/search?q=crypto%20after:2025-02-01&hl=en-US&gl=US&ceid=US:en",
+  "https://news.google.com/rss/search?q=ethereum%20after:2025-02-01&hl=en-US&gl=US&ceid=US:en"
 ];
 
-const MAX_SIGNAL_AGE_DAYS = Number(process.env.MAX_SIGNAL_AGE_DAYS || 10);
-const MAX_SAME_KEYCHANGE = Number(process.env.MAX_SAME_KEYCHANGE || 3);
+const MAX_SIGNAL_AGE_DAYS = Number(process.env.MAX_SIGNAL_AGE_DAYS || 90);
+const MAX_SAME_KEYCHANGE = Number(process.env.MAX_SAME_KEYCHANGE || 50);
+const MAX_TOTAL_SIGNALS = Number(process.env.MAX_TOTAL_SIGNALS || 100);
+const METRICS_WINDOW_DAYS = Number(process.env.SIGNAL_METRICS_WINDOW_DAYS || 7);
+const CATEGORY_QUOTAS = {
+  flow: Number(process.env.QUOTA_FLOW || 20),
+  regulation: Number(process.env.QUOTA_REGULATION || 20),
+  risk: Number(process.env.QUOTA_RISK || 20),
+  macro: Number(process.env.QUOTA_MACRO || 20),
+  market: Number(process.env.QUOTA_MARKET || 20)
+};
+
+function parseUsdAmount(text = "") {
+  const raw = String(text);
+
+  // $288M / $1.2B / $300,000,000
+  const m = raw.match(/\$\s*([\d,.]+)\s*([kKmMbB])?/);
+  if (m) {
+    const n = Number(String(m[1]).replace(/,/g, ""));
+    if (!Number.isFinite(n)) return null;
+    const unit = String(m[2] || "").toUpperCase();
+    if (unit === "K") return n * 1e3;
+    if (unit === "M") return n * 1e6;
+    if (unit === "B") return n * 1e9;
+    return n;
+  }
+
+  // 3.2 億 / 5000 萬
+  const zh = raw.match(/([\d.]+)\s*(億|萬)/);
+  if (zh) {
+    const n = Number(zh[1]);
+    if (!Number.isFinite(n)) return null;
+    const unit = zh[2];
+    if (unit === "億") return n * 1e8;
+    if (unit === "萬") return n * 1e4;
+  }
+
+  return null;
+}
+
+function parseEtfNetFlowUsd(text = "") {
+  const raw = String(text);
+  // Require direction keywords; otherwise skip as ambiguous.
+  const isOut = /net\s+outflow|淨流出|outflow/i.test(raw);
+  const isIn = /net\s+inflow|淨流入|inflow/i.test(raw);
+  if (isOut === isIn) return null;
+
+  const amount = parseUsdAmount(raw);
+  if (amount === null) return null;
+
+  // Ignore tiny amounts (usually noise, and helps avoid $65K-style prices).
+  if (amount < 5e6) return null;
+  return (isOut ? -1 : 1) * amount;
+}
+
+function parseLiquidationUsd(text = "") {
+  const raw = String(text);
+  // Only accept patterns where liquidation appears BEFORE the $ amount.
+  const m = raw.match(/(?:liquidat(?:ion|ed)?|清算)[^$]{0,80}\$\s*([\d,.]+)\s*([kKmMbB])?/i);
+  if (!m) return null;
+
+  const n = Number(String(m[1]).replace(/,/g, ""));
+  if (!Number.isFinite(n)) return null;
+  const unit = String(m[2] || "").toUpperCase();
+  const amount = unit === "K" ? n * 1e3 : unit === "M" ? n * 1e6 : unit === "B" ? n * 1e9 : n;
+
+  // Liquidation 규모用：低於 1M 幾乎不具意義，且可有效排除價格/雜訊。
+  if (amount < 1e6) return null;
+  return amount;
+}
 
 const KEYWORDS = /(etf|sec|fomc|fed|boj|inflation|cpi|nfp|rate|tariff|liquidat|hack|exploit|regulation|stablecoin|bank|bond|treasury|whale|outflow|inflow|trump|war|sanction|conflict|ceasefire|missile|oil)/i;
 
@@ -60,16 +128,16 @@ function clusterSignature(signal) {
   else if (/etf/.test(raw)) actor = "etf";
 
   if (/tariff|關稅|trade/.test(raw) && actor === "trump") {
-    return "macro|trump_tariff";
+    return `macro|trump_tariff|${dayjs(signal.time).format("YYYY-MM-DD")}`;
   }
   if (/tariff|關稅|trade/.test(raw)) {
-    return "macro|global_tariff";
+    return `macro|global_tariff|${dayjs(signal.time).format("YYYY-MM-DD")}`;
   }
   if (/fed|fomc|聯準會/.test(raw)) {
-    return "macro|fed_policy";
+    return `macro|fed_policy|${dayjs(signal.time).format("YYYY-MM-DD")}`;
   }
 
-  return `${signal.category}|${base}|${actor}`;
+  return `${signal.category}|${normalizeClusterText(signal.title)}|${actor}|${dayjs(signal.time).format("YYYY-MM-DD")}`;
 }
 
 function summarizeMergedChange(clusterKey, signals) {
@@ -143,8 +211,10 @@ function aggregateSimilarSignals(sortedSignals) {
       mergedItems: undefined
     }))
     .sort((a, b) => {
-      if (b.priorityScore !== a.priorityScore) return b.priorityScore - a.priorityScore;
-      return dayjs(b.time).valueOf() - dayjs(a.time).valueOf();
+      const bt = dayjs(b.time).valueOf();
+      const at = dayjs(a.time).valueOf();
+      if (bt !== at) return bt - at;
+      return (b.priorityScore || 0) - (a.priorityScore || 0);
     });
 }
 
@@ -162,6 +232,7 @@ function majorEventScore({ title, description, category, impact, time, keyChange
   if (/fomc|fed|boj|rate|cpi|nfp|inflation/.test(text)) score += 45;
   if (/war|conflict|sanction|middle east|ukraine|russia|china/.test(text)) score += 45;
   if (/liquidat|hack|exploit|etf\s+net\s+outflow|etf\s+net\s+inflow/.test(text)) score += 35;
+  if (/whale|large holder|big holder|exchange inflow|exchange outflow/.test(text)) score += 28;
 
   if (impact === "high") score += 30;
   if (impact === "medium") score += 18;
@@ -347,16 +418,16 @@ export async function collectCryptoImpactSignals() {
 
   for (const feed of FEEDS) {
     try {
-      const items = await fetchRssItems(feed, 60);
+      const items = await fetchRssItems(feed, 200);
+      const filteredByDate = items.filter((item) => {
+        if (!item.pubDate) return true;
+        const published = dayjs(item.pubDate);
+        if (!published.isValid()) return true;
+        return now.diff(published, "day") <= MAX_SIGNAL_AGE_DAYS;
+      });
+      const filteredByKeyword = filteredByDate.filter((item) => KEYWORDS.test(`${item.title} ${item.description}`));
       collected.push(
-        ...items
-          .filter((item) => {
-            if (!item.pubDate) return true;
-            const published = dayjs(item.pubDate);
-            if (!published.isValid()) return true;
-            return now.diff(published, "day") <= MAX_SIGNAL_AGE_DAYS;
-          })
-          .filter((item) => KEYWORDS.test(`${item.title} ${item.description}`))
+        ...filteredByKeyword
           .map((item) => {
             const category = classify(item.title, item.description);
             const impact = impactScoreFromText(`${item.title} ${item.description}`);
@@ -393,27 +464,87 @@ export async function collectCryptoImpactSignals() {
     if (!unique.has(item.source)) unique.set(item.source, item);
   }
 
-  const ranked = [...unique.values()]
-    .map((signal) => ({
-      ...signal,
-      priorityScore: majorEventScore(signal)
-    }))
-    .sort((a, b) => {
-      if (b.priorityScore !== a.priorityScore) return b.priorityScore - a.priorityScore;
-      return dayjs(b.time).valueOf() - dayjs(a.time).valueOf();
-    });
+  const deduped = [...unique.values()].map((signal) => ({
+    ...signal,
+    priorityScore: majorEventScore(signal)
+  }));
 
-  const kept = [];
-  const keyChangeCount = new Map();
-  for (const signal of ranked) {
-    const key = String(signal.keyChange || "").trim();
-    const count = keyChangeCount.get(key) || 0;
-    if (count >= MAX_SAME_KEYCHANGE) continue;
-    keyChangeCount.set(key, count + 1);
-    kept.push(signal);
-    if (kept.length >= 30) break;
+  // Build 7D metrics from the full deduped set (NOT from the truncated output list).
+  const metrics7d = {
+    windowDays: METRICS_WINDOW_DAYS,
+    etfNetFlowUsd: 0,
+    etfCountWithAmount: 0,
+    liquidationTotalUsd: 0,
+    liquidationCountWithAmount: 0
+  };
+
+  for (const signal of deduped) {
+    const t = dayjs(signal.time);
+    if (!t.isValid()) continue;
+    if (now.diff(t, "day", true) > METRICS_WINDOW_DAYS) continue;
+
+    const blob = `${signal.title || ""} ${signal.summary || ""} ${signal.keyChange || ""} ${signal.zhTitle || ""}`;
+
+    if (/\bETF\b/i.test(blob) || /ETF/.test(blob)) {
+      const net = parseEtfNetFlowUsd(blob);
+      if (Number.isFinite(net)) {
+        metrics7d.etfNetFlowUsd += net;
+        metrics7d.etfCountWithAmount += 1;
+      }
+    }
+
+    if (/清算|liquidation/i.test(blob)) {
+      const liq = parseLiquidationUsd(blob);
+      if (Number.isFinite(liq)) {
+        metrics7d.liquidationTotalUsd += Math.abs(liq);
+        metrics7d.liquidationCountWithAmount += 1;
+      }
+    }
   }
 
-  const aggregated = aggregateSimilarSignals(kept);
-  return aggregated.slice(0, 30);
+  metrics7d.etfNetFlowUsd = Math.round(metrics7d.etfNetFlowUsd);
+  metrics7d.liquidationTotalUsd = Math.round(metrics7d.liquidationTotalUsd);
+
+  const categories = Object.keys(CATEGORY_QUOTAS);
+  const byCategory = new Map(categories.map((c) => [c, []]));
+  for (const signal of deduped
+    .slice()
+    .sort((a, b) => {
+      const bt = dayjs(b.time).valueOf();
+      const at = dayjs(a.time).valueOf();
+      if (bt !== at) return bt - at;
+      return (b.priorityScore || 0) - (a.priorityScore || 0);
+    })) {
+    const category = byCategory.has(signal.category) ? signal.category : "market";
+    byCategory.get(category).push(signal);
+  }
+
+  const selected = [];
+
+  for (const category of categories) {
+    const quota = Math.max(0, Number(CATEGORY_QUOTAS[category] || 0));
+    if (quota === 0) continue;
+
+    const rawCap = Math.min(36, Math.max(quota, quota * 4));
+    const kept = [];
+    const keyChangeCount = new Map();
+
+    for (const signal of byCategory.get(category) || []) {
+      const key = String(signal.keyChange || "").trim();
+      const count = keyChangeCount.get(key) || 0;
+      if (count >= MAX_SAME_KEYCHANGE) continue;
+      keyChangeCount.set(key, count + 1);
+      kept.push(signal);
+      if (kept.length >= rawCap) break;
+    }
+
+    const aggregated = aggregateSimilarSignals(kept).slice(0, quota);
+    selected.push(...aggregated);
+  }
+
+  const signals = selected
+    .sort((a, b) => dayjs(b.time).valueOf() - dayjs(a.time).valueOf())
+    .slice(0, MAX_TOTAL_SIGNALS);
+
+  return { signals, metrics7d };
 }
