@@ -1,0 +1,15 @@
+{
+  "name": "crypto-macro-schedule-site",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "update:data": "node scripts/update-data.mjs",
+    "update:data:local": "node scripts/update-data.mjs --write-local"
+  },
+  "dependencies": {
+    "cheerio": "^1.1.2",
+    "dayjs": "^1.11.13",
+    "dotenv": "^16.4.7"
+  }
+}

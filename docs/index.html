@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Crypto 關鍵節點儀表板</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header class="hero">
+        <h1>Crypto 關鍵節點儀表板</h1>
+        <p>追蹤美國、日本重要數據與政策時間點，搭配近期幣圈事件，定位交易高波動窗口。</p>
+        <div id="meta"></div>
+      </header>
+
+      <section>
+        <h2>AI 重點摘要</h2>
+        <ul id="ai-insights" class="card-list"></ul>
+      </section>
+
+      <section>
+        <h2>未來 7 日關鍵窗口</h2>
+        <div id="key-windows" class="card-grid"></div>
+      </section>
+
+      <section>
+        <h2>最近與未來：美日專業數據日程</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>時間</th>
+                <th>國家</th>
+                <th>事件</th>
+                <th>重要度</th>
+                <th>狀態</th>
+              </tr>
+            </thead>
+            <tbody id="macro-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2>近期影響虛擬幣操作 / 訊息</h2>
+        <div id="crypto-signals" class="card-grid"></div>
+      </section>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

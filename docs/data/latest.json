@@ -1,0 +1,532 @@
+{
+  "generatedAt": "2026-02-23T09:57:12.447Z",
+  "sources": {
+    "us": [
+      "https://www.bls.gov/schedule/news_release/cpi.htm",
+      "https://www.bls.gov/schedule/news_release/empsit.htm",
+      "https://www.bls.gov/schedule/news_release/ppi.htm",
+      "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm"
+    ],
+    "jp": [
+      "https://www.boj.or.jp/en/mopo/mpmsche_minu/index.htm"
+    ],
+    "cryptoNews": [
+      "https://www.coindesk.com/arc/outboundfeeds/rss/",
+      "https://cointelegraph.com/rss"
+    ]
+  },
+  "macroEvents": [
+    {
+      "id": "jp-boj-20260123",
+      "country": "JP",
+      "title": "BOJ Monetary Policy Meeting",
+      "eventType": "central-bank",
+      "datetime": "2026-01-23T04:00:00.000Z",
+      "timezone": "Asia/Tokyo",
+      "importance": "high",
+      "impactHint": "日圓與利差預期改變，常透過美元指數與風險偏好影響加密市場。",
+      "source": "https://www.boj.or.jp/en/mopo/mpmsche_minu/index.htm",
+      "status": "recent"
+    },
+    {
+      "id": "us-fomc-2026-01",
+      "country": "US",
+      "title": "FOMC Policy Decision",
+      "eventType": "central-bank",
+      "datetime": "2026-01-28T06:00:00.000Z",
+      "timezone": "America/New_York",
+      "importance": "high",
+      "impactHint": "FOMC 利率與措辭常造成加密市場瞬間波動。",
+      "source": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+      "status": "recent"
+    },
+    {
+      "id": "us-fomc-2026-02",
+      "country": "US",
+      "title": "FOMC Policy Decision",
+      "eventType": "central-bank",
+      "datetime": "2026-03-18T06:00:00.000Z",
+      "timezone": "America/New_York",
+      "importance": "high",
+      "impactHint": "FOMC 利率與措辭常造成加密市場瞬間波動。",
+      "source": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+      "status": "upcoming"
+    },
+    {
+      "id": "jp-boj-20260319",
+      "country": "JP",
+      "title": "BOJ Monetary Policy Meeting",
+      "eventType": "central-bank",
+      "datetime": "2026-03-19T04:00:00.000Z",
+      "timezone": "Asia/Tokyo",
+      "importance": "high",
+      "impactHint": "日圓與利差預期改變，常透過美元指數與風險偏好影響加密市場。",
+      "source": "https://www.boj.or.jp/en/mopo/mpmsche_minu/index.htm",
+      "status": "upcoming"
+    },
+    {
+      "id": "jp-boj-20260428",
+      "country": "JP",
+      "title": "BOJ Monetary Policy Meeting",
+      "eventType": "central-bank",
+      "datetime": "2026-04-28T04:00:00.000Z",
+      "timezone": "Asia/Tokyo",
+      "importance": "high",
+      "impactHint": "日圓與利差預期改變，常透過美元指數與風險偏好影響加密市場。",
+      "source": "https://www.boj.or.jp/en/mopo/mpmsche_minu/index.htm",
+      "status": "upcoming"
+    },
+    {
+      "id": "us-fomc-2026-03",
+      "country": "US",
+      "title": "FOMC Policy Decision",
+      "eventType": "central-bank",
+      "datetime": "2026-04-29T06:00:00.000Z",
+      "timezone": "America/New_York",
+      "importance": "high",
+      "impactHint": "FOMC 利率與措辭常造成加密市場瞬間波動。",
+      "source": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+      "status": "upcoming"
+    },
+    {
+      "id": "jp-boj-20260616",
+      "country": "JP",
+      "title": "BOJ Monetary Policy Meeting",
+      "eventType": "central-bank",
+      "datetime": "2026-06-16T04:00:00.000Z",
+      "timezone": "Asia/Tokyo",
+      "importance": "high",
+      "impactHint": "日圓與利差預期改變，常透過美元指數與風險偏好影響加密市場。",
+      "source": "https://www.boj.or.jp/en/mopo/mpmsche_minu/index.htm",
+      "status": "upcoming"
+    },
+    {
+      "id": "us-fomc-2026-04",
+      "country": "US",
+      "title": "FOMC Policy Decision",
+      "eventType": "central-bank",
+      "datetime": "2026-06-17T06:00:00.000Z",
+      "timezone": "America/New_York",
+      "importance": "high",
+      "impactHint": "FOMC 利率與措辭常造成加密市場瞬間波動。",
+      "source": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+      "status": "upcoming"
+    },
+    {
+      "id": "us-fomc-2026-05",
+      "country": "US",
+      "title": "FOMC Policy Decision",
+      "eventType": "central-bank",
+      "datetime": "2026-07-29T06:00:00.000Z",
+      "timezone": "America/New_York",
+      "importance": "high",
+      "impactHint": "FOMC 利率與措辭常造成加密市場瞬間波動。",
+      "source": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+      "status": "upcoming"
+    },
+    {
+      "id": "jp-boj-20260731",
+      "country": "JP",
+      "title": "BOJ Monetary Policy Meeting",
+      "eventType": "central-bank",
+      "datetime": "2026-07-31T04:00:00.000Z",
+      "timezone": "Asia/Tokyo",
+      "importance": "high",
+      "impactHint": "日圓與利差預期改變，常透過美元指數與風險偏好影響加密市場。",
+      "source": "https://www.boj.or.jp/en/mopo/mpmsche_minu/index.htm",
+      "status": "upcoming"
+    },
+    {
+      "id": "us-fomc-2026-06",
+      "country": "US",
+      "title": "FOMC Policy Decision",
+      "eventType": "central-bank",
+      "datetime": "2026-09-16T06:00:00.000Z",
+      "timezone": "America/New_York",
+      "importance": "high",
+      "impactHint": "FOMC 利率與措辭常造成加密市場瞬間波動。",
+      "source": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+      "status": "upcoming"
+    },
+    {
+      "id": "jp-boj-20260918",
+      "country": "JP",
+      "title": "BOJ Monetary Policy Meeting",
+      "eventType": "central-bank",
+      "datetime": "2026-09-18T04:00:00.000Z",
+      "timezone": "Asia/Tokyo",
+      "importance": "high",
+      "impactHint": "日圓與利差預期改變，常透過美元指數與風險偏好影響加密市場。",
+      "source": "https://www.boj.or.jp/en/mopo/mpmsche_minu/index.htm",
+      "status": "upcoming"
+    },
+    {
+      "id": "us-fomc-2026-07",
+      "country": "US",
+      "title": "FOMC Policy Decision",
+      "eventType": "central-bank",
+      "datetime": "2026-10-28T06:00:00.000Z",
+      "timezone": "America/New_York",
+      "importance": "high",
+      "impactHint": "FOMC 利率與措辭常造成加密市場瞬間波動。",
+      "source": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+      "status": "upcoming"
+    },
+    {
+      "id": "jp-boj-20261030",
+      "country": "JP",
+      "title": "BOJ Monetary Policy Meeting",
+      "eventType": "central-bank",
+      "datetime": "2026-10-30T04:00:00.000Z",
+      "timezone": "Asia/Tokyo",
+      "importance": "high",
+      "impactHint": "日圓與利差預期改變，常透過美元指數與風險偏好影響加密市場。",
+      "source": "https://www.boj.or.jp/en/mopo/mpmsche_minu/index.htm",
+      "status": "upcoming"
+    },
+    {
+      "id": "us-fomc-2026-08",
+      "country": "US",
+      "title": "FOMC Policy Decision",
+      "eventType": "central-bank",
+      "datetime": "2026-12-09T06:00:00.000Z",
+      "timezone": "America/New_York",
+      "importance": "high",
+      "impactHint": "FOMC 利率與措辭常造成加密市場瞬間波動。",
+      "source": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+      "status": "upcoming"
+    },
+    {
+      "id": "jp-boj-20261218",
+      "country": "JP",
+      "title": "BOJ Monetary Policy Meeting",
+      "eventType": "central-bank",
+      "datetime": "2026-12-18T04:00:00.000Z",
+      "timezone": "Asia/Tokyo",
+      "importance": "high",
+      "impactHint": "日圓與利差預期改變，常透過美元指數與風險偏好影響加密市場。",
+      "source": "https://www.boj.or.jp/en/mopo/mpmsche_minu/index.htm",
+      "status": "upcoming"
+    }
+  ],
+  "cryptoSignals": [
+    {
+      "id": "signal-aHR0cHM6Ly9jb2lu",
+      "title": "Tyler Winklevoss upbeat despite brutal sentiment as Gemini troubles deepen",
+      "time": "2026-02-23T09:33:04.000Z",
+      "category": "regulation",
+      "impact": "low",
+      "summary": "<p style=\"float:right; margin:0 0 10px 15px; width:240px;\"><img src=\"https://images.cointelegraph.com/images/528_aHR0cHM6Ly9zMy5jb2ludGVsZWdyYXBoLmNvbS91cGxvYWRzLzIwMjYtMDIvMDE5Yzg5YmItOWEyMC03NzQ2LWE1Y2YtNWE4OTI3ZWM5Zjg0LmpwZw==.jpg\" alt=\"",
+      "source": "https://cointelegraph.com/news/tyler-winklevoss-optimistic-gemini-cuts-exits-btc-holdings?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound"
+    },
+    {
+      "id": "signal-aHR0cHM6Ly9jb2lu",
+      "title": "‘Investable universe’ of crypto is narrowing: NYDIG",
+      "time": "2026-02-23T06:31:46.000Z",
+      "category": "regulation",
+      "impact": "low",
+      "summary": "<p style=\"float:right; margin:0 0 10px 15px; width:240px;\"><img src=\"https://images.cointelegraph.com/images/528_aHR0cHM6Ly9zMy5jb2ludGVsZWdyYXBoLmNvbS91cGxvYWRzLzIwMjYtMDIvMDE5Yzg4ZGQtODYyMC03ZmIyLWJmNjAtODA3ZDAxMWRmMDc2LmpwZw==.jpg\" alt=\"",
+      "source": "https://cointelegraph.com/news/investable-universe-crypto-narrowing-nydig?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound"
+    },
+    {
+      "id": "signal-aHR0cHM6Ly9jb2lu",
+      "title": "JPMorgan acknowledges closing Trump accounts in new court filing",
+      "time": "2026-02-23T06:22:03.000Z",
+      "category": "market",
+      "impact": "low",
+      "summary": "<p style=\"float:right; margin:0 0 10px 15px; width:240px;\"><img src=\"https://images.cointelegraph.com/images/528_aHR0cHM6Ly9zMy5jb2ludGVsZWdyYXBoLmNvbS91cGxvYWRzLzIwMjYtMDEvMDE5YmVhMGUtZjJlMy03ZGY1LTg3OTQtNmRiMzBhYjNlMTE5LmpwZw==.jpg\" alt=\"",
+      "source": "https://cointelegraph.com/news/jpmorgan-admits-debanked-trump-after-capitol-attack?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound"
+    },
+    {
+      "id": "signal-aHR0cHM6Ly93d3cu",
+      "title": "$61 million bitcoin whale liquidated on HTX as sentiment back at 'extreme fear'",
+      "time": "2026-02-23T06:15:20.000Z",
+      "category": "risk",
+      "impact": "low",
+      "summary": "The position was the largest single forced closure in 24 hours as bitcoin shed weekend gains and the fear index returned to historic lows.",
+      "source": "https://www.coindesk.com/markets/2026/02/23/usd61-million-bitcoin-whale-liquidated-on-htx-as-sentiment-back-at-extreme-fear"
+    },
+    {
+      "id": "signal-aHR0cHM6Ly93d3cu",
+      "title": "Bitcoin ETFs bleed $3.8 billion in historic five-week outflow streak",
+      "time": "2026-02-23T04:42:13.000Z",
+      "category": "flow",
+      "impact": "medium",
+      "summary": "Outflows underscore persistent institutional wariness toward bitcoin after the early October crash.",
+      "source": "https://www.coindesk.com/markets/2026/02/23/bitcoin-etfs-bleed-usd3-8-billion-in-historic-five-week-outflow-streak"
+    },
+    {
+      "id": "signal-aHR0cHM6Ly9jb2lu",
+      "title": "Bitcoin ETFs’ 5-week bleed, Metaplanet rejects accusations: Hodlers Digest, Feb. 15 – 22",
+      "time": "2026-02-23T04:35:49.000Z",
+      "category": "flow",
+      "impact": "medium",
+      "summary": "<p style=\"float:right; margin:0 0 10px 15px; width:240px;\"><img src=\"https://images.cointelegraph.com/images/528_aHR0cHM6Ly9zMy5jb2ludGVsZWdyYXBoLmNvbS91cGxvYWRzLzIwMjYtMDIvMDE5Yzg4OTctZWIwZC03YzFmLTk2MTItMGE5MTUzMmQ1MDkwLmpwZw==.jpg\" alt=\"",
+      "source": "https://cointelegraph.com/news/bitcoin-etf-united-states-metaplanet-btc-treasury-hodlers-digest?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound"
+    },
+    {
+      "id": "signal-aHR0cHM6Ly9jb2lu",
+      "title": "Missouri lawmakers advance new Bitcoin strategic reserve bill",
+      "time": "2026-02-23T03:53:32.000Z",
+      "category": "regulation",
+      "impact": "low",
+      "summary": "<p style=\"float:right; margin:0 0 10px 15px; width:240px;\"><img src=\"https://images.cointelegraph.com/images/528_aHR0cHM6Ly9zMy5jb2ludGVsZWdyYXBoLmNvbS91cGxvYWRzLzIwMjYtMDIvMDE5Yzg4MDYtZDE1Zi03YzlmLThjMDktMmFlZmIxNGEzYTU5LmpwZw==.jpg\" alt=\"",
+      "source": "https://cointelegraph.com/news/missouri-bitcoin-strategic-reserve-hb2080-advance?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound"
+    },
+    {
+      "id": "signal-aHR0cHM6Ly9jb2lu",
+      "title": "Michael Saylor hints at Strategy’s 100th Bitcoin buy",
+      "time": "2026-02-23T03:43:28.000Z",
+      "category": "macro",
+      "impact": "low",
+      "summary": "<p style=\"float:right; margin:0 0 10px 15px; width:240px;\"><img src=\"https://images.cointelegraph.com/images/528_aHR0cHM6Ly9zMy5jb2ludGVsZWdyYXBoLmNvbS91cGxvYWRzLzIwMjUtMTIvMDE5YjI5ZmEtZmZlOS03MWNjLWE0NDUtM2ViOTgzMzViYzVlLmpwZw==.jpg\" alt=\"",
+      "source": "https://cointelegraph.com/news/michael-saylor-hints-strategy-100th-bitcoin-buy?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound"
+    },
+    {
+      "id": "signal-aHR0cHM6Ly93d3cu",
+      "title": "Bitcoin slides 5%, tumbling below $65,000 as whale selling grows and recent buyers lock in losses",
+      "time": "2026-02-23T01:49:11.000Z",
+      "category": "flow",
+      "impact": "low",
+      "summary": "On-chain data from Glassnode and CryptoQuant shows large holders dominating exchange inflows while short-term investors continue to sell at a loss, pointing to a fragile base-building phase.",
+      "source": "https://www.coindesk.com/markets/2026/02/23/bitcoin-slides-4-to-usd65-000-as-whale-selling-grows-and-recent-buyers-lock-in-losses"
+    },
+    {
+      "id": "signal-aHR0cHM6Ly9jb2lu",
+      "title": "Vitalik Buterin floats simulated transactions to enhance crypto security",
+      "time": "2026-02-23T01:30:45.000Z",
+      "category": "regulation",
+      "impact": "low",
+      "summary": "<p style=\"float:right; margin:0 0 10px 15px; width:240px;\"><img src=\"https://images.cointelegraph.com/images/528_aHR0cHM6Ly9zMy5jb2ludGVsZWdyYXBoLmNvbS91cGxvYWRzLzIwMjYtMDIvMDE5Yzg3NTgtY2Y0My03NzI0LTk1MWUtYjY1MjUyYTIyYmVmLmpwZw==.jpg\" alt=\"",
+      "source": "https://cointelegraph.com/news/vitalik-buterin-advocates-intent-based-security?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound"
+    },
+    {
+      "id": "signal-aHR0cHM6Ly9jb2lu",
+      "title": "SEC allows broker-dealers to take 2% ‘haircut’ on stablecoins",
+      "time": "2026-02-22T21:42:54.000Z",
+      "category": "regulation",
+      "impact": "low",
+      "summary": "<p style=\"float:right; margin:0 0 10px 15px; width:240px;\"><img src=\"https://images.cointelegraph.com/images/528_aHR0cHM6Ly9zMy5jb2ludGVsZWdyYXBoLmNvbS91cGxvYWRzLzIwMjYtMDIvMDE5Yzg3MjQtMWVjZC03NmJhLTkzYzktZjk5Mjk1MWJkYWIyLmpwZw==.jpg\" alt=\"",
+      "source": "https://cointelegraph.com/news/sec-broker-dealer-2-haircut-stablecoins?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound"
+    },
+    {
+      "id": "signal-aHR0cHM6Ly9jb2lu",
+      "title": "Crypto infrastructure company BitGo named issuer for FYUSD stablecoin",
+      "time": "2026-02-22T20:38:32.000Z",
+      "category": "regulation",
+      "impact": "low",
+      "summary": "<p style=\"float:right; margin:0 0 10px 15px; width:240px;\"><img src=\"https://images.cointelegraph.com/images/528_aHR0cHM6Ly9zMy5jb2ludGVsZWdyYXBoLmNvbS91cGxvYWRzLzIwMjYtMDIvMDE5Yzg3MDktNmE1Ni03MGJmLWFjYWItNjM0ZWE2NjA0MWVlLmpwZw==.jpg\" alt=\"",
+      "source": "https://cointelegraph.com/news/bitgo-issuer-fyusd-stablecoin?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound"
+    },
+    {
+      "id": "signal-aHR0cHM6Ly93d3cu",
+      "title": "Bitcoin see-saws around $68,000, DOGE, ETH slide as tariff uncertainty weighs on risk assets",
+      "time": "2026-02-22T15:45:23.000Z",
+      "category": "macro",
+      "impact": "medium",
+      "summary": "President Donald Trump raised the global tariff rate to 15% despite a Supreme Court ruling against earlier emergency trade measures, keeping pressure on China and other partners.",
+      "source": "https://www.coindesk.com/markets/2026/02/22/bitcoin-dips-to-usd67-000-doge-eth-slide-as-tariff-uncertainty-weighs-on-risk-assets"
+    },
+    {
+      "id": "signal-aHR0cHM6Ly93d3cu",
+      "title": "ProShares' stablecoin-ready ETF sees $17 billion debut, sparking speculation about Circle",
+      "time": "2026-02-22T15:00:00.000Z",
+      "category": "flow",
+      "impact": "medium",
+      "summary": "Analysts speculated that a large issuer like Circle might be moving reserve assets en masse into the ETF, but data show otherwise.",
+      "source": "https://www.coindesk.com/markets/2026/02/22/proshares-stablecoin-ready-etf-sees-usd17-billion-debut-sparking-speculation-about-circle"
+    },
+    {
+      "id": "signal-aHR0cHM6Ly9jb2lu",
+      "title": "Here’s what happened in crypto today",
+      "time": "2026-02-22T13:02:36.000Z",
+      "category": "regulation",
+      "impact": "medium",
+      "summary": "<p style=\"float:right; margin:0 0 10px 15px; width:240px;\"><img src=\"https://images.cointelegraph.com/images/528_aHR0cHM6Ly9zMy5jb2ludGVsZWdyYXBoLmNvbS91cGxvYWRzLzIwMjYtMDIvMDE5YzY2NjktN2UxNi03ZmI0LTlmNjItOTIxNWU3YTcwZmIwLmpwZw==.jpg\" alt=\"",
+      "source": "https://cointelegraph.com/news/what-happened-in-crypto-today?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound"
+    },
+    {
+      "id": "signal-aHR0cHM6Ly9jb2lu",
+      "title": "Crypto capital rotates from tokens to stocks as new launches struggle: DWF",
+      "time": "2026-02-22T12:56:14.000Z",
+      "category": "regulation",
+      "impact": "low",
+      "summary": "<p style=\"float:right; margin:0 0 10px 15px; width:240px;\"><img src=\"https://images.cointelegraph.com/images/528_aHR0cHM6Ly9zMy5jb2ludGVsZWdyYXBoLmNvbS91cGxvYWRzLzIwMjYtMDIvMDE5YzJkZTMtNDg5MS03NzQzLWFhNmEtMGIzMjg4YzNjMjJkLmpwZw==.jpg\" alt=\"",
+      "source": "https://cointelegraph.com/news/crypto-capital-rotates-from-tokens-to-stocks-as-new-launches-struggle-dwf?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound"
+    },
+    {
+      "id": "signal-aHR0cHM6Ly9jb2lu",
+      "title": "Bitdeer liquidates entire Bitcoin treasury, holdings fall to zero",
+      "time": "2026-02-22T08:14:24.000Z",
+      "category": "risk",
+      "impact": "low",
+      "summary": "<p style=\"float:right; margin:0 0 10px 15px; width:240px;\"><img src=\"https://images.cointelegraph.com/images/528_aHR0cHM6Ly9zMy5jb2ludGVsZWdyYXBoLmNvbS91cGxvYWRzLzIwMjYtMDIvMDE5Yzg0OTUtZGY2NC03NWRjLTgxMjQtODVjMDNlOWFkMDQ5LmpwZw==.jpg\" alt=\"",
+      "source": "https://cointelegraph.com/news/bitdeer-sells-bitcoin-treasury-zero-holdings?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound"
+    },
+    {
+      "id": "signal-aHR0cHM6Ly9jb2lu",
+      "title": "Trump raises global tariff rate to 15%, but crypto markets are unfazed",
+      "time": "2026-02-21T21:45:05.000Z",
+      "category": "macro",
+      "impact": "medium",
+      "summary": "<p style=\"float:right; margin:0 0 10px 15px; width:240px;\"><img src=\"https://images.cointelegraph.com/images/528_aHR0cHM6Ly9zMy5jb2ludGVsZWdyYXBoLmNvbS91cGxvYWRzLzIwMjYtMDEvMDE5Yjk2YTAtNWUyNi03N2UxLThmZDAtYjljMmRjMGZlMjY3LmpwZw==.jpg\" alt=\"",
+      "source": "https://cointelegraph.com/news/trump-raises-tariff-15-crypto-unfazed?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound"
+    },
+    {
+      "id": "signal-aHR0cHM6Ly93d3cu",
+      "title": "Ethereum's Vitalik Buterin proposes AI 'stewards' to help reinvent DAO governance",
+      "time": "2026-02-21T19:21:46.000Z",
+      "category": "regulation",
+      "impact": "low",
+      "summary": "The system would use zero-knowledge proofs and secure environments (MPC/TEEs) to protect voter identity and sensitive data while preventing coercion and bribery.",
+      "source": "https://www.coindesk.com/web3/2026/02/21/ethereum-s-vitalik-buterin-proposes-ai-stewards-to-help-reinvent-dao-governance"
+    },
+    {
+      "id": "signal-aHR0cHM6Ly9jb2lu",
+      "title": "US lawmakers critical of Trump tariffs, say it will derail economy",
+      "time": "2026-02-21T18:22:41.000Z",
+      "category": "regulation",
+      "impact": "high",
+      "summary": "<p style=\"float:right; margin:0 0 10px 15px; width:240px;\"><img src=\"https://images.cointelegraph.com/images/528_aHR0cHM6Ly9zMy5jb2ludGVsZWdyYXBoLmNvbS91cGxvYWRzLzIwMjYtMDIvMDE5YzgxNTUtY2IzMS03Yzk5LWE2MWYtY2QzYTdmMjhhYjM0LmpwZw==.jpg\" alt=\"",
+      "source": "https://cointelegraph.com/news/us-lawmakers-critical-tariffs-derail-economy?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound"
+    },
+    {
+      "id": "signal-aHR0cHM6Ly93d3cu",
+      "title": "Japan's SBI to issue 10 billion yen onchain bond with XRP rewards for retail investors",
+      "time": "2026-02-21T18:21:25.000Z",
+      "category": "macro",
+      "impact": "high",
+      "summary": "The SBI START Bonds offer a fixed interest rate, blockchain settlement, and XRP rewards for eligible investors registered on the firm’s exchange.",
+      "source": "https://www.coindesk.com/business/2026/02/21/japan-s-sbi-to-issue-10-billion-yen-onchain-bond-with-xrp-rewards-for-retail-investors"
+    },
+    {
+      "id": "signal-aHR0cHM6Ly93d3cu",
+      "title": "Iran’s rial collapse mirrors Lebanon’s crisis, driving citizens to bitcoin",
+      "time": "2026-02-21T18:01:00.000Z",
+      "category": "market",
+      "impact": "low",
+      "summary": "With the rial plunging, middle-class savers are bypassing local banks to move billions into the domestic crypto ecosystem.",
+      "source": "https://www.coindesk.com/opinion/2026/02/21/iran-s-rial-collapse-mirrors-lebanon-s-crisis-driving-citizens-to-bitcoin"
+    },
+    {
+      "id": "signal-aHR0cHM6Ly93d3cu",
+      "title": "Bitcoin price slips after Trump hikes worldwide tariff to 15% from 10% despite Supreme Court decision",
+      "time": "2026-02-21T16:43:00.000Z",
+      "category": "macro",
+      "impact": "medium",
+      "summary": "U.S. President Donald Trump announced a 15% worldwide tariff on imported goods, despite an earlier Supreme Court decision that invalidated earlier trade actions.",
+      "source": "https://www.coindesk.com/markets/2026/02/21/bitcoin-price-slips-after-trump-hikes-worldwide-tariff-to-15-from-10-despite-supreme-court-decision"
+    },
+    {
+      "id": "signal-aHR0cHM6Ly93d3cu",
+      "title": "How AI is helping retail traders exploit prediction market 'glitches' to make easy money",
+      "time": "2026-02-21T15:00:00.000Z",
+      "category": "risk",
+      "impact": "low",
+      "summary": "A fully automated bot quietly captured micro-arbitrage opportunities on short-term crypto prediction markets, netting nearly $150,000",
+      "source": "https://www.coindesk.com/markets/2026/02/21/how-ai-is-helping-retail-traders-exploit-prediction-market-glitches-to-make-easy-money"
+    },
+    {
+      "id": "signal-aHR0cHM6Ly93d3cu",
+      "title": "Blue Owl liquidity crisis has investors bracing for 2008-style fallout — it could mean bitcoin's next bull run",
+      "time": "2026-02-21T14:00:00.000Z",
+      "category": "risk",
+      "impact": "low",
+      "summary": "Private-equity firm Blue Owl Capital (OWL) tumbled nearly 15% this week as it was forced to liquidate $1.4 billion in assets to pay investors looking to exit one of its private credit funds.",
+      "source": "https://www.coindesk.com/markets/2026/02/20/how-this-week-s-sign-of-private-credit-stress-could-set-stage-for-next-bitcoin-bull-run"
+    },
+    {
+      "id": "signal-aHR0cHM6Ly93d3cu",
+      "title": "Small investors are buying bitcoin. For a rally to succeed, the whales need to join in.",
+      "time": "2026-02-21T07:30:00.000Z",
+      "category": "risk",
+      "impact": "low",
+      "summary": "Small wallets have increased their BTC holdings by 2.5% since October's all-time high while large holders trimmed 0.8%, Santiment data shows.",
+      "source": "https://www.coindesk.com/markets/2026/02/21/small-investors-are-buying-bitcoin-it-now-needs-bigger-players-to-show-up"
+    },
+    {
+      "id": "signal-aHR0cHM6Ly93d3cu",
+      "title": "SEC makes quiet shift to brokers' stablecoin holdings that may pack big results",
+      "time": "2026-02-20T22:15:40.000Z",
+      "category": "regulation",
+      "impact": "high",
+      "summary": "The securities regulator has continued its Project Crypto work to make unofficial policy changes as it moved to let broker-dealers treat stablecoins as capital.",
+      "source": "https://www.coindesk.com/policy/2026/02/20/sec-makes-quiet-shift-to-brokers-stablecoin-holdings-that-may-pack-big-results"
+    },
+    {
+      "id": "signal-aHR0cHM6Ly93d3cu",
+      "title": "Bitcoin shrugs off Trump's new tariffs, nears $68,000 as altcoins lead modest bounce",
+      "time": "2026-02-20T21:20:51.000Z",
+      "category": "macro",
+      "impact": "medium",
+      "summary": "Crypto prices edged higher on Friday despite a splash of tariff turbulence after the U.S. Supreme Court ruled Trump's levies illegal.",
+      "source": "https://www.coindesk.com/markets/2026/02/20/bitcoin-shrugs-off-trump-s-new-tariffs-nears-usd68-000-as-altcoins-lead-modest-bounce"
+    },
+    {
+      "id": "signal-aHR0cHM6Ly93d3cu",
+      "title": "Specialized AI detects 92% of real-world DeFi exploits",
+      "time": "2026-02-20T19:06:15.000Z",
+      "category": "risk",
+      "impact": "low",
+      "summary": "New research claims specialized AI dramatically outperforms general-purpose models at detecting exploited DeFi vulnerabilities.",
+      "source": "https://www.coindesk.com/business/2026/02/20/specialized-ai-detects-92-of-real-world-defi-exploits"
+    }
+  ],
+  "keyWindows": [],
+  "aiSummary": {
+    "keyInsights": [
+      "關注高影響宏觀事件前後 2-4 小時，虛擬幣波動通常放大。",
+      "若同時出現政策/監管新聞與大型資金流事件，短線風險更高。",
+      "建議在關鍵時段降低槓桿，並預先設置止損。"
+    ],
+    "eventImpacts": [
+      {
+        "eventId": "jp-boj-20260123",
+        "impactSummary": "日圓與利差預期改變，常透過美元指數與風險偏好影響加密市場。",
+        "tradingHint": "事件前降低倉位，發布後等待 15-30 分鐘再評估方向。"
+      },
+      {
+        "eventId": "us-fomc-2026-01",
+        "impactSummary": "FOMC 利率與措辭常造成加密市場瞬間波動。",
+        "tradingHint": "事件前降低倉位，發布後等待 15-30 分鐘再評估方向。"
+      },
+      {
+        "eventId": "us-fomc-2026-02",
+        "impactSummary": "FOMC 利率與措辭常造成加密市場瞬間波動。",
+        "tradingHint": "事件前降低倉位，發布後等待 15-30 分鐘再評估方向。"
+      },
+      {
+        "eventId": "jp-boj-20260319",
+        "impactSummary": "日圓與利差預期改變，常透過美元指數與風險偏好影響加密市場。",
+        "tradingHint": "事件前降低倉位，發布後等待 15-30 分鐘再評估方向。"
+      },
+      {
+        "eventId": "jp-boj-20260428",
+        "impactSummary": "日圓與利差預期改變，常透過美元指數與風險偏好影響加密市場。",
+        "tradingHint": "事件前降低倉位，發布後等待 15-30 分鐘再評估方向。"
+      }
+    ],
+    "signalHighlights": [
+      {
+        "signalId": "signal-aHR0cHM6Ly9jb2lu",
+        "whyImportant": "<p style=\"float:right; margin:0 0 10px 15px; width:240px;\"><img src=\"https://images.cointelegraph.com/images/528_aHR0cHM6Ly9zMy5jb2ludGVsZWdyYXBoLmNvbS91cGxvYWRzLzIwMjYtMDIvMDE5Yzg5YmItOWEyMC03NzQ2LWE1Y2YtNWE4OTI3ZWM5Zjg0LmpwZw==.jpg\" alt=\""
+      },
+      {
+        "signalId": "signal-aHR0cHM6Ly9jb2lu",
+        "whyImportant": "<p style=\"float:right; margin:0 0 10px 15px; width:240px;\"><img src=\"https://images.cointelegraph.com/images/528_aHR0cHM6Ly9zMy5jb2ludGVsZWdyYXBoLmNvbS91cGxvYWRzLzIwMjYtMDIvMDE5Yzg4ZGQtODYyMC03ZmIyLWJmNjAtODA3ZDAxMWRmMDc2LmpwZw==.jpg\" alt=\""
+      },
+      {
+        "signalId": "signal-aHR0cHM6Ly9jb2lu",
+        "whyImportant": "<p style=\"float:right; margin:0 0 10px 15px; width:240px;\"><img src=\"https://images.cointelegraph.com/images/528_aHR0cHM6Ly9zMy5jb2ludGVsZWdyYXBoLmNvbS91cGxvYWRzLzIwMjYtMDEvMDE5YmVhMGUtZjJlMy03ZGY1LTg3OTQtNmRiMzBhYjNlMTE5LmpwZw==.jpg\" alt=\""
+      },
+      {
+        "signalId": "signal-aHR0cHM6Ly93d3cu",
+        "whyImportant": "The position was the largest single forced closure in 24 hours as bitcoin shed weekend gains and the fear index returned to historic lows."
+      },
+      {
+        "signalId": "signal-aHR0cHM6Ly93d3cu",
+        "whyImportant": "Outflows underscore persistent institutional wariness toward bitcoin after the early October crash."
+      }
+    ]
+  }
+}
