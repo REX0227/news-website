@@ -1,0 +1,155 @@
+{
+  "title": "CryptoPulse V2 — 社群監控名單（初稿）",
+  "notes": [
+    "此檔只負責『追蹤對象清單』，不代表我們已能合法/穩定抓取內容。",
+    "若要抓取 X/Twitter 等社群貼文，請優先使用官方 API 或第三方資料商 API（需 API key/授權）；未開通前先維持清單與分類。",
+    "所有 handle/帳號可能會變更：請先人工確認並把 needsVerification 改為 false。"
+  ],
+  "accounts": [
+    {
+      "id": "kol_elonmusk",
+      "displayName": "Elon Musk",
+      "platform": "x",
+      "handle": "elonmusk",
+      "type": "kol",
+      "region": "US",
+      "tags": ["tesla", "x", "ai"],
+      "needsVerification": true
+    },
+    {
+      "id": "kol_donaldtrump",
+      "displayName": "Donald J. Trump",
+      "platform": "x",
+      "handle": "realDonaldTrump",
+      "type": "politician",
+      "region": "US",
+      "tags": ["policy", "tariff"],
+      "needsVerification": true
+    },
+
+    {
+      "id": "org_federalreserve",
+      "displayName": "Federal Reserve",
+      "platform": "x",
+      "handle": "federalreserve",
+      "type": "institution",
+      "region": "US",
+      "tags": ["rates", "fomc"],
+      "needsVerification": true
+    },
+    {
+      "id": "org_us_treasury",
+      "displayName": "U.S. Department of the Treasury",
+      "platform": "x",
+      "handle": "USTreasury",
+      "type": "institution",
+      "region": "US",
+      "tags": ["policy", "sanctions"],
+      "needsVerification": true
+    },
+    {
+      "id": "org_sec_news",
+      "displayName": "U.S. SEC News",
+      "platform": "x",
+      "handle": "SECGov",
+      "type": "regulator",
+      "region": "US",
+      "tags": ["regulation"],
+      "needsVerification": true
+    },
+
+    {
+      "id": "org_boj",
+      "displayName": "Bank of Japan",
+      "platform": "x",
+      "handle": "Bank_of_Japan",
+      "type": "institution",
+      "region": "JP",
+      "tags": ["boj", "rates"],
+      "needsVerification": true
+    },
+
+    {
+      "id": "org_binance",
+      "displayName": "Binance",
+      "platform": "x",
+      "handle": "binance",
+      "type": "exchange",
+      "region": "GLOBAL",
+      "tags": ["exchange", "listing", "maintenance"],
+      "needsVerification": true
+    },
+    {
+      "id": "org_coinbase",
+      "displayName": "Coinbase",
+      "platform": "x",
+      "handle": "coinbase",
+      "type": "exchange",
+      "region": "US",
+      "tags": ["exchange", "policy"],
+      "needsVerification": true
+    },
+    {
+      "id": "org_okx",
+      "displayName": "OKX",
+      "platform": "x",
+      "handle": "okx",
+      "type": "exchange",
+      "region": "GLOBAL",
+      "tags": ["exchange", "listing"],
+      "needsVerification": true
+    },
+    {
+      "id": "org_bybit",
+      "displayName": "Bybit",
+      "platform": "x",
+      "handle": "Bybit_Official",
+      "type": "exchange",
+      "region": "GLOBAL",
+      "tags": ["exchange", "listing"],
+      "needsVerification": true
+    },
+
+    {
+      "id": "org_blackrock",
+      "displayName": "BlackRock",
+      "platform": "x",
+      "handle": "BlackRock",
+      "type": "institution",
+      "region": "US",
+      "tags": ["etf", "tradfi"],
+      "needsVerification": true
+    },
+    {
+      "id": "org_arkinvest",
+      "displayName": "ARK Invest",
+      "platform": "x",
+      "handle": "ARKInvest",
+      "type": "institution",
+      "region": "US",
+      "tags": ["etf", "tradfi"],
+      "needsVerification": true
+    },
+
+    {
+      "id": "org_bitcoin",
+      "displayName": "Bitcoin",
+      "platform": "x",
+      "handle": "Bitcoin",
+      "type": "protocol",
+      "region": "GLOBAL",
+      "tags": ["bitcoin"],
+      "needsVerification": true
+    },
+    {
+      "id": "org_ethereum",
+      "displayName": "Ethereum",
+      "platform": "x",
+      "handle": "ethereum",
+      "type": "protocol",
+      "region": "GLOBAL",
+      "tags": ["ethereum"],
+      "needsVerification": true
+    }
+  ]
+}

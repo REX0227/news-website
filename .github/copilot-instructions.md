@@ -1,5 +1,15 @@
 # Copilot Instructions (CryptoPulse)
 
+## 溝通語言
+- 助理回覆一律使用中文（繁體，zh-Hant）。
+
+## 文件同步（必做）
+- 只要我們在開發/溝通中新增或變更了規則、約束、流程、或重要決策，且該內容會影響後續開發與使用，就必須即時同步更新文件。
+- 文件更新的優先順序：
+  - 協作規則/專案約束/工作流程 → 更新本檔案（`/.github/copilot-instructions.md`）。
+  - 使用方式、安裝、執行命令、部署步驟、對外說明 → 更新 `README.md`。
+- 避免「只在聊天紀錄存在」：能寫進 repo 的規則就寫進去，確保未來回頭看得懂、跑得起來。
+
 ## Repo layout (V1 is canonical)
 - V1 app (source of truth): `v1/`
   - Frontend static site: `v1/docs/` (`index.html`, `app.js`, `styles.css`)
