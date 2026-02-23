@@ -94,7 +94,7 @@ export async function collectJapanMacroEvents() {
     out.push({
       id,
       country: "JP",
-      title: "BOJ Monetary Policy Meeting",
+      title: "日本央行（BOJ）政策會議",
       eventType: "central-bank",
       datetime: decisionDate,
       timezone: "Asia/Tokyo",

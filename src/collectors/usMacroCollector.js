@@ -1,25 +1,33 @@
 import { load } from "cheerio";
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat.js";
-import { cleanText, impactScoreFromText } from "../lib/utils.js";
+import { cleanText } from "../lib/utils.js";
 
 dayjs.extend(customParseFormat);
 
-const BLS_RELEASES = [
+const BLS_ICS_URL = "https://www.bls.gov/schedule/news_release/bls.ics";
+
+const BLS_TARGETS = [
   {
-    title: "US CPI Release",
-    url: "https://www.bls.gov/schedule/news_release/cpi.htm",
-    eventType: "inflation"
+    keyword: /consumer price index/i,
+    title: "美國 CPI 公布",
+    eventType: "cpi",
+    importance: "high",
+    source: "https://www.bls.gov/schedule/news_release/cpi.htm"
   },
   {
-    title: "US Nonfarm Payrolls (Employment Situation)",
-    url: "https://www.bls.gov/schedule/news_release/empsit.htm",
-    eventType: "employment"
+    keyword: /employment situation/i,
+    title: "美國非農就業（NFP）公布",
+    eventType: "nfp",
+    importance: "high",
+    source: "https://www.bls.gov/schedule/news_release/empsit.htm"
   },
   {
-    title: "US PPI Release",
-    url: "https://www.bls.gov/schedule/news_release/ppi.htm",
-    eventType: "inflation"
+    keyword: /producer price index/i,
+    title: "美國 PPI 公布",
+    eventType: "ppi",
+    importance: "medium",
+    source: "https://www.bls.gov/schedule/news_release/ppi.htm"
   }
 ];
 
@@ -50,61 +58,46 @@ const MONTH_MAP = {
   december: 12
 };
 
-function parseDate(dateText, timeText = "08:30 AM") {
-  const normalizedDate = cleanText(dateText)
-    .replace(/\./g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  const normalizedTime = cleanText(timeText || "08:30 AM");
-  const dt = dayjs(
-    `${normalizedDate} ${normalizedTime}`,
-    [
-      "MMM D YYYY h:mm A",
-      "MMMM D YYYY h:mm A",
-      "MMM D, YYYY h:mm A",
-      "MMMM D, YYYY h:mm A"
-    ],
-    true
-  );
-
+function parseIcsDate(raw) {
+  if (!raw) return null;
+  const value = raw.trim();
+  const dt = dayjs(value, ["YYYYMMDDTHHmmss[Z]", "YYYYMMDDTHHmmss"], true);
   return dt.isValid() ? dt.toISOString() : null;
 }
 
-function parseBlsTable(html, release) {
-  const $ = load(html);
-  const items = [];
+function unfoldIcs(icsText) {
+  return icsText.replace(/\r?\n[ \t]/g, "");
+}
 
-  $("table tr").each((_, row) => {
-    const cells = $(row)
-      .find("th,td")
-      .toArray()
-      .map((cell) => cleanText($(cell).text()));
+function parseBlsEventsFromIcs(icsText) {
+  const normalized = unfoldIcs(icsText);
+  const blocks = normalized.match(/BEGIN:VEVENT[\s\S]*?END:VEVENT/g) || [];
+  const events = [];
 
-    if (cells.length < 3) return;
+  for (const block of blocks) {
+    const summary = cleanText((block.match(/SUMMARY:(.*)/)?.[1] || "").replace(/\\,/g, ","));
+    const dtStartRaw = block.match(/DTSTART(?:;[^:]+)?:([0-9TZ]+)/)?.[1];
+    const datetime = parseIcsDate(dtStartRaw);
+    if (!summary || !datetime) continue;
 
-    const period = cells[0];
-    const dateText = cells[1];
-    const timeText = cells[2];
-    if (!dateText || /date/i.test(dateText)) return;
+    const target = BLS_TARGETS.find((item) => item.keyword.test(summary));
+    if (!target) continue;
 
-    const iso = parseDate(dateText, timeText);
-    if (!iso) return;
-
-    items.push({
-      id: `us-${release.eventType}-${dayjs(iso).format("YYYYMMDD")}`,
+    events.push({
+      id: `us-${target.eventType}-${dayjs(datetime).format("YYYYMMDD")}`,
       country: "US",
-      title: release.title,
-      eventType: release.eventType,
-      period,
-      datetime: iso,
+      title: target.title,
+      eventType: target.eventType,
+      period: dayjs(datetime).format("YYYY-MM"),
+      datetime,
       timezone: "America/New_York",
-      importance: impactScoreFromText(release.title),
+      importance: target.importance,
       impactHint: "可能影響美元流動性與風險資產波動（含 BTC/ETH）。",
-      source: release.url
+      source: target.source
     });
-  });
+  }
 
-  return items;
+  return events;
 }
 
 function parseFomcMeetings(html) {
@@ -128,7 +121,7 @@ function parseFomcMeetings(html) {
       return {
         id: `us-fomc-${year}-${String(index + 1).padStart(2, "0")}`,
         country: "US",
-        title: "FOMC Policy Decision",
+        title: "FOMC 利率決議",
         eventType: "central-bank",
         datetime: iso,
         timezone: "America/New_York",
@@ -145,17 +138,16 @@ function parseFomcMeetings(html) {
 export async function collectUsMacroEvents() {
   const out = [];
 
-  for (const release of BLS_RELEASES) {
-    try {
-      const response = await fetch(release.url, {
-        headers: { "User-Agent": "crypto-macro-schedule-bot/1.0" }
-      });
-      if (!response.ok) continue;
-      const html = await response.text();
-      out.push(...parseBlsTable(html, release));
-    } catch {
-      continue;
+  try {
+    const response = await fetch(BLS_ICS_URL, {
+      headers: { "User-Agent": "crypto-macro-schedule-bot/1.0" }
+    });
+    if (response.ok) {
+      const ics = await response.text();
+      out.push(...parseBlsEventsFromIcs(ics));
     }
+  } catch {
+    // ignore
   }
 
   try {
@@ -170,5 +162,11 @@ export async function collectUsMacroEvents() {
     // ignore
   }
 
-  return out;
+  const unique = new Map();
+  for (const event of out) {
+    const key = `${event.eventType}-${event.datetime}`;
+    if (!unique.has(key)) unique.set(key, event);
+  }
+
+  return [...unique.values()];
 }

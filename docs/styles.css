@@ -19,9 +19,9 @@ body {
 }
 
 .container {
-  max-width: 1080px;
+  max-width: 1600px;
   margin: 0 auto;
-  padding: 24px;
+  padding: 28px 32px 40px;
 }
 
 .hero h1 { margin-bottom: 6px; }
@@ -32,10 +32,44 @@ h2 { margin-bottom: 12px; }
 
 #meta { color: var(--muted); font-size: 14px; }
 
+.trend-banner {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #334155;
+  background: rgba(15, 23, 42, 0.85);
+  color: #e2e8f0;
+}
+
+.controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(17, 24, 39, 0.8);
+}
+
+.controls label {
+  font-weight: 600;
+}
+
+.metric {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 6px 0;
+}
+
+.note {
+  color: #facc15;
+  margin-bottom: 8px;
+}
+
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 14px;
 }
 
 .card-list {
@@ -47,7 +81,7 @@ h2 { margin-bottom: 12px; }
   border: 1px solid var(--border);
   background: rgba(17, 24, 39, 0.9);
   border-radius: 10px;
-  padding: 12px;
+  padding: 14px;
 }
 
 .card h3 {
@@ -64,6 +98,7 @@ h2 { margin-bottom: 12px; }
 .table-wrap {
   border: 1px solid var(--border);
   border-radius: 10px;
+  max-height: 560px;
   overflow: auto;
 }
 
@@ -72,6 +107,65 @@ th, td {
   padding: 10px;
   border-bottom: 1px solid var(--border);
   text-align: left;
+  vertical-align: top;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  background: rgba(2, 6, 23, 0.95);
+  z-index: 1;
+}
+
+td.analysis {
+  min-width: 260px;
+  color: #dbeafe;
+  line-height: 1.5;
+}
+
+.impact-inline {
+  margin-top: 6px;
+  color: #fde68a;
+  line-height: 1.45;
+}
+
+.change {
+  color: #e2e8f0;
+  line-height: 1.5;
+  margin: 8px 0;
+}
+
+.impact {
+  color: #fde68a;
+  margin: 8px 0 4px;
+  line-height: 1.5;
+}
+
+.analysis-note {
+  color: #c7d2fe;
+  margin: 6px 0;
+  line-height: 1.5;
+}
+
+.bias-up {
+  color: #4ade80;
+  font-weight: 700;
+}
+
+.bias-down {
+  color: #fb7185;
+  font-weight: 700;
+}
+
+.bias-side {
+  color: #facc15;
+  font-weight: 700;
+}
+
+.whale-list {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  line-height: 1.6;
 }
 
 .badge {
