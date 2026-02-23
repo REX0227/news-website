@@ -3,3 +3,9 @@ node_modules/
 .DS_Store
 npm-debug.log*
 docs/data/latest.json
+.deploy-site/
+.tmp_*
+tmp_*/
+tmp_*
+*.xlsx
+*.zip
