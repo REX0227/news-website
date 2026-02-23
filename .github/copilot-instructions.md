@@ -8,6 +8,7 @@
 - 文件更新的優先順序：
   - 協作規則/專案約束/工作流程 → 更新本檔案（`/.github/copilot-instructions.md`）。
   - 使用方式、安裝、執行命令、部署步驟、對外說明 → 更新 `README.md`。
+  - V2 架構、資料模型、資訊架構、演進路線圖（願景/設計）→ 更新 `v2/DESIGN-VISION.md`。
 - 避免「只在聊天紀錄存在」：能寫進 repo 的規則就寫進去，確保未來回頭看得懂、跑得起來。
 - 硬性規則：只要涉及 **push/部署策略** 的任何變更（例如「主 repo 暫時不推」、「只推 `.deploy-site/`」），必須在同一回合把決策寫進本檔案，並在主 repo 立刻 commit（依當前決策可不 push）。
 
@@ -29,10 +30,9 @@
 
 ## Non-negotiable product constraints (do not break)
 - No price scraping/display anywhere (no CoinGecko `simple/price`, no BTC/ETH price cards).
-- OpenAI auto-evaluation is disabled; do not reintroduce model calls.
-  - `v1/src/lib/ai.js` intentionally returns a “disabled_manual_only” meta.
-- Manual trader output must not be overwritten by updater.
-  - `update-data.mjs` preserves `marketOverview` when `trendModelMeta.mode === "manual_trader"`.
+- V1 的「交易員評估」必須使用 LLM API（如 OpenAI）動態生成，絕對不可使用 rule-based 或寫死的邏輯。
+- V1 的「交易員評估」一律由更新流程自動重算並覆蓋。
+  - `v1/scripts/update-data.mjs` 每次更新都會刷新 `marketOverview` 與交易員重點摘要，不保留/不回寫任何人工版本。
 - Any “7D change” line must be backed by a real number; if missing, hide the line (don’t show “—/未提供”).
 
 ## UX rules we agreed on (V1)
@@ -40,13 +40,12 @@
 - Important numeric deltas should be color-coded (use existing `.bias-*` classes; do not invent new colors).
 - “下一個高影響事件” must include “當前預期判定” (偏漲/偏跌/震盪) with a short basis note.
 - Liquidation is a risk metric: do not show it as green/“bullish”; small liquidation should be neutral/muted.
-- Policy/Regulatory section should display Traditional Chinese where possible (source/title translations are rule-based).
+- Policy/Regulatory section should display Traditional Chinese where possible（來源/標題翻譯採規則式）。
 
 ## Critical workflows (how we actually run things)
 - Install deps (V1 only): run in `v1/` → `npm install`
 - Update data to Upstash: `npm run update:data` (from `v1/`) or `node v1/scripts/update-data.mjs` (from repo root)
 - Inspect current Upstash payload: `node v1/scripts/inspect-upstash.mjs`
-- Manual trader write-back (authoritative trends): `npm run update:trader` (from `v1/`)
 
 ## Deployment workflow (single deploy location)
 - Sync V1 site assets:
@@ -65,6 +64,10 @@
 - Node is ESM (`"type": "module"`). Prefer `import ... from` and avoid CommonJS.
 - Collectors return structured sections added into the Upstash payload (e.g., `ratesIntel`, `liquidityIntel`).
   - Example: `v1/src/collectors/liquidityCollector.js` uses DeFiLlama `https://api.llama.fi/charts` for TVL 7D.
+- `cryptoSignals` must be category-isolated.
+  - `v1/src/collectors/cryptoImpactCollector.js` keeps per-category quotas (flow/regulation/risk/macro/market) so categories don’t crowd each other out; quotas can be tuned via `QUOTA_*` env vars.
+  - 截斷/排序以「時間優先」為主（避免分數排序造成缺東缺西）。
+  - Overview 的 7D `ETF/清算` 估算使用 `cryptoSignalMetrics7d`（由完整去重訊號計算，不受 signals 截斷影響；並避免把價格如 $65K 誤判為清算規模）。
 - V2 pipeline should follow the same ESM/collector pattern as V1, but MUST remain isolated under `v2/`.
 - Local-friendly navigation must be explicit:
   - V1 → V2 link should target `./v2/index.html`

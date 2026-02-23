@@ -1,5 +1,4 @@
-﻿import fs from "node:fs/promises";
-import path from "node:path";
+﻿import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import dayjs from "dayjs";
@@ -12,7 +11,7 @@ import { collectMarketIntel } from "../src/collectors/marketIntelCollector.js";
 import { collectPolicySignals } from "../src/collectors/policyCollector.js";
 import { collectRatesIntel } from "../src/collectors/ratesCollector.js";
 import { collectLiquidityIntel } from "../src/collectors/liquidityCollector.js";
-import { buildAiSummary, buildTrendOutlook } from "../src/lib/ai.js";
+import { buildAiSummary, buildTraderOutlookFromPayload } from "../src/lib/ai.js";
 import { enrichRecentMacroResults } from "../src/lib/macroResults.js";
 import { eventStatus } from "../src/lib/utils.js";
 import { upstashSetJson } from "../src/lib/upstash.js";
@@ -25,33 +24,7 @@ let dotenvResult = dotenv.config();
 if (dotenvResult.error) dotenvResult = dotenv.config({ path: path.join(PROJECT_ROOT, ".env") });
 if (dotenvResult.error) dotenvResult = dotenv.config({ path: path.join(PROJECT_ROOT, "..", ".env") });
 
-const DATA_FILE = path.join(PROJECT_ROOT, "docs", "data", "latest.json");
-const SHOULD_WRITE_LOCAL = process.argv.includes("--write-local") || process.env.WRITE_LOCAL_JSON === "true";
-const SHOULD_PRESERVE_MANUAL = process.env.PRESERVE_MANUAL_ASSESSMENT !== "false";
-
-async function readUpstashJson({ baseUrl, token, key }) {
-  const res = await fetch(`${baseUrl}/get/${encodeURIComponent(key)}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  if (!res.ok) return null;
-  const payload = await res.json();
-  const raw = payload?.result;
-  if (!raw) return null;
-  if (typeof raw === "string") {
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return null;
-    }
-  }
-  if (raw && typeof raw === "object") return raw;
-  return null;
-}
-
-function isManualAssessment(meta) {
-  const mode = meta?.mode;
-  return mode === "manual_ai_session" || mode === "manual_trader";
-}
+// V1: 更新只寫入 Upstash（不產生/不部署本地 latest.json）。
 
 function buildKeyWindows(macroEvents) {
   const now = dayjs();
@@ -165,9 +138,9 @@ function buildMarketOverview(macroEvents, cryptoSignals, globalRiskSignals, tren
     .filter((event) => event.status === "upcoming" && event.importance === "high")
     .sort((a, b) => dayjs(a.datetime).valueOf() - dayjs(b.datetime).valueOf())[0] || null;
 
-  const shortTermTrend = trendOutlook?.shortTermTrend || "待AI評估";
-  const midTermTrend = trendOutlook?.midTermTrend || "待AI評估";
-  const longTermTrend = trendOutlook?.longTermTrend || "待AI評估";
+  const shortTermTrend = trendOutlook?.shortTermTrend || "震盪";
+  const midTermTrend = trendOutlook?.midTermTrend || "震盪";
+  const longTermTrend = trendOutlook?.longTermTrend || "震盪";
   const overallSummary = `短線${shortTermTrend}；中線${midTermTrend}；長線${longTermTrend}；${externalRiskBias}；近期請優先關注 ${nextHighImpact?.title || "外部風險與資金流"}`;
 
   return {
@@ -185,10 +158,10 @@ function buildMarketOverview(macroEvents, cryptoSignals, globalRiskSignals, tren
       riskBull,
       riskBear
     },
-    trendModelMeta: trendOutlook?.aiMeta || { mode: "fallback", model: "rule-based" },
-    shortTrendReason: trendOutlook?.shortReason || "依訊號分布推估",
-    midTrendReason: trendOutlook?.midReason || "依近 2-6 週宏觀與風險結構推估",
-    longTrendReason: trendOutlook?.longReason || "依宏觀與風險結構推估",
+    trendModelMeta: trendOutlook?.aiMeta || { mode: "trader_auto" },
+    shortTrendReason: trendOutlook?.shortReason || "短線依據：訊號不足，暫以震盪保守判讀。",
+    midTrendReason: trendOutlook?.midReason || "中線依據：訊號不足，暫以震盪保守判讀。",
+    longTrendReason: trendOutlook?.longReason || "長線依據：訊號不足，暫以震盪保守判讀。",
     globalRiskCount: globalRiskSignals.length,
     externalRiskBias,
     nextHighImpact,
@@ -198,12 +171,7 @@ function buildMarketOverview(macroEvents, cryptoSignals, globalRiskSignals, tren
 
 async function main() {
   const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
-  const readToken = process.env.UPSTASH_REDIS_REST_TOKEN_READ;
   const writeToken = process.env.UPSTASH_REDIS_REST_TOKEN_WRITE;
-
-  const existing = (SHOULD_PRESERVE_MANUAL && upstashUrl && readToken)
-    ? await readUpstashJson({ baseUrl: upstashUrl, token: readToken, key: "crypto_dashboard:latest" })
-    : null;
 
   const [usEvents, jpEvents, cryptoSignals, globalRiskSignals, rateCutData, marketIntel, policySignals, ratesIntel, liquidityIntel] = await Promise.all([
     collectUsMacroEvents(),
@@ -217,6 +185,9 @@ async function main() {
     collectLiquidityIntel()
   ]);
 
+  const cryptoSignalsPayload = Array.isArray(cryptoSignals?.signals) ? cryptoSignals.signals : (Array.isArray(cryptoSignals) ? cryptoSignals : []);
+  const cryptoSignalMetrics7d = cryptoSignals?.metrics7d || null;
+
   const baseMacroEvents = [...usEvents, ...jpEvents]
     .map((event) => ({
       ...event,
@@ -226,32 +197,18 @@ async function main() {
 
   const macroEvents = enrichMacroDefaultImpact(await enrichRecentMacroResults(baseMacroEvents));
 
-  const aiSummary = await buildAiSummary(macroEvents, cryptoSignals, globalRiskSignals);
-  const trendOutlook = await buildTrendOutlook(macroEvents, cryptoSignals, globalRiskSignals);
-  const whaleTrend = buildWhaleTrend(cryptoSignals);
-  const marketOverview = buildMarketOverview(macroEvents, cryptoSignals, globalRiskSignals, trendOutlook);
+  const whaleTrend = buildWhaleTrend(cryptoSignalsPayload);
+  const trendOutlook = await buildTraderOutlookFromPayload({
+    macroEvents,
+    whaleTrend,
+    cryptoSignalMetrics7d,
+    ratesIntel,
+    liquidityIntel,
+    macroIntel: marketIntel?.macroIntel
+  });
+  const aiSummary = await buildAiSummary(macroEvents, cryptoSignalsPayload, globalRiskSignals, trendOutlook);
+  const marketOverview = buildMarketOverview(macroEvents, cryptoSignalsPayload, globalRiskSignals, trendOutlook);
   const keyWindows = buildKeyWindows(macroEvents);
-
-  if (existing && SHOULD_PRESERVE_MANUAL) {
-    const existingOverview = existing.marketOverview || {};
-    if (isManualAssessment(existingOverview.trendModelMeta)) {
-      marketOverview.shortTermTrend = existingOverview.shortTermTrend;
-      marketOverview.midTermTrend = existingOverview.midTermTrend;
-      marketOverview.longTermTrend = existingOverview.longTermTrend;
-      marketOverview.shortTermCondition = existingOverview.shortTermCondition || "";
-      marketOverview.midTermCondition = existingOverview.midTermCondition || "";
-      marketOverview.longTermCondition = existingOverview.longTermCondition || "";
-      marketOverview.shortTrendReason = existingOverview.shortTrendReason;
-      marketOverview.midTrendReason = existingOverview.midTrendReason;
-      marketOverview.longTrendReason = existingOverview.longTrendReason;
-      marketOverview.trendModelMeta = existingOverview.trendModelMeta;
-      marketOverview.overallSummary = `短線${marketOverview.shortTermTrend}；中線${marketOverview.midTermTrend}；長線${marketOverview.longTermTrend}；${marketOverview.externalRiskBias}；近期請優先關注 ${marketOverview.nextHighImpact?.title || "外部風險與資金流"}`;
-    }
-  }
-
-  const finalAiSummary = (existing && SHOULD_PRESERVE_MANUAL && isManualAssessment(existing?.aiSummary?.aiMeta))
-    ? existing.aiSummary
-    : aiSummary;
 
   const payload = {
     generatedAt: new Date().toISOString(),
@@ -290,7 +247,8 @@ async function main() {
       ]
     },
     macroEvents,
-    cryptoSignals,
+    cryptoSignals: cryptoSignalsPayload,
+    cryptoSignalMetrics7d,
     globalRiskSignals,
     keyWindows,
     keyWindowsNote: keyWindows.length === 0 ? "未來 7 天暫無高影響事件，建議改看外部風險與資金流向。" : "",
@@ -301,7 +259,7 @@ async function main() {
     policySignals,
     ratesIntel,
     liquidityIntel,
-    aiSummary: finalAiSummary
+    aiSummary
   };
 
   if (upstashUrl && writeToken) {
@@ -318,11 +276,6 @@ async function main() {
       key: "crypto_dashboard:last_updated",
       value: { at: payload.generatedAt }
     });
-  }
-
-  if (SHOULD_WRITE_LOCAL) {
-    await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
-    await fs.writeFile(DATA_FILE, JSON.stringify(payload, null, 2), "utf8");
   }
 
   console.log(`Updated payload with ${payload.macroEvents.length} macro events and ${payload.cryptoSignals.length} crypto signals.`);
