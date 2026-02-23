@@ -11,6 +11,9 @@ const STATUS_TEXT = { upcoming: "未來", recent: "近期 / 已公布" };
 const COUNTRY_TEXT = { US: "美國", JP: "日本" };
 const SIGNAL_CATEGORY_TEXT = { flow: "資金流", regulation: "監管", risk: "風險", macro: "宏觀", market: "市場" };
 const SIGNAL_IMPACT_TEXT = { high: "高", medium: "中", low: "低" };
+const UPSTASH_URL = "https://guided-spider-19708.upstash.io";
+const UPSTASH_READ_TOKEN = "Akz8AAIgcDE18SAeYebRfjHOi1t_RtbOFNv2r3NHF0kLYfDIUMnEOw";
+const UPSTASH_KEY = "crypto_dashboard:latest";
 
 let dashboardData = null;
 let onlyHighImpact = false;
@@ -29,8 +32,14 @@ function stripHtml(text = "") {
   return String(text).replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
 }
 
+function toTimestamp(value) {
+  const t = new Date(value).getTime();
+  return Number.isFinite(t) ? t : -1;
+}
+
 function biasClass(text = "") {
   const t = String(text);
+  if (/待確認|待公布|待判讀|判讀中|待AI評估/i.test(t)) return "bias-muted";
   if (/偏漲|偏多|上漲|多頭|\bup\b/i.test(t)) return "bias-up";
   if (/偏跌|偏空|下跌|空頭|\bdown\b/i.test(t)) return "bias-down";
   return "bias-side";
@@ -42,15 +51,163 @@ function biasSpan(text = "") {
 
 function colorizeBiasWords(text = "") {
   return stripHtml(text)
+    .replace(/待公布後判讀|待公布|待確認|待判讀|判讀中|待AI評估/g, '<span class="bias-muted">$&</span>')
     .replace(/偏漲|偏多|上漲|多頭/g, '<span class="bias-up">$&</span>')
     .replace(/偏跌|偏空|下跌|空頭/g, '<span class="bias-down">$&</span>')
     .replace(/震盪/g, '<span class="bias-side">$&</span>');
 }
 
+function toNumber(value) {
+  const num = Number(String(value ?? "").replace(/[^\d.+-]/g, ""));
+  return Number.isFinite(num) ? num : null;
+}
+
+function buildRateCutOutlook(data) {
+  const concrete = data.rateCutData;
+  if (concrete?.mode === "concrete") {
+    return {
+      mode: "concrete",
+      probability: Math.round(Number(concrete.nextCutProbability ?? 0)),
+      monthLabel: concrete.nextMonthLabel || "待定",
+      eventTitle: "聯邦基金利率路徑",
+      basis: `觀測日：${concrete.observationDate ? fmt.format(new Date(concrete.observationDate)) : "未知"}`,
+      sourceName: concrete.sourceName || "市場隱含機率",
+      sourceUrl: concrete.sourceUrl || "",
+      firstLikelyCutMonth: concrete.firstLikelyCutMonth || null,
+      firstLikelyCutProbability: concrete.firstLikelyCutProbability ?? null
+    };
+  }
+
+  const macroEvents = data.macroEvents || [];
+
+  const upcomingFomc = macroEvents
+    .filter((event) => event.country === "US" && event.eventType === "central-bank" && event.status === "upcoming")
+    .sort((a, b) => new Date(a.datetime) - new Date(b.datetime))[0] || null;
+
+  const recentFomc = macroEvents
+    .filter((event) => event.country === "US" && event.eventType === "central-bank" && event.status === "recent")
+    .sort((a, b) => new Date(b.datetime) - new Date(a.datetime))[0] || null;
+
+  const recentCpi = macroEvents
+    .filter((event) => event.eventType === "cpi" && event.status === "recent")
+    .sort((a, b) => new Date(b.datetime) - new Date(a.datetime))[0] || null;
+
+  const recentNfp = macroEvents
+    .filter((event) => event.eventType === "nfp" && event.status === "recent")
+    .sort((a, b) => new Date(b.datetime) - new Date(a.datetime))[0] || null;
+
+  let score = 45;
+
+  const recentRate = toNumber(recentFomc?.result?.actual);
+  const previousRate = toNumber(recentFomc?.result?.previous);
+  if (recentRate !== null && previousRate !== null) {
+    if (recentRate < previousRate) score += 15;
+    if (recentRate > previousRate) score -= 15;
+  }
+
+  if (recentCpi?.result?.shortTermBias === "偏漲") score += 10;
+  if (recentCpi?.result?.shortTermBias === "偏跌") score -= 10;
+
+  if (recentNfp?.result?.shortTermBias === "偏漲") score += 10;
+  if (recentNfp?.result?.shortTermBias === "偏跌") score -= 10;
+
+  const riskBear = (data.globalRiskSignals || []).filter((signal) => signal.shortTermBias === "偏跌").length;
+  const riskBull = (data.globalRiskSignals || []).filter((signal) => signal.shortTermBias === "偏漲").length;
+  if (riskBear > riskBull) score -= 5;
+  if (riskBull > riskBear) score += 5;
+
+  const probability = Math.max(5, Math.min(95, score));
+
+  if (!upcomingFomc?.datetime) {
+    return {
+      mode: "model",
+      probability,
+      monthLabel: "待定",
+      eventTitle: "下一次 FOMC",
+      basis: "模型：FOMC/CPI/NFP/外部風險"
+    };
+  }
+
+  const nextDate = new Date(upcomingFomc.datetime);
+  const basis = [
+    `FOMC：${recentFomc?.result?.actual || "未提供"}`,
+    `CPI短線：${recentCpi?.result?.shortTermBias || "未提供"}`,
+    `NFP短線：${recentNfp?.result?.shortTermBias || "未提供"}`,
+    `外部風險偏向：${riskBear > riskBull ? "偏空" : riskBull > riskBear ? "偏多" : "中性"}`
+  ].join(" / ");
+
+  return {
+    mode: "model",
+    probability,
+    monthLabel: `${nextDate.getFullYear()}年${nextDate.getMonth() + 1}月`,
+    eventTitle: upcomingFomc.title,
+    basis
+  };
+}
+
+function probabilitySpan(probability) {
+  const cls = probability >= 60 ? "bias-up" : probability <= 40 ? "bias-down" : "bias-side";
+  return `<span class="${cls}">${probability}%</span>`;
+}
+
+function translateRiskText(text = "") {
+  const clean = stripHtml(text)
+    .replace(/\s+-\s+[^-]+$/g, "")
+    .trim();
+
+  if (/Supreme Court.*reversal.*Trump.*tariff.*clarity/i.test(clean)) {
+    return "美國最高法院推翻川普關稅措施，可能讓政策方向更明確";
+  }
+
+  let translated = clean;
+  const replacements = [
+    [/Supreme Court/gi, "美國最高法院"],
+    [/Trump(?:'s)?/gi, "川普"],
+    [/tariffs?/gi, "關稅"],
+    [/reversal/gi, "推翻"],
+    [/could bring/gi, "可能帶來"],
+    [/clarity/gi, "更明確方向"],
+    [/policy/gi, "政策"],
+    [/trade/gi, "貿易"],
+    [/war/gi, "戰爭"],
+    [/sanctions?/gi, "制裁"],
+    [/interest rates?/gi, "利率"],
+    [/Fed/gi, "聯準會"],
+    [/FOMC/gi, "FOMC"],
+    [/BOJ/gi, "日本央行"],
+    [/crypto/gi, "加密市場"]
+  ];
+
+  for (const [pattern, replacement] of replacements) {
+    translated = translated.replace(pattern, replacement);
+  }
+
+  return translated;
+}
+
 async function loadData() {
-  const response = await fetch(`./data/latest.json?t=${Date.now()}`);
-  if (!response.ok) throw new Error("無法載入最新資料");
-  return response.json();
+  const upstashResponse = await fetch(`${UPSTASH_URL}/get/${UPSTASH_KEY}`, {
+    headers: {
+      Authorization: `Bearer ${UPSTASH_READ_TOKEN}`
+    }
+  });
+
+  if (!upstashResponse.ok) {
+    throw new Error("無法從 Upstash 載入最新資料");
+  }
+
+  const payload = await upstashResponse.json();
+  const result = payload?.result;
+
+  if (typeof result === "string") {
+    return JSON.parse(result);
+  }
+
+  if (result && typeof result === "object") {
+    return result;
+  }
+
+  throw new Error("Upstash 回傳資料格式異常");
 }
 
 function renderMeta(data) {
@@ -60,9 +217,154 @@ function renderMeta(data) {
 function renderOverallTrend(data) {
   const el = document.getElementById("overall-trend");
   const overview = data.marketOverview || {};
-  const summary = overview.overallSummary || "目前市場趨勢資料整理中。";
+  const short = overview.shortTermTrend || "待AI評估";
+  const mid = overview.midTermTrend || "待AI評估";
+  const long = overview.longTermTrend || "待AI評估";
+  const shortReason = overview.shortTrendReason || "短線理由尚未生成";
+  const midReason = overview.midTrendReason || "中線理由尚未生成";
+  const longReason = overview.longTrendReason || "長線理由尚未生成";
+  const shortCond = overview.shortTermCondition || "";
+  const midCond = overview.midTermCondition || "";
+  const longCond = overview.longTermCondition || "";
   const external = overview.externalRiskBias || "外部風險中性";
-  el.innerHTML = `<strong>整體趨勢：</strong>${colorizeBiasWords(summary)}｜<strong>外部風險：</strong>${biasSpan(external)}`;
+  const mode = overview.trendModelMeta?.mode || "fallback";
+  const model = `${mode}/${overview.trendModelMeta?.model || "rule-based"}`;
+  const title = mode === "manual_trader" ? "短/中/長線總趨勢（交易員判斷）" : "短/中/長線總趨勢（模型評估）";
+
+  function reasonLines(text = "") {
+    const raw = stripHtml(text);
+    return raw
+      .split(/\r?\n|；|;|\|\|/g)
+      .map((line) => line.trim())
+      .filter(Boolean);
+  }
+
+  function normalizeReasonLine(line = "") {
+    return String(line)
+      .replace(/^\uFEFF/, "")
+      .replace(/^[\s\-•\u2022]+/, "")
+      .trim();
+  }
+
+  function colorizeMultiline(text = "") {
+    const parts = String(text)
+      .split(/\n+/g)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (parts.length === 0) return "";
+    return parts.map((p) => colorizeBiasWords(p)).join("<br>");
+  }
+
+  function parseReasonSections(text = "") {
+    const keys = [
+      "政治/政策",
+      "央行/利率",
+      "美/日政策",
+      "機構資金流",
+      "巨鯨/鏈上",
+      "散戶/槓桿",
+      "市場結構",
+      "催化/節奏",
+      "觀察指標",
+      "失效條件"
+    ];
+    const sections = Object.fromEntries(keys.map((k) => [k, ""]));
+
+    const raw = stripHtml(text)
+      .replace(/\r\n/g, "\n")
+      .trim();
+
+    if (!raw) return { keys, sections, rawText: "" };
+
+    const escaped = keys
+      .slice()
+      .sort((a, b) => b.length - a.length)
+      .map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    const re = new RegExp(`(${escaped.join("|")})\\s*[:：]`, "g");
+    const matches = Array.from(raw.matchAll(re));
+
+    if (matches.length === 0) {
+      return { keys, sections, rawText: raw };
+    }
+
+    for (let i = 0; i < matches.length; i += 1) {
+      const key = matches[i][1];
+      const start = (matches[i].index ?? 0) + matches[i][0].length;
+      const end = i + 1 < matches.length ? (matches[i + 1].index ?? raw.length) : raw.length;
+      let content = raw.slice(start, end).trim();
+      content = content.replace(/^[\s\-–—.。；;:：]+/, "").trim();
+      content = content.replace(/[；;]/g, "\n");
+      sections[key] = content;
+    }
+
+    return { keys, sections, rawText: raw };
+  }
+
+  function renderBlock({ title, horizon, trend, condition, reason }) {
+    const hasCondition = Boolean(stripHtml(condition));
+    const trendText = hasCondition && /偏漲|偏多|上漲|多頭/.test(String(trend))
+      ? `${trend}（有條件）`
+      : String(trend);
+    const parsed = parseReasonSections(reason);
+    const keys = parsed.keys;
+    const sections = parsed.sections;
+
+    const hasAnySection = keys.some((k) => Boolean(String(sections[k] || "").trim()));
+    const fallbackText = hasAnySection ? "" : (parsed.rawText || "");
+
+    const conditionLine = hasCondition
+      ? `<div class="reason-row"><div class="reason-key">附帶條件</div><div class="reason-val">${colorizeBiasWords(condition)}</div></div>`
+      : "";
+    return `
+      <div class="trend-block">
+        <div class="trend-block-head">
+          <div class="trend-block-title">${title}</div>
+          <div class="trend-block-horizon">${horizon}</div>
+          <div class="trend-block-value">${biasSpan(trendText)}</div>
+        </div>
+        <div class="kv reason-kv">
+          ${conditionLine}
+          ${hasAnySection
+            ? keys.map((k) => `
+              <div class="reason-row">
+                <div class="reason-key">${k}</div>
+                <div class="reason-val">${colorizeMultiline(String(sections[k] || "").trim() || "—")}</div>
+              </div>
+            `).join("")
+            : `<div class="reason-row"><div class="reason-key">說明</div><div class="reason-val">${colorizeMultiline(fallbackText || "—")}</div></div>`
+          }
+        </div>
+      </div>
+    `;
+  }
+
+  el.innerHTML = `
+    <h3>${title}</h3>
+    <div class="trend-grid">
+      ${renderBlock({
+        title: "短線",
+        horizon: "1-7天",
+        trend: short,
+        condition: shortCond,
+        reason: shortReason
+      })}
+      ${renderBlock({
+        title: "中線",
+        horizon: "2-6週",
+        trend: mid,
+        condition: midCond,
+        reason: midReason
+      })}
+      ${renderBlock({
+        title: "長線",
+        horizon: "1-3個月",
+        trend: long,
+        condition: longCond,
+        reason: longReason
+      })}
+    </div>
+    <div class="kv"><div><strong>外部風險：</strong>${biasSpan(external)}</div><div><strong>模型：</strong>${model}</div></div>
+  `;
 }
 
 function renderOverview(data) {
@@ -70,53 +372,304 @@ function renderOverview(data) {
   root.innerHTML = "";
 
   const overview = data.marketOverview || {};
+  const marketIntel = data.marketIntel || {};
+  const policySignals = data.policySignals || [];
+  const ratesLatest = data.ratesIntel?.latest || null;
+  const liquidityIntel = data.liquidityIntel || {};
   const whale = data.whaleTrend || {};
   const nextHigh = overview.nextHighImpact;
+  const rateCutOutlook = buildRateCutOutlook(data);
 
   const highRisk = (data.cryptoSignals || [])
     .filter((signal) => signal.impact === "high")
     .sort((a, b) => new Date(b.time) - new Date(a.time))[0] || null;
 
+  const parseUsdAmount = (text = "") => {
+    const raw = String(text);
+    // $288M / 1.2B / 300,000,000
+    const m = raw.match(/\$\s*([\d,.]+)\s*([kKmMbB])?/);
+    if (m) {
+      const n = Number(String(m[1]).replace(/,/g, ""));
+      if (!Number.isFinite(n)) return null;
+      const unit = String(m[2] || "").toUpperCase();
+      if (unit === "K") return n * 1e3;
+      if (unit === "M") return n * 1e6;
+      if (unit === "B") return n * 1e9;
+      return n;
+    }
+
+    // 3.2 億 / 5000 萬
+    const zh = raw.match(/([\d.]+)\s*(億|萬)/);
+    if (zh) {
+      const n = Number(zh[1]);
+      if (!Number.isFinite(n)) return null;
+      const unit = zh[2];
+      if (unit === "億") return n * 1e8;
+      if (unit === "萬") return n * 1e4;
+    }
+
+    return null;
+  };
+
+  const days7 = 7 * 24 * 60 * 60 * 1000;
+  const recentSignals = (data.cryptoSignals || [])
+    .filter((s) => {
+      const t = new Date(s.time).getTime();
+      return Number.isFinite(t) && (Date.now() - t) <= days7;
+    });
+
+  const etfSignals = recentSignals.filter((s) => /\bETF\b/i.test(String(s.title || "")) || /\bETF\b/i.test(String(s.keyChange || "")));
+  let etfNetFlowUsd = 0;
+  let etfCountWithAmount = 0;
+  for (const s of etfSignals) {
+    const text = `${s.keyChange || ""} ${s.title || ""}`;
+    const amount = parseUsdAmount(text);
+    if (amount === null) continue;
+    const isOut = /流出|淨流出|outflow/i.test(text);
+    const isIn = /流入|淨流入|inflow/i.test(text);
+    const signed = isOut && !isIn ? -amount : amount;
+    etfNetFlowUsd += signed;
+    etfCountWithAmount += 1;
+  }
+  const etfNetFlowText = etfCountWithAmount > 0
+    ? `${etfNetFlowUsd >= 0 ? "+" : "-"}$${Math.round(Math.abs(etfNetFlowUsd) / 1e6).toLocaleString()}M`
+    : "—";
+
+  const liquidationSignals = recentSignals.filter((s) => /清算|liquidation/i.test(String(s.title || "")) || /清算|liquidation/i.test(String(s.keyChange || "")));
+  let liquidationTotalUsd = 0;
+  let liquidationCountWithAmount = 0;
+  for (const s of liquidationSignals) {
+    const text = `${s.keyChange || ""} ${s.title || ""}`;
+    const amount = parseUsdAmount(text);
+    if (amount === null) continue;
+    liquidationTotalUsd += Math.abs(amount);
+    liquidationCountWithAmount += 1;
+  }
+  const liquidationText = liquidationCountWithAmount > 0
+    ? `$${Math.round(liquidationTotalUsd / 1e6).toLocaleString()}M`
+    : "—";
+
   const latestExternal = (data.globalRiskSignals || [])
     .sort((a, b) => new Date(b.time) - new Date(a.time))[0] || null;
+
+  const latestExternalText = latestExternal
+    ? translateRiskText(latestExternal.keyChange || latestExternal.title)
+    : "目前外部風險訊號偏少";
+  const latestExternalTimeText = latestExternal?.time ? fmt.format(new Date(latestExternal.time)) : "未知";
 
   const nextEventText = nextHigh?.datetime
     ? `${fmt.format(new Date(nextHigh.datetime))} ${nextHigh.title}`
     : "未來 7 天暫無高影響事件";
 
+  const global = marketIntel.global;
+  const sentiment = marketIntel.sentiment;
+
+  const marketCapText = global?.totalMarketCapUsd
+    ? `$${Math.round(global.totalMarketCapUsd / 1e9).toLocaleString()}B`
+    : "—";
+  const volText = global?.totalVolumeUsd
+    ? `$${Math.round(global.totalVolumeUsd / 1e9).toLocaleString()}B`
+    : "—";
+  const capChgText = Number.isFinite(global?.marketCapChangePct24hUsd)
+    ? `${global.marketCapChangePct24hUsd.toFixed(2)}%`
+    : "—";
+  const btcDomText = Number.isFinite(global?.btcDominancePct)
+    ? `${global.btcDominancePct.toFixed(1)}%`
+    : "—";
+  const fngText = Number.isFinite(sentiment?.fearGreedValue)
+    ? `${sentiment.fearGreedValue}（${sentiment.fearGreedClassification || ""}）`
+    : "—";
+
+  const y10Text = Number.isFinite(ratesLatest?.y10y) ? `${ratesLatest.y10y.toFixed(2)}%` : "—";
+  const y2Text = Number.isFinite(ratesLatest?.y2y) ? `${ratesLatest.y2y.toFixed(2)}%` : "—";
+  const y3mText = Number.isFinite(ratesLatest?.y3m) ? `${ratesLatest.y3m.toFixed(2)}%` : "—";
+  const spread10y2yText = Number.isFinite(ratesLatest?.spread10y2y) ? `${ratesLatest.spread10y2y.toFixed(2)}%` : "—";
+  const spread10y3mText = Number.isFinite(ratesLatest?.spread10y3m) ? `${ratesLatest.spread10y3m.toFixed(2)}%` : "—";
+
+  const stable = liquidityIntel.stablecoins;
+  const defi = liquidityIntel.defi;
+
+  const stableMcapText = Number.isFinite(stable?.totalMcapUsd)
+    ? `$${Math.round(stable.totalMcapUsd / 1e9).toLocaleString()}B`
+    : "—";
+  const stableChgText = Number.isFinite(stable?.change7dPct)
+    ? `${stable.change7dPct.toFixed(2)}%`
+    : "—";
+  const defiTvlText = Number.isFinite(defi?.totalTvlUsd)
+    ? `$${Math.round(defi.totalTvlUsd / 1e9).toLocaleString()}B`
+    : "—";
+  const defiChgText = Number.isFinite(defi?.change7dPct)
+    ? `${defi.change7dPct.toFixed(2)}%`
+    : "—";
+
+  const nowTs = Date.now();
+  const policy7dCount = (policySignals || []).filter((s) => {
+    const t = new Date(s.time).getTime();
+    return Number.isFinite(t) && (nowTs - t) <= 7 * 24 * 60 * 60 * 1000;
+  }).length;
+  const latestPolicy = (policySignals || [])
+    .slice()
+    .sort((a, b) => new Date(b.time) - new Date(a.time))[0] || null;
+  const latestPolicyTitle = latestPolicy ? stripHtml(latestPolicy.title || latestPolicy.keyChange) : "—";
+
   const cards = [
     {
-      title: "短線總趨勢",
-      valueHtml: biasSpan(overview.shortTermTrend || "短線震盪"),
-      sub: "整合宏觀、外部風險、幣圈訊號"
+      title: "全市場（CoinGecko）",
+      valueHtml: marketCapText,
+      subLines: [
+        `24h 市值變化：${capChgText}`,
+        `24h 成交量：${volText}`,
+        `BTC Dominance：${btcDomText}`
+      ]
+    },
+    {
+      title: "情緒指標（Fear & Greed）",
+      valueHtml: fngText,
+      subLines: ["僅供情緒參考，建議搭配資金流/槓桿與宏觀事件判讀。"]
+    },
+    {
+      title: "利率 / 殖利率（US Treasury）",
+      valueHtml: `10Y：${y10Text}`,
+      subLines: [
+        `2Y：${y2Text}｜3M：${y3mText}`,
+        `10Y-2Y：${spread10y2yText}｜10Y-3M：${spread10y3mText}`,
+        ratesLatest?.date ? `資料日：${ratesLatest.date}` : ""
+      ]
+    },
+    {
+      title: "穩定幣流動性（DeFiLlama）",
+      valueHtml: stableMcapText,
+      subLines: [`近 7 日變化：${stableChgText}`]
+    },
+    {
+      title: "DeFi TVL（DeFiLlama）",
+      valueHtml: defiTvlText,
+      subLines: [Number.isFinite(defi?.change7dPct) ? `近 7 日變化：${defiChgText}` : "（未提供 7D 變化）"]
+    },
+    {
+      title: "政策 / 監管熱度（7D）",
+      valueHtml: `${policy7dCount} 則`,
+      subLines: latestPolicy ? [`最新：${latestPolicyTitle}`] : ["—"],
+      targetId: "policy-section"
+    },
+    {
+      title: "ETF / 機構流向（7D，訊號整合）",
+      valueHtml: etfNetFlowText,
+      subLines: [
+        etfCountWithAmount > 0 ? `含金額訊號：${etfCountWithAmount} 則` : "（近 7 日未抓到可解析金額的 ETF 流向訊號）"
+      ],
+      targetId: "crypto-section"
+    },
+    {
+      title: "槓桿清算規模（7D，訊號整合）",
+      valueHtml: liquidationText,
+      subLines: [
+        liquidationCountWithAmount > 0 ? `含金額訊號：${liquidationCountWithAmount} 則` : "（近 7 日未抓到可解析金額的清算訊號）"
+      ],
+      targetId: "crypto-section"
+    },
+    {
+      title: rateCutOutlook.mode === "concrete" ? "降息機率（市場隱含）" : "降息機率（模型估算）",
+      valueHtml: probabilitySpan(rateCutOutlook.probability),
+      subLines: rateCutOutlook.mode === "concrete"
+        ? [
+          `可能時點：${rateCutOutlook.monthLabel}（${rateCutOutlook.eventTitle}）`,
+          `${rateCutOutlook.basis}`,
+          `來源：${rateCutOutlook.sourceName}${rateCutOutlook.firstLikelyCutMonth ? `；首次達 50% 月份：${rateCutOutlook.firstLikelyCutMonth}（${Math.round(rateCutOutlook.firstLikelyCutProbability || 0)}%）` : ""}`
+        ]
+        : [
+          `可能時點：${rateCutOutlook.monthLabel}（${rateCutOutlook.eventTitle}）`,
+          `依據：${rateCutOutlook.basis || "FOMC/CPI/NFP/外部風險"}`,
+          "模型評估（非官方機率）"
+        ],
+      targetId: "macro-section"
     },
     {
       title: "下一個高影響事件",
       valueHtml: nextEventText,
-      sub: nextHigh?.result?.cryptoImpact || "重點看事件前後 1-2 小時波動"
+      subLines: [nextHigh?.result?.cryptoImpact || "重點看事件前後 1-2 小時波動"],
+      targetId: "macro-section"
     },
     {
       title: "高風險重點",
       valueHtml: highRisk ? stripHtml(highRisk.keyChange || highRisk.zhTitle || highRisk.title) : "目前無高風險訊號",
-      sub: highRisk ? `短線：${stripHtml(highRisk.shortTermBias || "震盪")}` : ""
+      subLines: highRisk ? [`短線（1-7天）：${stripHtml(highRisk.shortTermBias || "震盪")}`] : [],
+      targetId: "crypto-section"
     },
     {
       title: "外部風險重點",
-      valueHtml: latestExternal ? stripHtml(latestExternal.keyChange || latestExternal.title) : "目前外部風險訊號偏少",
-      sub: latestExternal ? `方向：${stripHtml(latestExternal.shortTermBias || "震盪")}` : ""
+      valueHtml: latestExternalText,
+      subLines: latestExternal
+        ? [
+          `時間：${latestExternalTimeText}`,
+          `短線（1-7天）：${stripHtml(latestExternal.shortTermBias || "震盪")}`
+        ]
+        : [],
+      targetId: "risk-section"
     },
     {
       title: "巨鯨風向",
       valueHtml: biasSpan(whale.trend || "中性"),
-      sub: whale.summary || "無足夠資料"
+      subLines: [whale.summary || "無足夠資料"],
+      targetId: "whale-section"
     }
   ];
 
   cards.forEach((item) => {
     const card = document.createElement("article");
     card.className = "card";
-    const subHtml = item.sub ? `<div class="kv">${colorizeBiasWords(item.sub)}</div>` : "";
-    card.innerHTML = `<h3>${item.title}</h3><div class="metric">${item.valueHtml}</div>${subHtml}`;
+    const titleHtml = item.targetId
+      ? `<h3><a class="overview-link" href="#${item.targetId}">${item.title}</a></h3>`
+      : `<h3>${item.title}</h3>`;
+    const valueHtml = item.targetId
+      ? `<a class="overview-link metric metric-link" href="#${item.targetId}">${item.valueHtml}</a>`
+      : `<div class="metric">${item.valueHtml}</div>`;
+    const normalizedSubLines = Array.isArray(item.subLines)
+      ? item.subLines.filter(Boolean)
+      : (item.sub ? String(item.sub).split("｜").map((part) => part.trim()).filter(Boolean) : []);
+    const subHtml = normalizedSubLines.length
+      ? `<div class="kv">${normalizedSubLines.map((line) => `<div>${colorizeBiasWords(line)}</div>`).join("")}</div>`
+      : "";
+    card.innerHTML = `${titleHtml}${valueHtml}${subHtml}`;
+    root.appendChild(card);
+  });
+}
+
+function renderPolicySignals(data) {
+  const root = document.getElementById("policy-signals");
+  if (!root) return;
+  root.innerHTML = "";
+
+  const items = [...(data.policySignals || [])]
+    .sort((a, b) => toTimestamp(b.time) - toTimestamp(a.time))
+    .slice(0, 9);
+
+  if (items.length === 0) {
+    const card = document.createElement("article");
+    card.className = "card";
+    card.innerHTML = "<h3>目前無可用政策/監管訊號</h3><p>來源為官方 RSS；若來源暫時不可用，稍後會自動恢復。</p>";
+    root.appendChild(card);
+    return;
+  }
+
+  items.forEach((item) => {
+    const title = stripHtml(item.title || item.keyChange || "");
+    const sourceName = stripHtml(item.sourceName || "官方來源");
+    const impact = stripHtml(item.impact || "medium");
+    const bias = stripHtml(item.shortTermBias || "震盪");
+
+    const card = document.createElement("article");
+    card.className = "card";
+    card.innerHTML = `
+      <h3><a href="${item.source}" target="_blank" rel="noreferrer">${title}</a></h3>
+      <div>${item.time ? fmt.format(new Date(item.time)) : "時間未知"}</div>
+      <div class="kv">
+        <div>來源：${sourceName}</div>
+        <div>影響：${SIGNAL_IMPACT_TEXT[impact] || impact}</div>
+        <div>短線（1-7天）：${biasSpan(bias)}</div>
+      </div>
+      <p class="impact"><strong>對虛擬幣影響：</strong>${stripHtml(item.cryptoImpact || "—")}</p>
+    `;
     root.appendChild(card);
   });
 }
@@ -178,7 +731,7 @@ function renderMacro(data) {
 
     const impactLine = hasPublished
       ? `對幣市：${event.result?.cryptoImpact || "等待補充"}｜短線：${biasSpan(event.result?.shortTermBias || "震盪")}`
-      : `對幣市：待公布後判讀｜短線：${biasSpan("待確認")}`;
+      : `<span class="bias-muted">對幣市：待公布後判讀｜短線：待確認</span>`;
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
@@ -200,6 +753,7 @@ function renderSignals(data) {
 
   let signals = data.cryptoSignals || [];
   if (onlyHighImpact) signals = signals.filter((signal) => signal.impact === "high");
+  signals = [...signals].sort((a, b) => toTimestamp(b.time) - toTimestamp(a.time));
 
   signals.forEach((signal) => {
     const summary = stripHtml(signal.zhSummary || signal.summary || "");
@@ -207,17 +761,25 @@ function renderSignals(data) {
     const analysisText = stripHtml(signal.cryptoAnalysis || "等待更多資料補充分析");
     const changeText = stripHtml(signal.keyChange || "關鍵變化整理中");
     const shortBias = stripHtml(signal.shortTermBias || "震盪");
+    const mergedHint = Number(signal.mergedCount || 1) > 1
+      ? `<div class="kv"><div>已整合同類訊息 ${signal.mergedCount} 則</div></div>`
+      : "";
 
     const card = document.createElement("article");
     card.className = "card";
     card.innerHTML = `
       <h3><a href="${signal.source}" target="_blank" rel="noreferrer">${signal.zhTitle || signal.title}</a></h3>
       <div>${fmt.format(new Date(signal.time))}</div>
-      <div class="kv">分類：${SIGNAL_CATEGORY_TEXT[signal.category] || signal.category} / 影響：${SIGNAL_IMPACT_TEXT[signal.impact] || signal.impact} / 短線：${biasSpan(shortBias)}</div>
+      <div class="kv">
+        <div>分類：${SIGNAL_CATEGORY_TEXT[signal.category] || signal.category}</div>
+        <div>影響：${SIGNAL_IMPACT_TEXT[signal.impact] || signal.impact}</div>
+        <div>短線（1-7天）：${biasSpan(shortBias)}</div>
+      </div>
       <p class="change"><strong>具體變化：</strong>${changeText}</p>
       <p>${summary}</p>
       <p class="impact"><strong>對虛擬幣影響：</strong>${impactText}</p>
       <p class="analysis-note"><strong>交易分析：</strong>${colorizeBiasWords(analysisText)}</p>
+      ${mergedHint}
     `;
     root.appendChild(card);
   });
@@ -231,13 +793,13 @@ function renderWhale(data) {
   const detailList = details.length === 0
     ? "<div class=\"kv\">近期無可用巨鯨明確紀錄。</div>"
     : `<ul class=\"whale-list\">${details
-      .map((item) => `<li><strong>${fmt.format(new Date(item.time))}</strong>｜${stripHtml(item.actor)}｜${stripHtml(item.action)}｜${biasSpan(stripHtml(item.bias || "震盪"))}</li>`)
+      .map((item) => `<li><div><strong>${fmt.format(new Date(item.time))}</strong></div><div>主體：${stripHtml(item.actor)}</div><div>動作：${stripHtml(item.action)}</div><div>短線（1-7天）：${biasSpan(stripHtml(item.bias || "震盪"))}</div></li>`)
       .join("")}</ul>`;
 
   root.innerHTML = `
     <h3>巨鯨風向：${biasSpan(whale.trend || "中性")}</h3>
-    <div class="kv">${whale.summary || "近期無足夠巨鯨線索"}</div>
-    <div class="kv">偏多：${whale.bull ?? 0} / 偏空：${whale.bear ?? 0} / 中性：${whale.neutral ?? 0}</div>
+    <div class="kv"><div>${whale.summary || "近期無足夠巨鯨線索"}</div></div>
+    <div class="kv"><div>偏多：${whale.bull ?? 0}</div><div>偏空：${whale.bear ?? 0}</div><div>中性：${whale.neutral ?? 0}</div></div>
     ${detailList}
   `;
 }
@@ -246,7 +808,9 @@ function renderGlobalRisks(data) {
   const root = document.getElementById("global-risks");
   root.innerHTML = "";
 
-  const risks = (data.globalRiskSignals || []).slice(0, 8);
+  const risks = [...(data.globalRiskSignals || [])]
+    .sort((a, b) => toTimestamp(b.time) - toTimestamp(a.time))
+    .slice(0, 8);
   if (risks.length === 0) {
     const card = document.createElement("article");
     card.className = "card";
@@ -256,14 +820,19 @@ function renderGlobalRisks(data) {
   }
 
   risks.forEach((risk) => {
+    const translatedChange = translateRiskText(risk.keyChange || risk.title);
+    const mergedHint = Number(risk.mergedCount || 1) > 1
+      ? `<div class="kv"><div>已整合同類事件 ${risk.mergedCount} 則</div></div>`
+      : "";
     const card = document.createElement("article");
     card.className = "card";
     card.innerHTML = `
       <h3><a href="${risk.source}" target="_blank" rel="noreferrer">${risk.title}</a></h3>
       <div>${fmt.format(new Date(risk.time))}</div>
-      <p class="change"><strong>具體變化：</strong>${stripHtml(risk.keyChange)}</p>
+      <p class="change"><strong>具體變化：</strong>${translatedChange}</p>
       <p class="impact"><strong>對虛擬幣影響：</strong>${stripHtml(risk.cryptoImpact)}</p>
-      <p class="analysis-note"><strong>短期方向：</strong>${biasSpan(stripHtml(risk.shortTermBias || "震盪"))}</p>
+      <div class="kv"><div><strong>短線（1-7天）方向：</strong>${biasSpan(stripHtml(risk.shortTermBias || "震盪"))}</div></div>
+      ${mergedHint}
     `;
     root.appendChild(card);
   });
@@ -278,6 +847,7 @@ function renderAll(data) {
   renderMacro(data);
   renderSignals(data);
   renderWhale(data);
+  renderPolicySignals(data);
   renderGlobalRisks(data);
 }
 

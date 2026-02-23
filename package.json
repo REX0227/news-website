@@ -5,11 +5,13 @@
   "type": "module",
   "scripts": {
     "update:data": "node scripts/update-data.mjs",
-    "update:data:local": "node scripts/update-data.mjs --write-local"
+    "update:data:local": "node scripts/update-data.mjs --write-local",
+    "update:trader": "node scripts/manual-ai-update.mjs"
   },
   "dependencies": {
     "cheerio": "^1.1.2",
     "dayjs": "^1.11.13",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "xlsx": "^0.18.5"
   }
 }

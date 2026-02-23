@@ -6,8 +6,13 @@ import { cleanText, impactScoreFromText } from "../lib/utils.js";
 const FEEDS = [
   "https://www.coindesk.com/arc/outboundfeeds/rss/",
   "https://cointelegraph.com/rss",
-  "https://news.google.com/rss/search?q=(bitcoin%20OR%20crypto)%20(trump%20OR%20tariff%20war%20sanctions%20geopolitical%20conflict%20fed%20boj%20rate)&hl=en-US&gl=US&ceid=US:en"
+  "https://news.google.com/rss/search?q=(bitcoin%20OR%20crypto)%20(trump%20OR%20tariff%20war%20sanctions%20geopolitical%20conflict%20fed%20boj%20rate)&hl=en-US&gl=US&ceid=US:en",
+  "https://news.google.com/rss/search?q=(trump%20tariff%2010%25%20OR%2015%25)%20(crypto%20OR%20bitcoin)&hl=en-US&gl=US&ceid=US:en",
+  "https://news.google.com/rss/search?q=(fomc%20rate%20cut%20probability)%20(crypto%20OR%20bitcoin)&hl=en-US&gl=US&ceid=US:en"
 ];
+
+const MAX_SIGNAL_AGE_DAYS = Number(process.env.MAX_SIGNAL_AGE_DAYS || 10);
+const MAX_SAME_KEYCHANGE = Number(process.env.MAX_SAME_KEYCHANGE || 3);
 
 const KEYWORDS = /(etf|sec|fomc|fed|boj|inflation|cpi|nfp|rate|tariff|liquidat|hack|exploit|regulation|stablecoin|bank|bond|treasury|whale|outflow|inflow|trump|war|sanction|conflict|ceasefire|missile|oil)/i;
 
@@ -35,11 +40,153 @@ function inferShortTermBias(title, description, category) {
   return "震盪";
 }
 
+function normalizeClusterText(text = "") {
+  return String(text)
+    .replace(/（[^）]*）/g, "")
+    .replace(/\([^)]*\)/g, "")
+    .replace(/\d+(?:\.\d+)?\s*%/g, "")
+    .replace(/\s+/g, "")
+    .trim();
+}
+
+function clusterSignature(signal) {
+  const base = normalizeClusterText(signal.keyChange || signal.zhTitle || "");
+  const raw = `${signal.title || ""} ${signal.summary || ""} ${signal.keyChange || ""}`.toLowerCase();
+
+  let actor = "other";
+  if (/trump|川普/.test(raw)) actor = "trump";
+  else if (/fed|fomc|聯準會/.test(raw)) actor = "fed";
+  else if (/boj|日本央行/.test(raw)) actor = "boj";
+  else if (/etf/.test(raw)) actor = "etf";
+
+  if (/tariff|關稅|trade/.test(raw) && actor === "trump") {
+    return "macro|trump_tariff";
+  }
+  if (/tariff|關稅|trade/.test(raw)) {
+    return "macro|global_tariff";
+  }
+  if (/fed|fomc|聯準會/.test(raw)) {
+    return "macro|fed_policy";
+  }
+
+  return `${signal.category}|${base}|${actor}`;
+}
+
+function summarizeMergedChange(clusterKey, signals) {
+  const allText = signals.map((s) => `${s.title || ""} ${s.summary || ""} ${s.keyChange || ""}`).join(" ");
+  const percents = [...new Set((allText.match(/\d+(?:\.\d+)?\s*%/g) || []).map((v) => Number(String(v).replace("%", "").trim())).filter((v) => Number.isFinite(v)))].sort((a, b) => a - b);
+  const latest = signals
+    .map((s) => dayjs(s.time))
+    .filter((d) => d.isValid())
+    .sort((a, b) => b.valueOf() - a.valueOf())[0];
+
+  if (clusterKey === "macro|trump_tariff") {
+    if (percents.length >= 2) {
+      return `川普關稅政策調升（近期區間 ${percents[0]}%~${percents[percents.length - 1]}%，最近更新 ${latest ? latest.format("MM/DD HH:mm") : "未知"}）`;
+    }
+    if (percents.length === 1) {
+      return `川普關稅政策調升（目前重點 ${percents[0]}%，最近更新 ${latest ? latest.format("MM/DD HH:mm") : "未知"}）`;
+    }
+    return `川普關稅政策訊號更新（最近更新 ${latest ? latest.format("MM/DD HH:mm") : "未知"}）`;
+  }
+
+  if (clusterKey === "macro|global_tariff") {
+    if (percents.length >= 2) {
+      return `主要經濟體關稅政策變動（近期區間 ${percents[0]}%~${percents[percents.length - 1]}%）`;
+    }
+    if (percents.length === 1) {
+      return `主要經濟體關稅政策變動（幅度 ${percents[0]}%）`;
+    }
+    return "主要經濟體關稅政策訊號更新";
+  }
+
+  if (clusterKey === "macro|fed_policy") {
+    return "聯準會政策預期更新（請留意降息/維持利率路徑變化）";
+  }
+
+  return signals[0]?.keyChange || "重大市場訊號更新（重點請見原文連結）";
+}
+
+function aggregateSimilarSignals(sortedSignals) {
+  const groups = new Map();
+
+  for (const signal of sortedSignals) {
+    const sig = clusterSignature(signal);
+    if (!groups.has(sig)) {
+      groups.set(sig, {
+        ...signal,
+        clusterKey: sig,
+        mergedCount: 1,
+        mergedSources: [signal.source],
+        mergedItems: [signal],
+        latestTime: signal.time
+      });
+      continue;
+    }
+
+    const current = groups.get(sig);
+    current.mergedCount += 1;
+    current.mergedSources.push(signal.source);
+    current.mergedItems.push(signal);
+
+    if (dayjs(signal.time).valueOf() > dayjs(current.latestTime).valueOf()) {
+      current.latestTime = signal.time;
+    }
+  }
+
+  return [...groups.values()]
+    .map((item) => ({
+      ...item,
+      keyChange: summarizeMergedChange(item.clusterKey, item.mergedItems || [item]),
+      mergedSources: [...new Set(item.mergedSources)].slice(0, 5),
+      time: item.latestTime,
+      mergedItems: undefined
+    }))
+    .sort((a, b) => {
+      if (b.priorityScore !== a.priorityScore) return b.priorityScore - a.priorityScore;
+      return dayjs(b.time).valueOf() - dayjs(a.time).valueOf();
+    });
+}
+
+function hoursAgo(isoTime) {
+  const parsed = dayjs(isoTime);
+  if (!parsed.isValid()) return 9999;
+  return Math.max(0, dayjs().diff(parsed, "hour"));
+}
+
+function majorEventScore({ title, description, category, impact, time, keyChange }) {
+  const text = `${title} ${description} ${keyChange}`.toLowerCase();
+  let score = 0;
+
+  if (/trump|tariff|trade war|10\s*%|15\s*%/.test(text)) score += 55;
+  if (/fomc|fed|boj|rate|cpi|nfp|inflation/.test(text)) score += 45;
+  if (/war|conflict|sanction|middle east|ukraine|russia|china/.test(text)) score += 45;
+  if (/liquidat|hack|exploit|etf\s+net\s+outflow|etf\s+net\s+inflow/.test(text)) score += 35;
+
+  if (impact === "high") score += 30;
+  if (impact === "medium") score += 18;
+
+  if (category === "macro") score += 14;
+  if (category === "risk") score += 12;
+  if (category === "flow") score += 10;
+
+  if (/\$\s?\d+(?:\.\d+)?\s?(?:billion|million|bn|m|b)/i.test(text)) score += 10;
+
+  const ageHours = hoursAgo(time);
+  if (ageHours <= 12) score += 22;
+  else if (ageHours <= 24) score += 16;
+  else if (ageHours <= 72) score += 10;
+  else if (ageHours <= 168) score += 6;
+
+  return score;
+}
+
 function extractConcreteChange(title, description) {
   const raw = `${title} ${description}`;
   const text = raw.toLowerCase();
   const percent = raw.match(/(\d+(?:\.\d+)?\s*%)/);
   const usd = raw.match(/\$\s?\d+(?:\.\d+)?\s?(?:billion|million|bn|m|b)/i);
+  const shortTitle = cleanText(title).slice(0, 90);
 
   if (/etf/.test(text) && /outflow/.test(text)) {
     return `ETF 淨流出擴大${usd ? `（約 ${usd[0]}）` : ""}`;
@@ -48,10 +195,31 @@ function extractConcreteChange(title, description) {
     return `ETF 淨流入增加${usd ? `（約 ${usd[0]}）` : ""}`;
   }
   if (/tariff/.test(text)) {
-    return `關稅政策變動${percent ? `（幅度 ${percent[1]}）` : ""}`;
+    if (/trump/i.test(raw)) {
+      return `川普關稅政策調整${percent ? `（幅度 ${percent[1]}）` : "（影響全球風險資產）"}`;
+    }
+    return `主要經濟體關稅政策調整${percent ? `（幅度 ${percent[1]}）` : ""}`;
   }
   if (/rate|fomc|fed|boj/.test(text)) {
-    return `利率/政策預期調整${percent ? `（幅度 ${percent[1]}）` : ""}`;
+    const actor = /fomc|fed|federal reserve/i.test(raw)
+      ? "聯準會"
+      : /boj|bank of japan/i.test(raw)
+        ? "日本央行"
+        : "主要央行";
+
+    if (/delay in rate cuts|cuts delayed|higher for longer|hawkish/i.test(raw)) {
+      return `${actor}偏鷹訊號：降息預期延後`;
+    }
+    if (/rate cut|cuts|easing|dovish/i.test(raw)) {
+      return `${actor}偏鴿訊號：降息預期升溫`;
+    }
+    if (/rate hike|hikes|hiking|tightening/i.test(raw)) {
+      return `${actor}升息預期升溫${percent ? `（幅度 ${percent[1]}）` : ""}`;
+    }
+    if (/hold rates|keeps rates on hold|rates on hold|pause/i.test(raw)) {
+      return `${actor}維持利率不變，市場等待下次政策訊號`;
+    }
+    return `${actor}政策路徑重定價${percent ? `（幅度 ${percent[1]}）` : ""}`;
   }
   if (/liquidat/.test(text)) {
     return `市場出現大量清算${usd ? `（規模 ${usd[0]}）` : ""}`;
@@ -66,8 +234,7 @@ function extractConcreteChange(title, description) {
     return "監管框架或執法訊號出現變化";
   }
 
-  const shortTitle = cleanText(title).slice(0, 90);
-  return shortTitle || "市場關鍵訊息更新";
+  return "重大市場訊號更新（重點請見原文連結）";
 }
 
 function inferWhaleHint(title, description) {
@@ -176,12 +343,19 @@ function buildCryptoImpact(category, impact) {
 
 export async function collectCryptoImpactSignals() {
   const collected = [];
+  const now = dayjs();
 
   for (const feed of FEEDS) {
     try {
-      const items = await fetchRssItems(feed, 30);
+      const items = await fetchRssItems(feed, 60);
       collected.push(
         ...items
+          .filter((item) => {
+            if (!item.pubDate) return true;
+            const published = dayjs(item.pubDate);
+            if (!published.isValid()) return true;
+            return now.diff(published, "day") <= MAX_SIGNAL_AGE_DAYS;
+          })
           .filter((item) => KEYWORDS.test(`${item.title} ${item.description}`))
           .map((item) => {
             const category = classify(item.title, item.description);
@@ -219,7 +393,27 @@ export async function collectCryptoImpactSignals() {
     if (!unique.has(item.source)) unique.set(item.source, item);
   }
 
-  return [...unique.values()]
-    .sort((a, b) => dayjs(b.time).valueOf() - dayjs(a.time).valueOf())
-    .slice(0, 30);
+  const ranked = [...unique.values()]
+    .map((signal) => ({
+      ...signal,
+      priorityScore: majorEventScore(signal)
+    }))
+    .sort((a, b) => {
+      if (b.priorityScore !== a.priorityScore) return b.priorityScore - a.priorityScore;
+      return dayjs(b.time).valueOf() - dayjs(a.time).valueOf();
+    });
+
+  const kept = [];
+  const keyChangeCount = new Map();
+  for (const signal of ranked) {
+    const key = String(signal.keyChange || "").trim();
+    const count = keyChangeCount.get(key) || 0;
+    if (count >= MAX_SAME_KEYCHANGE) continue;
+    keyChangeCount.set(key, count + 1);
+    kept.push(signal);
+    if (kept.length >= 30) break;
+  }
+
+  const aggregated = aggregateSimilarSignals(kept);
+  return aggregated.slice(0, 30);
 }

@@ -41,6 +41,66 @@ h2 { margin-bottom: 12px; }
   color: #e2e8f0;
 }
 
+.trend-banner h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.trend-badges {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.trend-badges > div {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: rgba(2, 6, 23, 0.45);
+}
+
+.trend-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+@media (max-width: 960px) {
+  .trend-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.trend-block {
+  padding: 10px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(2, 6, 23, 0.35);
+}
+
+.trend-block-head {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 8px;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.trend-block-title {
+  font-weight: 700;
+}
+
+.trend-block-horizon {
+  opacity: 0.85;
+  font-size: 12px;
+}
+
+.trend-block-value {
+  text-align: right;
+}
+
 .controls {
   display: flex;
   gap: 12px;
@@ -93,6 +153,38 @@ h2 { margin-bottom: 12px; }
   color: var(--muted);
   font-size: 13px;
   margin-top: 8px;
+}
+
+.reason-kv {
+  margin-top: 8px;
+}
+
+.reason-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.reason-row + .reason-row {
+  margin-top: 6px;
+}
+
+.reason-key {
+  color: var(--text);
+  opacity: 0.85;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.reason-val {
+  color: var(--muted);
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.kv > div + div {
+  margin-top: 2px;
 }
 
 .table-wrap {
@@ -162,10 +254,32 @@ td.analysis {
   font-weight: 700;
 }
 
+.bias-muted {
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.overview-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.overview-link:hover {
+  text-decoration: underline;
+}
+
+.metric-link {
+  display: block;
+}
+
 .whale-list {
   margin: 10px 0 0;
   padding-left: 18px;
   line-height: 1.6;
+}
+
+.whale-list li div + div {
+  margin-top: 2px;
 }
 
 .badge {

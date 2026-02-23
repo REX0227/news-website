@@ -7,15 +7,45 @@ import { collectUsMacroEvents } from "../src/collectors/usMacroCollector.js";
 import { collectJapanMacroEvents } from "../src/collectors/japanMacroCollector.js";
 import { collectCryptoImpactSignals } from "../src/collectors/cryptoImpactCollector.js";
 import { collectGlobalRiskSignals } from "../src/collectors/globalRiskCollector.js";
-import { buildAiSummary } from "../src/lib/ai.js";
+import { collectMarketIntel } from "../src/collectors/marketIntelCollector.js";
+import { collectPolicySignals } from "../src/collectors/policyCollector.js";
+import { collectRatesIntel } from "../src/collectors/ratesCollector.js";
+import { collectLiquidityIntel } from "../src/collectors/liquidityCollector.js";
+import { buildAiSummary, buildTrendOutlook } from "../src/lib/ai.js";
 import { enrichRecentMacroResults } from "../src/lib/macroResults.js";
 import { eventStatus } from "../src/lib/utils.js";
 import { upstashSetJson } from "../src/lib/upstash.js";
+import { fetchRateCutData } from "../src/lib/rateCutData.js";
 
 dotenv.config();
 
 const DATA_FILE = path.resolve("docs/data/latest.json");
 const SHOULD_WRITE_LOCAL = process.argv.includes("--write-local") || process.env.WRITE_LOCAL_JSON === "true";
+const SHOULD_PRESERVE_MANUAL = process.env.PRESERVE_MANUAL_ASSESSMENT !== "false";
+
+async function readUpstashJson({ baseUrl, token, key }) {
+  const res = await fetch(`${baseUrl}/get/${encodeURIComponent(key)}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) return null;
+  const payload = await res.json();
+  const raw = payload?.result;
+  if (!raw) return null;
+  if (typeof raw === "string") {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+  if (raw && typeof raw === "object") return raw;
+  return null;
+}
+
+function isManualAssessment(meta) {
+  const mode = meta?.mode;
+  return mode === "manual_ai_session" || mode === "manual_trader";
+}
 
 function buildKeyWindows(macroEvents) {
   const now = dayjs();
@@ -115,7 +145,7 @@ function buildWhaleTrend(cryptoSignals) {
   return { trend, count: whaleSignals.length, bull, bear, neutral, summary, details };
 }
 
-function buildMarketOverview(macroEvents, cryptoSignals, globalRiskSignals) {
+function buildMarketOverview(macroEvents, cryptoSignals, globalRiskSignals, trendOutlook) {
   const upcomingHigh = macroEvents.filter((event) => event.status === "upcoming" && event.importance === "high").length;
   const highRiskSignals = cryptoSignals.filter((signal) => signal.impact === "high").length;
   const bearishSignals = cryptoSignals.filter((signal) => signal.shortTermBias === "偏跌").length;
@@ -129,13 +159,30 @@ function buildMarketOverview(macroEvents, cryptoSignals, globalRiskSignals) {
     .filter((event) => event.status === "upcoming" && event.importance === "high")
     .sort((a, b) => dayjs(a.datetime).valueOf() - dayjs(b.datetime).valueOf())[0] || null;
 
-  const shortTermTrend = bearishSignals > bullishSignals ? "短線偏跌" : bullishSignals > bearishSignals ? "短線偏漲" : "短線震盪";
-  const overallSummary = `${shortTermTrend}；${externalRiskBias}；近期請優先關注 ${nextHighImpact?.title || "外部風險與資金流"}`;
+  const shortTermTrend = trendOutlook?.shortTermTrend || "待AI評估";
+  const midTermTrend = trendOutlook?.midTermTrend || "待AI評估";
+  const longTermTrend = trendOutlook?.longTermTrend || "待AI評估";
+  const overallSummary = `短線${shortTermTrend}；中線${midTermTrend}；長線${longTermTrend}；${externalRiskBias}；近期請優先關注 ${nextHighImpact?.title || "外部風險與資金流"}`;
 
   return {
     upcomingHigh,
     highRiskSignals,
     shortTermTrend,
+    midTermTrend,
+    longTermTrend,
+    shortTermCondition: "",
+    midTermCondition: "",
+    longTermCondition: "",
+    shortTrendBasis: {
+      bullishSignals,
+      bearishSignals,
+      riskBull,
+      riskBear
+    },
+    trendModelMeta: trendOutlook?.aiMeta || { mode: "fallback", model: "rule-based" },
+    shortTrendReason: trendOutlook?.shortReason || "依訊號分布推估",
+    midTrendReason: trendOutlook?.midReason || "依近 2-6 週宏觀與風險結構推估",
+    longTrendReason: trendOutlook?.longReason || "依宏觀與風險結構推估",
     globalRiskCount: globalRiskSignals.length,
     externalRiskBias,
     nextHighImpact,
@@ -144,11 +191,24 @@ function buildMarketOverview(macroEvents, cryptoSignals, globalRiskSignals) {
 }
 
 async function main() {
-  const [usEvents, jpEvents, cryptoSignals, globalRiskSignals] = await Promise.all([
+  const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const readToken = process.env.UPSTASH_REDIS_REST_TOKEN_READ;
+  const writeToken = process.env.UPSTASH_REDIS_REST_TOKEN_WRITE;
+
+  const existing = (SHOULD_PRESERVE_MANUAL && upstashUrl && readToken)
+    ? await readUpstashJson({ baseUrl: upstashUrl, token: readToken, key: "crypto_dashboard:latest" })
+    : null;
+
+  const [usEvents, jpEvents, cryptoSignals, globalRiskSignals, rateCutData, marketIntel, policySignals, ratesIntel, liquidityIntel] = await Promise.all([
     collectUsMacroEvents(),
     collectJapanMacroEvents(),
     collectCryptoImpactSignals(),
-    collectGlobalRiskSignals()
+    collectGlobalRiskSignals(),
+    fetchRateCutData(),
+    collectMarketIntel(),
+    collectPolicySignals(),
+    collectRatesIntel(),
+    collectLiquidityIntel()
   ]);
 
   const baseMacroEvents = [...usEvents, ...jpEvents]
@@ -161,9 +221,31 @@ async function main() {
   const macroEvents = enrichMacroDefaultImpact(await enrichRecentMacroResults(baseMacroEvents));
 
   const aiSummary = await buildAiSummary(macroEvents, cryptoSignals, globalRiskSignals);
+  const trendOutlook = await buildTrendOutlook(macroEvents, cryptoSignals, globalRiskSignals);
   const whaleTrend = buildWhaleTrend(cryptoSignals);
-  const marketOverview = buildMarketOverview(macroEvents, cryptoSignals, globalRiskSignals);
+  const marketOverview = buildMarketOverview(macroEvents, cryptoSignals, globalRiskSignals, trendOutlook);
   const keyWindows = buildKeyWindows(macroEvents);
+
+  if (existing && SHOULD_PRESERVE_MANUAL) {
+    const existingOverview = existing.marketOverview || {};
+    if (isManualAssessment(existingOverview.trendModelMeta)) {
+      marketOverview.shortTermTrend = existingOverview.shortTermTrend;
+      marketOverview.midTermTrend = existingOverview.midTermTrend;
+      marketOverview.longTermTrend = existingOverview.longTermTrend;
+      marketOverview.shortTermCondition = existingOverview.shortTermCondition || "";
+      marketOverview.midTermCondition = existingOverview.midTermCondition || "";
+      marketOverview.longTermCondition = existingOverview.longTermCondition || "";
+      marketOverview.shortTrendReason = existingOverview.shortTrendReason;
+      marketOverview.midTrendReason = existingOverview.midTrendReason;
+      marketOverview.longTrendReason = existingOverview.longTrendReason;
+      marketOverview.trendModelMeta = existingOverview.trendModelMeta;
+      marketOverview.overallSummary = `短線${marketOverview.shortTermTrend}；中線${marketOverview.midTermTrend}；長線${marketOverview.longTermTrend}；${marketOverview.externalRiskBias}；近期請優先關注 ${marketOverview.nextHighImpact?.title || "外部風險與資金流"}`;
+    }
+  }
+
+  const finalAiSummary = (existing && SHOULD_PRESERVE_MANUAL && isManualAssessment(existing?.aiSummary?.aiMeta))
+    ? existing.aiSummary
+    : aiSummary;
 
   const payload = {
     generatedAt: new Date().toISOString(),
@@ -175,6 +257,24 @@ async function main() {
         "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm"
       ],
       jp: ["https://www.boj.or.jp/en/mopo/mpmsche_minu/index.htm"],
+      market: [
+        "https://api.coingecko.com/api/v3/global",
+        "https://api.alternative.me/fng/"
+      ],
+      policy: [
+        "https://www.whitehouse.gov/briefing-room/feed/",
+        "https://home.treasury.gov/news/press-releases/rss",
+        "https://www.federalreserve.gov/feeds/press_all.xml",
+        "https://www.sec.gov/news/pressreleases.rss",
+        "https://www.cftc.gov/PressRoom/PressReleases/rss"
+      ],
+      rates: [
+        "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/Datasets/yield.csv"
+      ],
+      liquidity: [
+        "https://stablecoins.llama.fi/stablecoincharts/all",
+        "https://api.llama.fi/v2/chains"
+      ],
       cryptoNews: [
         "https://www.coindesk.com/arc/outboundfeeds/rss/",
         "https://cointelegraph.com/rss",
@@ -188,11 +288,13 @@ async function main() {
     keyWindowsNote: keyWindows.length === 0 ? "未來 7 天暫無高影響事件，建議改看外部風險與資金流向。" : "",
     whaleTrend,
     marketOverview,
-    aiSummary
+    rateCutData,
+    marketIntel,
+    policySignals,
+    ratesIntel,
+    liquidityIntel,
+    aiSummary: finalAiSummary
   };
-
-  const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
-  const writeToken = process.env.UPSTASH_REDIS_REST_TOKEN_WRITE;
 
   if (upstashUrl && writeToken) {
     await upstashSetJson({
@@ -210,7 +312,7 @@ async function main() {
     });
   }
 
-  if (SHOULD_WRITE_LOCAL || true) {
+  if (SHOULD_WRITE_LOCAL) {
     await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
     await fs.writeFile(DATA_FILE, JSON.stringify(payload, null, 2), "utf8");
   }
