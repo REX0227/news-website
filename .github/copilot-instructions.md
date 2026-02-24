@@ -31,7 +31,15 @@
 ## Non-negotiable product constraints (do not break)
 - No price scraping/display anywhere (no CoinGecko `simple/price`, no BTC/ETH price cards).
 - V1 **絕對不使用** 任何外部 LLM API (如 OpenAI API)，也 **絕對不使用** Rule-based 寫死邏輯。
+- **絕對不使用 OKX/OKC** 作為清算數據來源。主流交易所若無免 API Key 方案，寧可無數據也不用 OKX。
+- **絕對不可亂加總新聞數據**：從新聞萃取的 ETF 淨流出/入或清算規模，**只能取「最新單筆可量化之有效數據」**，嚴禁將多篇新聞的金額加總（避免重複計算與誇大）。若無數據，寧可標示無，絕不捏造（hallucinate）數字。
 - V1 的「專業交易員評估」由 **Copilot (你)** 親自完成。
+  - 評估輸出必須使用固定模板（不可自由散文）：
+    1) 短線（1-7天）：主結論、3個核心驅動、條件分支（偏多/偏空觸發）、失效條件、執行節奏。
+    2) 中線（2-6週）：主結論、宏觀與資金面拉扯、條件分支、失效條件、部位管理。
+    3) 長線（1-3月）：主結論、結構性因子、條件分支、失效條件、配置建議。
+  - **UI 渲染強依賴的 10 個段落 Key**：在撰寫 `shortReason`, `midReason`, `longReason` 時，必須嚴格使用以下 10 個開頭標籤（不可自創）：`政治/政策`, `央行/利率`, `美/日政策`, `機構資金流`, `巨鯨/鏈上`, `散戶/槓桿`, `市場結構`, `催化/節奏`, `觀察指標`, `失效條件`。
+  - 內容必須以當次 `tmp/raw-data-for-copilot.json` 的數據為錨點（例如 ETF 7D 淨流、清算、whale、利率曲線、穩定幣/TVL），不得僅寫抽象結論。
 - 當使用者要求「更新 V1 數據」時，請執行以下標準流程：
   1. 執行 `node v1/scripts/update-data.mjs`。腳本會抓取最新數據並輸出到 `v1/tmp/raw-data-for-copilot.json`，然後報錯暫停（提示缺少評估檔）。
   2. 你 (Copilot) 讀取 `v1/tmp/raw-data-for-copilot.json` 的內容。
@@ -72,9 +80,12 @@
 - Collectors return structured sections added into the Upstash payload (e.g., `ratesIntel`, `liquidityIntel`).
   - Example: `v1/src/collectors/liquidityCollector.js` uses DeFiLlama `https://api.llama.fi/charts` for TVL 7D.
 - `cryptoSignals` must be category-isolated.
+  - 去重/聚合採「語意相似度分群」（title+summary 的 token/shingle similarity），避免以固定關鍵字模板造成大量重複訊息。
+  - 最終輸出再做「MMR 多樣化 + 事件分群代表條目 + 近重複抑制」，核心目標是同事件只留代表，不以條數為優先。
   - `v1/src/collectors/cryptoImpactCollector.js` keeps per-category quotas (flow/regulation/risk/macro/market) so categories don’t crowd each other out; quotas can be tuned via `QUOTA_*` env vars.
   - 截斷/排序以「時間優先」為主（避免分數排序造成缺東缺西）。
   - Overview 的 7D `ETF/清算` 估算使用 `cryptoSignalMetrics7d`（由完整去重訊號計算，不受 signals 截斷影響；並避免把價格如 $65K 誤判為清算規模）。
+    - 若 7D 內沒有可量化清算值，先用「最近一筆可量化清算新聞」作暫代，並在 payload 保留 fallback 註記。
 - V2 pipeline should follow the same ESM/collector pattern as V1, but MUST remain isolated under `v2/`.
 - Local-friendly navigation must be explicit:
   - V1 → V2 link should target `./v2/index.html`
