@@ -69,7 +69,7 @@ function parseEtfNetFlowUsd(text = "") {
 function parseLiquidationUsd(text = "") {
   const raw = String(text);
   // Only accept patterns where liquidation appears BEFORE the $ amount.
-  const m = raw.match(/(?:liquidat(?:ion|ed|es)?|清算|lose|lost|loses|wipe|wiped|wipeout)[^$]{0,80}\$\s*([\d,.]+)\s*([kKmMbB])?/i);
+  const m = raw.match(/(?:liquidat(?:ion|ed|es)?|清算|wipe|wiped|wipeout)[^$]{0,80}\$\s*([\d,.]+)\s*([kKmMbB])?/i);
   if (!m) return null;
 
   const n = Number(String(m[1]).replace(/,/g, ""));
@@ -511,7 +511,7 @@ export async function collectCryptoImpactSignals() {
       }
     }
 
-    if (/清算|liquidat|lose|lost|loses|wipe|wiped|wipeout/i.test(blob)) {
+    if (/清算|liquidat|wipe|wiped|wipeout/i.test(blob)) {
       const liq = parseLiquidationUsd(blob);
       if (Number.isFinite(liq)) {
         metrics7d.liquidationTotalUsd += Math.abs(liq);
