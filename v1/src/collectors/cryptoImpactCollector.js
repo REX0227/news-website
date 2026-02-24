@@ -69,7 +69,7 @@ function parseEtfNetFlowUsd(text = "") {
 function parseLiquidationUsd(text = "") {
   const raw = String(text);
   // Only accept patterns where liquidation appears BEFORE the $ amount.
-  const m = raw.match(/(?:liquidat(?:ion|ed)?|清算)[^$]{0,80}\$\s*([\d,.]+)\s*([kKmMbB])?/i);
+  const m = raw.match(/(?:liquidat(?:ion|ed|es)?|清算|lose|lost|loses|wipe|wiped|wipeout)[^$]{0,80}\$\s*([\d,.]+)\s*([kKmMbB])?/i);
   if (!m) return null;
 
   const n = Number(String(m[1]).replace(/,/g, ""));
@@ -136,8 +136,28 @@ function clusterSignature(signal) {
   if (/fed|fomc|聯準會/.test(raw)) {
     return `macro|fed_policy|${dayjs(signal.time).format("YYYY-MM-DD")}`;
   }
+  if (/cpi|inflation|通膨/.test(raw)) {
+    return `macro|cpi_inflation|${dayjs(signal.time).format("YYYY-MM-DD")}`;
+  }
+  if (/nfp|payroll|就業/.test(raw)) {
+    return `macro|nfp_payroll|${dayjs(signal.time).format("YYYY-MM-DD")}`;
+  }
+  if (/ppi|producer price/.test(raw)) {
+    return `macro|ppi_inflation|${dayjs(signal.time).format("YYYY-MM-DD")}`;
+  }
+  if (/liquidat|清算/.test(raw)) {
+    return `risk|liquidation|${dayjs(signal.time).format("YYYY-MM-DD")}`;
+  }
+  if (/hack|exploit|安全事件/.test(raw)) {
+    return `risk|hack_exploit|${dayjs(signal.time).format("YYYY-MM-DD")}`;
+  }
+  if (/whale|large holder|big holder|machi big brother|smart money|institution/.test(raw)) {
+    return `risk|whale_activity|${dayjs(signal.time).format("YYYY-MM-DD")}`;
+  }
 
-  return `${signal.category}|${base}|${actor}|${dayjs(signal.time).format("YYYY-MM-DD")}`;
+  // Fallback to a more specific key to avoid over-clustering
+  const shortTitle = cleanText(signal.title || "").slice(0, 30).replace(/\s+/g, "");
+  return `${signal.category}|${shortTitle}|${actor}|${dayjs(signal.time).format("YYYY-MM-DD")}`;
 }
 
 function summarizeMergedChange(clusterKey, signals) {
@@ -305,30 +325,26 @@ function extractConcreteChange(title, description) {
     return "監管框架或執法訊號出現變化";
   }
 
-  return "重大市場訊號更新（重點請見原文連結）";
-}
-
-function inferWhaleHint(title, description) {
-  const text = `${title} ${description}`.toLowerCase();
-  if (/whale|large holder|big holder|liquidat|exchange inflow/.test(text)) {
-    if (/sell|outflow|liquidat|inflow to exchange/.test(text)) return "偏空";
-    if (/buy|accumulat|inflow to etf/.test(text)) return "偏多";
-    return "中性";
+    return shortTitle;
   }
-  return null;
-}
 
-function inferWhaleActor(title, description) {
-  const text = `${title} ${description}`;
-  if (/BlackRock/i.test(text)) return "BlackRock";
-  if (/Fidelity/i.test(text)) return "Fidelity";
-  if (/MicroStrategy|Strategy/i.test(text)) return "Strategy";
-  if (/Binance/i.test(text)) return "Binance";
-  if (/Coinbase/i.test(text)) return "Coinbase";
-  if (/HTX/i.test(text)) return "HTX";
-  if (/Bitdeer/i.test(text)) return "Bitdeer";
-  if (/Saylor/i.test(text)) return "Michael Saylor";
-  if (/whale/i.test(text)) return "鏈上巨鯨";
+  function inferWhaleHint(title, description) {
+    const text = `${title} ${description}`.toLowerCase();
+    if (/whale|large holder|big holder|liquidat|exchange inflow|exchange outflow|machi big brother|smart money|institution/.test(text)) {
+      if (/sell|outflow|liquidat|inflow to exchange|dump|lose|lost|loses|wipe/.test(text)) return "偏空";
+      if (/buy|accumulat|inflow to etf|withdraw from exchange|scoop|add/.test(text)) return "偏多";
+      return "中性";
+    }
+    return null;
+  }
+
+  function inferWhaleActor(title, description) {
+    const text = `${title} ${description}`;
+    if (/BlackRock/i.test(text)) return "BlackRock";
+    if (/Fidelity/i.test(text)) return "Fidelity";
+    if (/MicroStrategy|Strategy/i.test(text)) return "Strategy";
+    if (/Binance/i.test(text)) return "Binance";
+    if (/Coinbase/i.test(text)) return "Coinbase";
   return null;
 }
 
@@ -495,7 +511,7 @@ export async function collectCryptoImpactSignals() {
       }
     }
 
-    if (/清算|liquidation/i.test(blob)) {
+    if (/清算|liquidat|lose|lost|loses|wipe|wiped|wipeout/i.test(blob)) {
       const liq = parseLiquidationUsd(blob);
       if (Number.isFinite(liq)) {
         metrics7d.liquidationTotalUsd += Math.abs(liq);

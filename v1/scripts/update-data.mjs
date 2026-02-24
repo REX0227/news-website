@@ -211,7 +211,7 @@ async function main() {
   };
 
   const fs = await import("node:fs");
-  const evalFile = path.join(PROJECT_ROOT, "v1/data/copilot-evaluation.json");
+    const evalFile = path.join(PROJECT_ROOT, "data/copilot-evaluation.json");
   if (!fs.existsSync(evalFile)) {
     const dumpFile = path.join(PROJECT_ROOT, "tmp/raw-data-for-copilot.json");
     fs.writeFileSync(dumpFile, JSON.stringify(rawDataToEvaluate, null, 2));
