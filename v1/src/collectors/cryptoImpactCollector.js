@@ -6,14 +6,14 @@ import { cleanText, impactScoreFromText } from "../lib/utils.js";
 const FEEDS = [
   "https://www.coindesk.com/arc/outboundfeeds/rss/",
   "https://cointelegraph.com/rss",
-  "https://news.google.com/rss/search?q=bitcoin%20after:2025-02-01&hl=en-US&gl=US&ceid=US:en",
-  "https://news.google.com/rss/search?q=crypto%20after:2025-02-01&hl=en-US&gl=US&ceid=US:en",
-  "https://news.google.com/rss/search?q=ethereum%20after:2025-02-01&hl=en-US&gl=US&ceid=US:en"
+  "https://news.google.com/rss/search?q=(bitcoin%20OR%20crypto)%20(trump%20OR%20tariff%20war%20sanctions%20geopolitical%20conflict%20fed%20boj%20rate)%20after:2026-02-01&hl=en-US&gl=US&ceid=US:en",
+  "https://news.google.com/rss/search?q=(trump%20tariff%2010%25%20OR%2015%25)%20(crypto%20OR%20bitcoin)%20after:2026-02-01&hl=en-US&gl=US&ceid=US:en",
+  "https://news.google.com/rss/search?q=(fomc%20rate%20cut%20probability)%20(crypto%20OR%20bitcoin)%20after:2026-02-01&hl=en-US&gl=US&ceid=US:en"
 ];
 
-const MAX_SIGNAL_AGE_DAYS = Number(process.env.MAX_SIGNAL_AGE_DAYS || 90);
-const MAX_SAME_KEYCHANGE = Number(process.env.MAX_SAME_KEYCHANGE || 50);
-const MAX_TOTAL_SIGNALS = Number(process.env.MAX_TOTAL_SIGNALS || 100);
+const MAX_SIGNAL_AGE_DAYS = Number(process.env.MAX_SIGNAL_AGE_DAYS || 30);
+const MAX_SAME_KEYCHANGE = Number(process.env.MAX_SAME_KEYCHANGE || 3);
+const MAX_TOTAL_SIGNALS = Number(process.env.MAX_TOTAL_SIGNALS || 50);
 const METRICS_WINDOW_DAYS = Number(process.env.SIGNAL_METRICS_WINDOW_DAYS || 7);
 const CATEGORY_QUOTAS = {
   flow: Number(process.env.QUOTA_FLOW || 20),
@@ -137,7 +137,7 @@ function clusterSignature(signal) {
     return `macro|fed_policy|${dayjs(signal.time).format("YYYY-MM-DD")}`;
   }
 
-  return `${signal.category}|${normalizeClusterText(signal.title)}|${actor}|${dayjs(signal.time).format("YYYY-MM-DD")}`;
+  return `${signal.category}|${base}|${actor}|${dayjs(signal.time).format("YYYY-MM-DD")}`;
 }
 
 function summarizeMergedChange(clusterKey, signals) {
@@ -469,7 +469,9 @@ export async function collectCryptoImpactSignals() {
     priorityScore: majorEventScore(signal)
   }));
 
-  // Build 7D metrics from the full deduped set (NOT from the truncated output list).
+  const allAggregated = aggregateSimilarSignals(deduped);
+
+  // Build 7D metrics from the clustered set to avoid summing duplicates.
   const metrics7d = {
     windowDays: METRICS_WINDOW_DAYS,
     etfNetFlowUsd: 0,
@@ -478,7 +480,7 @@ export async function collectCryptoImpactSignals() {
     liquidationCountWithAmount: 0
   };
 
-  for (const signal of deduped) {
+  for (const signal of allAggregated) {
     const t = dayjs(signal.time);
     if (!t.isValid()) continue;
     if (now.diff(t, "day", true) > METRICS_WINDOW_DAYS) continue;
@@ -507,14 +509,7 @@ export async function collectCryptoImpactSignals() {
 
   const categories = Object.keys(CATEGORY_QUOTAS);
   const byCategory = new Map(categories.map((c) => [c, []]));
-  for (const signal of deduped
-    .slice()
-    .sort((a, b) => {
-      const bt = dayjs(b.time).valueOf();
-      const at = dayjs(a.time).valueOf();
-      if (bt !== at) return bt - at;
-      return (b.priorityScore || 0) - (a.priorityScore || 0);
-    })) {
+  for (const signal of allAggregated) {
     const category = byCategory.has(signal.category) ? signal.category : "market";
     byCategory.get(category).push(signal);
   }
@@ -525,7 +520,6 @@ export async function collectCryptoImpactSignals() {
     const quota = Math.max(0, Number(CATEGORY_QUOTAS[category] || 0));
     if (quota === 0) continue;
 
-    const rawCap = Math.min(36, Math.max(quota, quota * 4));
     const kept = [];
     const keyChangeCount = new Map();
 
@@ -535,11 +529,10 @@ export async function collectCryptoImpactSignals() {
       if (count >= MAX_SAME_KEYCHANGE) continue;
       keyChangeCount.set(key, count + 1);
       kept.push(signal);
-      if (kept.length >= rawCap) break;
+      if (kept.length >= quota) break;
     }
 
-    const aggregated = aggregateSimilarSignals(kept).slice(0, quota);
-    selected.push(...aggregated);
+    selected.push(...kept);
   }
 
   const signals = selected
