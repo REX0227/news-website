@@ -8,13 +8,26 @@ const FEEDS = [
   "https://cointelegraph.com/rss",
   "https://news.google.com/rss/search?q=(bitcoin%20OR%20crypto)%20(trump%20OR%20tariff%20war%20sanctions%20geopolitical%20conflict%20fed%20boj%20rate)%20after:2026-02-01&hl=en-US&gl=US&ceid=US:en",
   "https://news.google.com/rss/search?q=(trump%20tariff%2010%25%20OR%2015%25)%20(crypto%20OR%20bitcoin)%20after:2026-02-01&hl=en-US&gl=US&ceid=US:en",
-  "https://news.google.com/rss/search?q=(fomc%20rate%20cut%20probability)%20(crypto%20OR%20bitcoin)%20after:2026-02-01&hl=en-US&gl=US&ceid=US:en"
+  "https://news.google.com/rss/search?q=(fomc%20rate%20cut%20probability)%20(crypto%20OR%20bitcoin)%20after:2026-02-01&hl=en-US&gl=US&ceid=US:en",
+  "https://news.google.com/rss/search?q=(bitcoin%20OR%20crypto)%20(liquidation%20OR%20liquidations%20OR%20liquidated)%20after:2026-02-01&hl=en-US&gl=US&ceid=US:en",
+  "https://news.google.com/rss/search?q=(S%26P%20500%20OR%20Nasdaq%20OR%20Dow%20Jones%20OR%20US%20Stock%20Market)%20after:2026-02-01&hl=en-US&gl=US&ceid=US:en"
 ];
 
 const MAX_SIGNAL_AGE_DAYS = Number(process.env.MAX_SIGNAL_AGE_DAYS || 30);
-const MAX_SAME_KEYCHANGE = Number(process.env.MAX_SAME_KEYCHANGE || 3);
-const MAX_TOTAL_SIGNALS = Number(process.env.MAX_TOTAL_SIGNALS || 50);
+const MAX_SAME_KEYCHANGE = Number(process.env.MAX_SAME_KEYCHANGE || 1);
+const MAX_TOTAL_SIGNALS = Number(process.env.MAX_TOTAL_SIGNALS || 30);
 const METRICS_WINDOW_DAYS = Number(process.env.SIGNAL_METRICS_WINDOW_DAYS || 7);
+const SIGNAL_DIVERSITY_WINDOW_HOURS = Number(process.env.SIGNAL_DIVERSITY_WINDOW_HOURS || 96);
+const MMR_LAMBDA = Number(process.env.SIGNAL_MMR_LAMBDA || 0.65);
+const SEMANTIC_CLUSTER_THRESHOLD = Number(process.env.SEMANTIC_CLUSTER_THRESHOLD || 0.07);
+const TOPIC_SIGNATURE_TERMS = Number(process.env.TOPIC_SIGNATURE_TERMS || 2);
+const MAX_PER_TOPIC_SIGNATURE = Number(process.env.MAX_PER_TOPIC_SIGNATURE || 1);
+const FINAL_NEAR_DUP_THRESHOLD = Number(process.env.FINAL_NEAR_DUP_THRESHOLD || 0.07);
+
+const GENERIC_STOPWORDS = new Set([
+  "the", "and", "for", "with", "that", "this", "from", "after", "amid", "into", "over", "under", "today",
+  "says", "said", "news", "live", "update", "updates", "market", "markets", "price", "prices", "crypto"
+]);
 const CATEGORY_QUOTAS = {
   flow: Number(process.env.QUOTA_FLOW || 20),
   regulation: Number(process.env.QUOTA_REGULATION || 20),
@@ -68,17 +81,57 @@ function parseEtfNetFlowUsd(text = "") {
 
 function parseLiquidationUsd(text = "") {
   const raw = String(text);
+  if (/liquidating\s+(?:its|their)\s+treasury|treasury\s+liquidation|asset\s+liquidation|corporate\s+liquidation|bankruptcy|chapter\s+11|wind\s*down/i.test(raw)) {
+    return null;
+  }
   // Only accept patterns where liquidation appears BEFORE the $ amount.
-  const m = raw.match(/(?:liquidat(?:ion|ed|es)?|清算|wipe|wiped|wipeout)[^$]{0,80}\$\s*([\d,.]+)\s*([kKmMbB])?/i);
+  const m = raw.match(/(?:liquidat(?:ion|ed|es)?|清算|wipe|wiped|wipeout)[^$]{0,60}\$\s*([\d,.]+)\s*([mMbB]|million|billion)?/i)
+    || raw.match(/\$\s*([\d,.]+)\s*([mMbB]|million|billion)\b[^.]{0,60}(?:liquidat(?:ion|ed|es)?|清算|wipe|wiped|wipeout)/i);
   if (!m) return null;
+
+  // Exclude non-liquidation contexts (market cap/value or spot price moves).
+  const matched = String(m[0] || "").toLowerCase();
+  if (/market\s*cap|market\s*value|valuation|price\s*drop|price\s*fall|below\s*\$|above\s*\$/i.test(matched)) {
+    return null;
+  }
 
   const n = Number(String(m[1]).replace(/,/g, ""));
   if (!Number.isFinite(n)) return null;
-  const unit = String(m[2] || "").toUpperCase();
-  const amount = unit === "K" ? n * 1e3 : unit === "M" ? n * 1e6 : unit === "B" ? n * 1e9 : n;
+  const unit = String(m[2] || "").toLowerCase();
+  const amount = unit.startsWith("b") ? n * 1e9 : unit.startsWith("m") ? n * 1e6 : n;
 
   // Liquidation 규모用：低於 1M 幾乎不具意義，且可有效排除價格/雜訊。
-  if (amount < 1e6) return null;
+  if (amount < 5e6) return null;
+  // Extreme outlier guard: most true liquidation reports are well below $10B.
+  if (amount > 1e10) return null;
+  return amount;
+}
+
+function parseLiquidationUsdFallback(text = "") {
+  const raw = String(text);
+  if (!/liquidat|清算|wipe|wiped|wipeout/i.test(raw)) return null;
+
+  const amountMatch = raw.match(/\$\s*([\d,.]+)\s*([mMbB]|million|billion)\b/i);
+  if (!amountMatch) return null;
+
+  const n = Number(String(amountMatch[1]).replace(/,/g, ""));
+  if (!Number.isFinite(n)) return null;
+
+  const unit = String(amountMatch[2] || "").toLowerCase();
+  const amount = unit.startsWith("b") ? n * 1e9 : n * 1e6;
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  if (amount > 1e10) return null;
+
+  const lower = raw.toLowerCase();
+  const liqIndex = lower.search(/liquidat|清算|wipe|wiped|wipeout/);
+  const usdIndex = lower.indexOf("$");
+  if (liqIndex === -1 || usdIndex === -1) return null;
+  if (Math.abs(liqIndex - usdIndex) > 120) return null;
+
+  if (/below\s*\$|above\s*\$|trading\s*at\s*\$|price\s*(?:at|to|near)\s*\$|btc\s*below\s*\$|liquidating\s+(?:its|their)\s+treasury|treasury\s+liquidation|asset\s+liquidation|corporate\s+liquidation/i.test(lower)) {
+    return null;
+  }
+
   return amount;
 }
 
@@ -108,128 +161,397 @@ function inferShortTermBias(title, description, category) {
   return "震盪";
 }
 
-function normalizeClusterText(text = "") {
+function normalizeForSimilarity(text = "") {
   return String(text)
-    .replace(/（[^）]*）/g, "")
-    .replace(/\([^)]*\)/g, "")
-    .replace(/\d+(?:\.\d+)?\s*%/g, "")
-    .replace(/\s+/g, "")
+    .toLowerCase()
+    .replace(/https?:\/\/\S+/g, " ")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
-function clusterSignature(signal) {
-  const base = normalizeClusterText(signal.keyChange || signal.zhTitle || "");
-  const raw = `${signal.title || ""} ${signal.summary || ""} ${signal.keyChange || ""}`.toLowerCase();
-
-  let actor = "other";
-  if (/trump|川普/.test(raw)) actor = "trump";
-  else if (/fed|fomc|聯準會/.test(raw)) actor = "fed";
-  else if (/boj|日本央行/.test(raw)) actor = "boj";
-  else if (/etf/.test(raw)) actor = "etf";
-
-  if (/tariff|關稅|trade/.test(raw) && actor === "trump") {
-    return `macro|trump_tariff|${dayjs(signal.time).format("YYYY-MM-DD")}`;
-  }
-  if (/tariff|關稅|trade/.test(raw)) {
-    return `macro|global_tariff|${dayjs(signal.time).format("YYYY-MM-DD")}`;
-  }
-  if (/fed|fomc|聯準會/.test(raw)) {
-    return `macro|fed_policy|${dayjs(signal.time).format("YYYY-MM-DD")}`;
-  }
-  if (/cpi|inflation|通膨/.test(raw)) {
-    return `macro|cpi_inflation|${dayjs(signal.time).format("YYYY-MM-DD")}`;
-  }
-  if (/nfp|payroll|就業/.test(raw)) {
-    return `macro|nfp_payroll|${dayjs(signal.time).format("YYYY-MM-DD")}`;
-  }
-  if (/ppi|producer price/.test(raw)) {
-    return `macro|ppi_inflation|${dayjs(signal.time).format("YYYY-MM-DD")}`;
-  }
-  if (/liquidat|清算/.test(raw)) {
-    return `risk|liquidation|${dayjs(signal.time).format("YYYY-MM-DD")}`;
-  }
-  if (/hack|exploit|安全事件/.test(raw)) {
-    return `risk|hack_exploit|${dayjs(signal.time).format("YYYY-MM-DD")}`;
-  }
-  if (/whale|large holder|big holder|machi big brother|smart money|institution/.test(raw)) {
-    return `risk|whale_activity|${dayjs(signal.time).format("YYYY-MM-DD")}`;
-  }
-
-  // Fallback to a more specific key to avoid over-clustering
-  const shortTitle = cleanText(signal.title || "").slice(0, 30).replace(/\s+/g, "");
-  return `${signal.category}|${shortTitle}|${actor}|${dayjs(signal.time).format("YYYY-MM-DD")}`;
+function tokenizeForSimilarity(text = "") {
+  const normalized = normalizeForSimilarity(text);
+  if (!normalized) return new Set();
+  return new Set(normalized.split(" ").filter((token) => token.length >= 3));
 }
 
-function summarizeMergedChange(clusterKey, signals) {
-  const allText = signals.map((s) => `${s.title || ""} ${s.summary || ""} ${s.keyChange || ""}`).join(" ");
-  const percents = [...new Set((allText.match(/\d+(?:\.\d+)?\s*%/g) || []).map((v) => Number(String(v).replace("%", "").trim())).filter((v) => Number.isFinite(v)))].sort((a, b) => a - b);
-  const latest = signals
-    .map((s) => dayjs(s.time))
-    .filter((d) => d.isValid())
-    .sort((a, b) => b.valueOf() - a.valueOf())[0];
-
-  if (clusterKey === "macro|trump_tariff") {
-    if (percents.length >= 2) {
-      return `川普關稅政策調升（近期區間 ${percents[0]}%~${percents[percents.length - 1]}%，最近更新 ${latest ? latest.format("MM/DD HH:mm") : "未知"}）`;
-    }
-    if (percents.length === 1) {
-      return `川普關稅政策調升（目前重點 ${percents[0]}%，最近更新 ${latest ? latest.format("MM/DD HH:mm") : "未知"}）`;
-    }
-    return `川普關稅政策訊號更新（最近更新 ${latest ? latest.format("MM/DD HH:mm") : "未知"}）`;
+function buildShingleSet(text = "", size = 3) {
+  const compact = normalizeForSimilarity(text).replace(/\s+/g, "");
+  const set = new Set();
+  if (compact.length < size) {
+    if (compact) set.add(compact);
+    return set;
   }
-
-  if (clusterKey === "macro|global_tariff") {
-    if (percents.length >= 2) {
-      return `主要經濟體關稅政策變動（近期區間 ${percents[0]}%~${percents[percents.length - 1]}%）`;
-    }
-    if (percents.length === 1) {
-      return `主要經濟體關稅政策變動（幅度 ${percents[0]}%）`;
-    }
-    return "主要經濟體關稅政策訊號更新";
+  for (let index = 0; index <= compact.length - size; index += 1) {
+    set.add(compact.slice(index, index + size));
   }
-
-  if (clusterKey === "macro|fed_policy") {
-    return "聯準會政策預期更新（請留意降息/維持利率路徑變化）";
-  }
-
-  return signals[0]?.keyChange || "重大市場訊號更新（重點請見原文連結）";
+  return set;
 }
 
-function aggregateSimilarSignals(sortedSignals) {
-  const groups = new Map();
+function jaccardSimilarity(setA, setB) {
+  if (!setA.size && !setB.size) return 1;
+  if (!setA.size || !setB.size) return 0;
+
+  let intersection = 0;
+  for (const token of setA) {
+    if (setB.has(token)) intersection += 1;
+  }
+  const union = setA.size + setB.size - intersection;
+  if (union <= 0) return 0;
+  return intersection / union;
+}
+
+function signalSimilarity(left, right) {
+  const leftTitle = left.title || "";
+  const rightTitle = right.title || "";
+  const leftBody = `${left.title || ""} ${left.summary || ""}`;
+  const rightBody = `${right.title || ""} ${right.summary || ""}`;
+
+  const titleTokenScore = jaccardSimilarity(tokenizeForSimilarity(leftTitle), tokenizeForSimilarity(rightTitle));
+  const bodyTokenScore = jaccardSimilarity(tokenizeForSimilarity(leftBody), tokenizeForSimilarity(rightBody));
+  const titleShingleScore = jaccardSimilarity(buildShingleSet(leftTitle), buildShingleSet(rightTitle));
+
+  return titleTokenScore * 0.45 + bodyTokenScore * 0.35 + titleShingleScore * 0.2;
+}
+
+function bodyShingleSimilarity(left, right) {
+  const leftBody = `${left.title || ""} ${left.summary || ""}`;
+  const rightBody = `${right.title || ""} ${right.summary || ""}`;
+  return jaccardSimilarity(buildShingleSet(leftBody), buildShingleSet(rightBody));
+}
+
+function buildSignalTokens(signal) {
+  return tokenizeForSimilarity(`${signal.title || ""} ${signal.summary || ""} ${signal.keyChange || ""}`);
+}
+
+function buildIdfModel(signals) {
+  const docCount = Math.max(1, signals.length);
+  const df = new Map();
+
+  for (const signal of signals) {
+    const tokens = buildSignalTokens(signal);
+    for (const token of tokens) {
+      df.set(token, (df.get(token) || 0) + 1);
+    }
+  }
+
+  const idf = new Map();
+  for (const [token, count] of df.entries()) {
+    idf.set(token, Math.log((1 + docCount) / (1 + count)) + 1);
+  }
+  return idf;
+}
+
+function buildTfidfVector(signal, idfModel) {
+  const text = normalizeForSimilarity(`${signal.title || ""} ${signal.summary || ""} ${signal.keyChange || ""}`);
+  const words = text.split(" ").filter((word) => word.length >= 3);
+  if (!words.length) return new Map();
+
+  const tf = new Map();
+  for (const word of words) {
+    tf.set(word, (tf.get(word) || 0) + 1);
+  }
+
+  const vector = new Map();
+  const total = words.length;
+  for (const [word, count] of tf.entries()) {
+    const idf = idfModel.get(word) || 1;
+    vector.set(word, (count / total) * idf);
+  }
+  return vector;
+}
+
+function buildTopicSignature(signal, idfModel) {
+  const text = normalizeForSimilarity(`${signal.title || ""} ${signal.summary || ""}`);
+  const words = text
+    .split(" ")
+    .filter((word) => word.length >= 4 && !GENERIC_STOPWORDS.has(word));
+
+  if (!words.length) return cleanText(signal.title || "topic").toLowerCase().slice(0, 30);
+
+  const tf = new Map();
+  for (const word of words) tf.set(word, (tf.get(word) || 0) + 1);
+
+  const ranked = [...tf.entries()]
+    .map(([word, count]) => [word, count * (idfModel.get(word) || 1)])
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, Math.max(1, TOPIC_SIGNATURE_TERMS))
+    .map(([word]) => word);
+
+  return ranked.join("|");
+}
+
+function cosineSimilarity(vectorA, vectorB) {
+  if (!vectorA.size || !vectorB.size) return 0;
+
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+
+  for (const value of vectorA.values()) normA += value * value;
+  for (const value of vectorB.values()) normB += value * value;
+
+  if (normA <= 0 || normB <= 0) return 0;
+
+  const [smaller, larger] = vectorA.size <= vectorB.size ? [vectorA, vectorB] : [vectorB, vectorA];
+  for (const [token, value] of smaller.entries()) {
+    const other = larger.get(token);
+    if (other) dot += value * other;
+  }
+
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+function selectSignalsByMMR(signals, maxCount) {
+  if (!signals.length) return [];
+  const cappedMax = Math.max(0, maxCount);
+  if (cappedMax === 0) return [];
+
+  const idfModel = buildIdfModel(signals);
+  const enriched = signals.map((signal, index) => {
+    const timeValue = dayjs(signal.time).valueOf();
+    const recency = Number.isFinite(timeValue) ? timeValue : 0;
+    return {
+      signal,
+      index,
+      vector: buildTfidfVector(signal, idfModel),
+      relevance: (signal.priorityScore || 0) + recency / 1e13
+    };
+  });
+
+  const selected = [];
+  const picked = new Set();
+  const lambda = Math.min(0.95, Math.max(0.35, MMR_LAMBDA));
+
+  while (selected.length < cappedMax && picked.size < enriched.length) {
+    let best = null;
+    let bestScore = -Infinity;
+
+    for (const candidate of enriched) {
+      if (picked.has(candidate.index)) continue;
+
+      const candidateTime = dayjs(candidate.signal.time);
+      let similarityPenalty = 0;
+      for (const chosen of selected) {
+        const chosenTime = dayjs(chosen.signal.time);
+        const hourGap = Math.abs(candidateTime.diff(chosenTime, "hour", true));
+        if (Number.isFinite(hourGap) && hourGap > SIGNAL_DIVERSITY_WINDOW_HOURS) continue;
+        similarityPenalty = Math.max(similarityPenalty, cosineSimilarity(candidate.vector, chosen.vector));
+      }
+
+      const score = lambda * candidate.relevance - (1 - lambda) * similarityPenalty * 100;
+      if (score > bestScore) {
+        bestScore = score;
+        best = candidate;
+      }
+    }
+
+    if (!best) break;
+    picked.add(best.index);
+    selected.push(best);
+  }
+
+  return selected.map((entry) => entry.signal);
+}
+
+function clusterSignalsBySemantics(signals) {
+  if (!signals.length) return [];
+  const idfModel = buildIdfModel(signals);
+
+  const enriched = signals
+    .map((signal, index) => {
+      const timeValue = dayjs(signal.time).valueOf();
+      const recency = Number.isFinite(timeValue) ? timeValue : 0;
+      return {
+        signal,
+        index,
+        vector: buildTfidfVector(signal, idfModel),
+        relevance: (signal.priorityScore || 0) + recency / 1e13
+      };
+    })
+    .sort((a, b) => b.relevance - a.relevance);
+
+  const clusters = [];
+
+  for (const candidate of enriched) {
+    const candidateTime = dayjs(candidate.signal.time);
+    let bestCluster = null;
+    let bestScore = 0;
+
+    for (const cluster of clusters) {
+      const representative = cluster.items[0];
+      const repTime = dayjs(representative.signal.time);
+      const hourGap = Math.abs(candidateTime.diff(repTime, "hour", true));
+      if (Number.isFinite(hourGap) && hourGap > SIGNAL_DIVERSITY_WINDOW_HOURS) continue;
+
+      const cosine = cosineSimilarity(candidate.vector, representative.vector);
+      const shingle = bodyShingleSimilarity(candidate.signal, representative.signal);
+      const combined = cosine * 0.75 + shingle * 0.25;
+
+      if (combined > bestScore) {
+        bestScore = combined;
+        bestCluster = cluster;
+      }
+    }
+
+    if (!bestCluster || bestScore < SEMANTIC_CLUSTER_THRESHOLD) {
+      clusters.push({ items: [candidate] });
+      continue;
+    }
+
+    bestCluster.items.push(candidate);
+    bestCluster.items.sort((a, b) => b.relevance - a.relevance);
+  }
+
+  return clusters;
+}
+
+function pickClusterRepresentatives(signals, maxCount) {
+  if (!signals.length) return [];
+  const clusters = clusterSignalsBySemantics(signals);
+  const idfModel = buildIdfModel(signals);
+
+  const representatives = clusters
+    .map((cluster) => cluster.items[0])
+    .sort((a, b) => b.relevance - a.relevance)
+    .map((entry) => entry.signal);
+
+  const selected = [];
+  const topicCount = new Map();
+  const maxTopic = Math.max(1, MAX_PER_TOPIC_SIGNATURE);
+
+  for (const signal of representatives) {
+    const signature = buildTopicSignature(signal, idfModel);
+    const used = topicCount.get(signature) || 0;
+    if (used >= maxTopic) continue;
+
+    topicCount.set(signature, used + 1);
+    selected.push(signal);
+    if (selected.length >= Math.max(0, maxCount)) break;
+  }
+
+  return selected;
+}
+
+function suppressNearDuplicateSignals(signals, maxCount) {
+  if (!signals.length) return [];
+
+  const ordered = [...signals].sort((a, b) => {
+    const bp = b.priorityScore || 0;
+    const ap = a.priorityScore || 0;
+    if (bp !== ap) return bp - ap;
+    return dayjs(b.time).valueOf() - dayjs(a.time).valueOf();
+  });
+
+  const idfModel = buildIdfModel(ordered);
+  const kept = [];
+  const keptVectors = [];
+
+  for (const signal of ordered) {
+    const candidateVector = buildTfidfVector(signal, idfModel);
+    let duplicated = false;
+
+    for (let index = 0; index < kept.length; index += 1) {
+      const existing = kept[index];
+      const hourGap = Math.abs(dayjs(signal.time).diff(dayjs(existing.time), "hour", true));
+      if (Number.isFinite(hourGap) && hourGap > SIGNAL_DIVERSITY_WINDOW_HOURS) continue;
+
+      const sim = cosineSimilarity(candidateVector, keptVectors[index]);
+      if (sim >= FINAL_NEAR_DUP_THRESHOLD) {
+        duplicated = true;
+        break;
+      }
+    }
+
+    if (duplicated) continue;
+    kept.push(signal);
+    keptVectors.push(candidateVector);
+    if (kept.length >= Math.max(0, maxCount)) break;
+  }
+
+  return kept.sort((a, b) => dayjs(b.time).valueOf() - dayjs(a.time).valueOf());
+}
+
+function summarizeMergedChange(signals) {
+  if (!signals.length) return "市場訊號更新";
+  if (signals.length === 1) return signals[0]?.keyChange || cleanText(signals[0]?.title || "市場訊號更新").slice(0, 90);
+
+  const byKeyChange = new Map();
+  for (const signal of signals) {
+    const key = String(signal.keyChange || "").trim() || cleanText(signal.title || "").slice(0, 90);
+    byKeyChange.set(key, (byKeyChange.get(key) || 0) + 1);
+  }
+
+  const winner = [...byKeyChange.entries()]
+    .sort((a, b) => b[1] - a[1] || b[0].length - a[0].length)[0]?.[0] || "市場訊號更新";
+
+  return `${winner}（同主題 ${signals.length} 則）`;
+}
+
+function aggregateSimilarSignals(inputSignals) {
+  const sortedSignals = [...inputSignals].sort((a, b) => dayjs(b.time).valueOf() - dayjs(a.time).valueOf());
+  const clusters = [];
 
   for (const signal of sortedSignals) {
-    const sig = clusterSignature(signal);
-    if (!groups.has(sig)) {
-      groups.set(sig, {
-        ...signal,
-        clusterKey: sig,
-        mergedCount: 1,
-        mergedSources: [signal.source],
+    let bestIndex = -1;
+    let bestScore = 0;
+    const signalTime = dayjs(signal.time);
+
+    for (let index = 0; index < clusters.length; index += 1) {
+      const cluster = clusters[index];
+      if (cluster.category !== signal.category) continue;
+
+      const clusterTime = dayjs(cluster.latestTime);
+      const hourGap = Math.abs(signalTime.diff(clusterTime, "hour", true));
+      if (Number.isFinite(hourGap) && hourGap > 96) continue;
+
+      const similarity = signalSimilarity(signal, cluster.representative);
+      if (similarity > bestScore) {
+        bestScore = similarity;
+        bestIndex = index;
+      }
+    }
+
+    if (bestIndex === -1 || bestScore < 0.66) {
+      clusters.push({
+        category: signal.category,
+        representative: signal,
         mergedItems: [signal],
+        mergedSources: [signal.source],
         latestTime: signal.time
       });
       continue;
     }
 
-    const current = groups.get(sig);
-    current.mergedCount += 1;
-    current.mergedSources.push(signal.source);
-    current.mergedItems.push(signal);
+    const target = clusters[bestIndex];
+    target.mergedItems.push(signal);
+    target.mergedSources.push(signal.source);
 
-    if (dayjs(signal.time).valueOf() > dayjs(current.latestTime).valueOf()) {
-      current.latestTime = signal.time;
+    if ((signal.priorityScore || 0) > (target.representative.priorityScore || 0)) {
+      target.representative = signal;
+    }
+    if (dayjs(signal.time).valueOf() > dayjs(target.latestTime).valueOf()) {
+      target.latestTime = signal.time;
     }
   }
 
-  return [...groups.values()]
-    .map((item) => ({
-      ...item,
-      keyChange: summarizeMergedChange(item.clusterKey, item.mergedItems || [item]),
-      mergedSources: [...new Set(item.mergedSources)].slice(0, 5),
-      time: item.latestTime,
-      mergedItems: undefined
-    }))
+  return clusters
+    .map((cluster) => {
+      const representative = cluster.representative;
+      const dayKey = dayjs(cluster.latestTime).isValid() ? dayjs(cluster.latestTime).format("YYYY-MM-DD") : "na";
+      const hashSource = cleanText(representative.title || representative.keyChange || "cluster").slice(0, 120);
+      const clusterKey = `${cluster.category}|${createHash("sha1").update(`${dayKey}|${hashSource}`).digest("hex").slice(0, 10)}`;
+
+      return {
+        ...representative,
+        clusterKey,
+        mergedCount: cluster.mergedItems.length,
+        mergedSources: [...new Set(cluster.mergedSources)].slice(0, 5),
+        keyChange: summarizeMergedChange(cluster.mergedItems),
+        time: cluster.latestTime
+      };
+    })
     .sort((a, b) => {
       const bt = dayjs(b.time).valueOf();
       const at = dayjs(a.time).valueOf();
@@ -275,7 +597,6 @@ function majorEventScore({ title, description, category, impact, time, keyChange
 function extractConcreteChange(title, description) {
   const raw = `${title} ${description}`;
   const text = raw.toLowerCase();
-  const percent = raw.match(/(\d+(?:\.\d+)?\s*%)/);
   const usd = raw.match(/\$\s?\d+(?:\.\d+)?\s?(?:billion|million|bn|m|b)/i);
   const shortTitle = cleanText(title).slice(0, 90);
 
@@ -285,48 +606,12 @@ function extractConcreteChange(title, description) {
   if (/etf/.test(text) && /inflow/.test(text)) {
     return `ETF 淨流入增加${usd ? `（約 ${usd[0]}）` : ""}`;
   }
-  if (/tariff/.test(text)) {
-    if (/trump/i.test(raw)) {
-      return `川普關稅政策調整${percent ? `（幅度 ${percent[1]}）` : "（影響全球風險資產）"}`;
-    }
-    return `主要經濟體關稅政策調整${percent ? `（幅度 ${percent[1]}）` : ""}`;
-  }
-  if (/rate|fomc|fed|boj/.test(text)) {
-    const actor = /fomc|fed|federal reserve/i.test(raw)
-      ? "聯準會"
-      : /boj|bank of japan/i.test(raw)
-        ? "日本央行"
-        : "主要央行";
-
-    if (/delay in rate cuts|cuts delayed|higher for longer|hawkish/i.test(raw)) {
-      return `${actor}偏鷹訊號：降息預期延後`;
-    }
-    if (/rate cut|cuts|easing|dovish/i.test(raw)) {
-      return `${actor}偏鴿訊號：降息預期升溫`;
-    }
-    if (/rate hike|hikes|hiking|tightening/i.test(raw)) {
-      return `${actor}升息預期升溫${percent ? `（幅度 ${percent[1]}）` : ""}`;
-    }
-    if (/hold rates|keeps rates on hold|rates on hold|pause/i.test(raw)) {
-      return `${actor}維持利率不變，市場等待下次政策訊號`;
-    }
-    return `${actor}政策路徑重定價${percent ? `（幅度 ${percent[1]}）` : ""}`;
-  }
   if (/liquidat/.test(text)) {
-    return `市場出現大量清算${usd ? `（規模 ${usd[0]}）` : ""}`;
+    if (usd) return `市場出現大量清算（規模 ${usd[0]}）`;
+    return "槓桿風險升溫（未見可量化清算規模）";
   }
-  if (/whale/.test(text)) {
-    return "大戶資金調倉訊號增加";
-  }
-  if (/hack|exploit/.test(text)) {
-    return `安全事件風險上升${usd ? `（可能涉及 ${usd[0]}）` : ""}`;
-  }
-  if (/regulation|sec|policy|law|sanction/.test(text)) {
-    return "監管框架或執法訊號出現變化";
-  }
-
-    return shortTitle;
-  }
+  return shortTitle;
+}
 
   function inferWhaleHint(title, description) {
     const text = `${title} ${description}`.toLowerCase();
@@ -520,6 +805,74 @@ export async function collectCryptoImpactSignals() {
     }
   }
 
+  const latestQuantifiedEtfSignal = [...allAggregated]
+    .filter((signal) => {
+      const blob = `${signal.title || ""} ${signal.summary || ""} ${signal.keyChange || ""} ${signal.zhTitle || ""}`;
+      return (/\bETF\b/i.test(blob) || /ETF/.test(blob)) && Number.isFinite(parseEtfNetFlowUsd(blob));
+    })
+    .sort((a, b) => dayjs(b.time).valueOf() - dayjs(a.time).valueOf())[0] || null;
+
+  if (latestQuantifiedEtfSignal) {
+    const blob = `${latestQuantifiedEtfSignal.title || ""} ${latestQuantifiedEtfSignal.summary || ""} ${latestQuantifiedEtfSignal.keyChange || ""} ${latestQuantifiedEtfSignal.zhTitle || ""}`;
+    const latestEtfNet = parseEtfNetFlowUsd(blob);
+    if (Number.isFinite(latestEtfNet)) {
+      metrics7d.etfNetFlowUsd = Math.round(latestEtfNet);
+      metrics7d.etfCountWithAmount = 1;
+      metrics7d.latestNewsEtfFlow = {
+        usd: Math.round(latestEtfNet),
+        time: latestQuantifiedEtfSignal.time,
+        title: latestQuantifiedEtfSignal.title,
+        source: latestQuantifiedEtfSignal.source,
+        note: "新聞 ETF 僅採最近一筆可量化值，不做多篇加總。"
+      };
+    }
+  }
+
+  const latestQuantifiedLiquidationSignal = [...allAggregated]
+    .filter((signal) => {
+      const blob = `${signal.title || ""} ${signal.summary || ""} ${signal.keyChange || ""} ${signal.zhTitle || ""}`;
+      return Number.isFinite(parseLiquidationUsd(blob)) || Number.isFinite(parseLiquidationUsdFallback(blob));
+    })
+    .sort((a, b) => dayjs(b.time).valueOf() - dayjs(a.time).valueOf())[0] || null;
+
+  if (latestQuantifiedLiquidationSignal) {
+    const blob = `${latestQuantifiedLiquidationSignal.title || ""} ${latestQuantifiedLiquidationSignal.summary || ""} ${latestQuantifiedLiquidationSignal.keyChange || ""} ${latestQuantifiedLiquidationSignal.zhTitle || ""}`;
+    const latestAmount = parseLiquidationUsd(blob) ?? parseLiquidationUsdFallback(blob);
+    if (Number.isFinite(latestAmount)) {
+      metrics7d.latestNewsLiquidation = {
+        usd: Math.round(Math.abs(latestAmount)),
+        time: latestQuantifiedLiquidationSignal.time,
+        title: latestQuantifiedLiquidationSignal.title,
+        source: latestQuantifiedLiquidationSignal.source
+      };
+    }
+  }
+
+  if (metrics7d.liquidationCountWithAmount === 0) {
+    const latestLiquidationSignal = [...allAggregated]
+      .filter((signal) => {
+        const blob = `${signal.title || ""} ${signal.summary || ""} ${signal.keyChange || ""} ${signal.zhTitle || ""}`;
+        return /清算|liquidat|wipe|wiped|wipeout/i.test(blob);
+      })
+      .sort((a, b) => dayjs(b.time).valueOf() - dayjs(a.time).valueOf())[0] || null;
+
+    if (latestLiquidationSignal) {
+      const blob = `${latestLiquidationSignal.title || ""} ${latestLiquidationSignal.summary || ""} ${latestLiquidationSignal.keyChange || ""} ${latestLiquidationSignal.zhTitle || ""}`;
+      const fallbackLiq = parseLiquidationUsdFallback(blob);
+      if (Number.isFinite(fallbackLiq)) {
+        metrics7d.liquidationTotalUsd = Math.round(Math.abs(fallbackLiq));
+        metrics7d.liquidationCountWithAmount = 1;
+        metrics7d.liquidationFallback = {
+          mode: "latest_news_signal",
+          time: latestLiquidationSignal.time,
+          title: latestLiquidationSignal.title,
+          source: latestLiquidationSignal.source,
+          note: "7D 無可量化清算時，使用最近一筆新聞清算金額作為暫代。"
+        };
+      }
+    }
+  }
+
   metrics7d.etfNetFlowUsd = Math.round(metrics7d.etfNetFlowUsd);
   metrics7d.liquidationTotalUsd = Math.round(metrics7d.liquidationTotalUsd);
 
@@ -551,9 +904,13 @@ export async function collectCryptoImpactSignals() {
     selected.push(...kept);
   }
 
-  const signals = selected
+  const rankedSignals = selected
     .sort((a, b) => dayjs(b.time).valueOf() - dayjs(a.time).valueOf())
-    .slice(0, MAX_TOTAL_SIGNALS);
+    .slice(0, MAX_TOTAL_SIGNALS * 2);
+
+  const mmrSignals = selectSignalsByMMR(rankedSignals, MAX_TOTAL_SIGNALS * 2);
+  const representativeSignals = pickClusterRepresentatives(mmrSignals, MAX_TOTAL_SIGNALS * 2);
+  const signals = suppressNearDuplicateSignals(representativeSignals, MAX_TOTAL_SIGNALS);
 
   return { signals, metrics7d };
 }

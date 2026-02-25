@@ -11,6 +11,8 @@ import { collectMarketIntel } from "../src/collectors/marketIntelCollector.js";
 import { collectPolicySignals } from "../src/collectors/policyCollector.js";
 import { collectRatesIntel } from "../src/collectors/ratesCollector.js";
 import { collectLiquidityIntel } from "../src/collectors/liquidityCollector.js";
+import { collectCoinalyzeLiquidationMetrics } from "../src/collectors/coinalyzeLiquidationCollector.js";
+import { collectMajorNoKeyLiquidationMetrics } from "../src/collectors/majorNoKeyLiquidationCollector.js";
 import { buildAiSummary, buildTraderOutlookFromPayload } from "../src/lib/ai.js";
 import { enrichRecentMacroResults } from "../src/lib/macroResults.js";
 import { eventStatus } from "../src/lib/utils.js";
@@ -149,9 +151,9 @@ function buildMarketOverview(macroEvents, cryptoSignals, globalRiskSignals, tren
     shortTermTrend,
     midTermTrend,
     longTermTrend,
-    shortTermCondition: "",
-    midTermCondition: "",
-    longTermCondition: "",
+    shortTermCondition: trendOutlook?.shortTermCondition || "",
+    midTermCondition: trendOutlook?.midTermCondition || "",
+    longTermCondition: trendOutlook?.longTermCondition || "",
     shortTrendBasis: {
       bullishSignals,
       bearishSignals,
@@ -169,11 +171,43 @@ function buildMarketOverview(macroEvents, cryptoSignals, globalRiskSignals, tren
   };
 }
 
+function validateAndNormalizeMetricsBeforePublish(metrics) {
+  const normalized = { ...(metrics || {}) };
+
+  if (Number.isFinite(normalized?.latestNewsEtfFlow?.usd)) {
+    normalized.etfNetFlowUsd = Number(normalized.latestNewsEtfFlow.usd);
+    normalized.etfCountWithAmount = 1;
+    normalized.etfFlowSource = "news_latest_signal_validated";
+    normalized.etfFlowSanityNote = "新聞 ETF 僅採最近一筆可量化值，避免多篇重複事件加總。";
+  }
+
+  if (Number.isFinite(normalized.etfNetFlowUsd) && Math.abs(normalized.etfNetFlowUsd) > 5e9) {
+    throw new Error(`STOP: ETF 7D 淨流數值異常（${normalized.etfNetFlowUsd}），已阻擋更新。`);
+  }
+
+  if (String(normalized.liquidationSource || "") === "news_estimate") {
+    const latestNewsLiqUsd = Number(normalized?.latestNewsLiquidation?.usd);
+    if (Number.isFinite(latestNewsLiqUsd) && latestNewsLiqUsd > 0) {
+      normalized.liquidationTotalUsd = latestNewsLiqUsd;
+      normalized.liquidationCountWithAmount = 1;
+      normalized.liquidationSource = "news_latest_signal_validated";
+      normalized.liquidationWindowHours = 24;
+      normalized.liquidationSanityNote = "新聞清算採最近一筆可量化訊號，避免多篇同事件重複累加。";
+    }
+  }
+
+  if (Number.isFinite(normalized.liquidationTotalUsd) && normalized.liquidationTotalUsd > 3e9 && String(normalized.liquidationSource || "").includes("news")) {
+    throw new Error(`STOP: 新聞清算數值異常偏大（${normalized.liquidationTotalUsd}），已阻擋更新。`);
+  }
+
+  return normalized;
+}
+
 async function main() {
   const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
   const writeToken = process.env.UPSTASH_REDIS_REST_TOKEN_WRITE;
 
-  const [usEvents, jpEvents, cryptoSignals, globalRiskSignals, rateCutData, marketIntel, policySignals, ratesIntel, liquidityIntel] = await Promise.all([
+  const [usEvents, jpEvents, cryptoSignals, globalRiskSignals, rateCutData, marketIntel, policySignals, ratesIntel, liquidityIntel, coinalyzeLiquidation, noKeyLiquidation] = await Promise.all([
     collectUsMacroEvents(),
     collectJapanMacroEvents(),
     collectCryptoImpactSignals(),
@@ -182,11 +216,42 @@ async function main() {
     collectMarketIntel(),
     collectPolicySignals(),
     collectRatesIntel(),
-    collectLiquidityIntel()
+    collectLiquidityIntel(),
+    collectCoinalyzeLiquidationMetrics(),
+    collectMajorNoKeyLiquidationMetrics()
   ]);
 
   const cryptoSignalsPayload = Array.isArray(cryptoSignals?.signals) ? cryptoSignals.signals : (Array.isArray(cryptoSignals) ? cryptoSignals : []);
-  const cryptoSignalMetrics7d = cryptoSignals?.metrics7d || null;
+  const cryptoSignalMetrics7dRaw = cryptoSignals?.metrics7d || null;
+  const cryptoSignalMetrics7d = cryptoSignalMetrics7dRaw
+    ? { ...cryptoSignalMetrics7dRaw }
+    : {
+        windowDays: 7,
+        etfNetFlowUsd: 0,
+        etfCountWithAmount: 0,
+        liquidationTotalUsd: 0,
+        liquidationCountWithAmount: 0
+      };
+
+  if (coinalyzeLiquidation?.available && Number.isFinite(coinalyzeLiquidation.liquidationTotalUsd7d)) {
+    cryptoSignalMetrics7d.liquidationTotalUsd = Number(coinalyzeLiquidation.liquidationTotalUsd7d);
+    cryptoSignalMetrics7d.liquidationCountWithAmount = Number(coinalyzeLiquidation.samplesWithAmount || 0);
+    cryptoSignalMetrics7d.liquidationSource = "coinalyze";
+    cryptoSignalMetrics7d.liquidationWindowHours = 7 * 24;
+  } else if (noKeyLiquidation?.available && Number.isFinite(noKeyLiquidation.liquidationTotalUsdRecent)) {
+    cryptoSignalMetrics7d.liquidationTotalUsd = Number(noKeyLiquidation.liquidationTotalUsdRecent);
+    cryptoSignalMetrics7d.liquidationCountWithAmount = Number(noKeyLiquidation.liquidationCountRecent || 0);
+    cryptoSignalMetrics7d.liquidationSource = String(noKeyLiquidation.source || "exchange_no_key");
+    cryptoSignalMetrics7d.liquidationWindowHours = Number(noKeyLiquidation.windowHours || 0);
+  } else if (cryptoSignalMetrics7d?.liquidationFallback?.mode === "latest_news_signal") {
+    cryptoSignalMetrics7d.liquidationSource = "news_latest_signal_fallback";
+    cryptoSignalMetrics7d.liquidationWindowHours = 24;
+  } else {
+    cryptoSignalMetrics7d.liquidationSource = "news_estimate";
+    cryptoSignalMetrics7d.liquidationWindowHours = 7 * 24;
+  }
+
+  const validatedMetrics7d = validateAndNormalizeMetricsBeforePublish(cryptoSignalMetrics7d);
 
   const baseMacroEvents = [...usEvents, ...jpEvents]
     .map((event) => ({
@@ -202,7 +267,9 @@ async function main() {
   const rawDataToEvaluate = {
     macroEvents,
     whaleTrend,
-    cryptoSignalMetrics7d,
+    cryptoSignalMetrics7d: validatedMetrics7d,
+    liquidationIntel: coinalyzeLiquidation,
+    liquidationIntelNoKey: noKeyLiquidation,
     ratesIntel,
     liquidityIntel,
     macroIntel: marketIntel?.macroIntel,
@@ -269,7 +336,9 @@ async function main() {
     },
     macroEvents,
     cryptoSignals: cryptoSignalsPayload,
-    cryptoSignalMetrics7d,
+    cryptoSignalMetrics7d: validatedMetrics7d,
+    liquidationIntel: coinalyzeLiquidation,
+    liquidationIntelNoKey: noKeyLiquidation,
     globalRiskSignals,
     keyWindows,
     keyWindowsNote: keyWindows.length === 0 ? "未來 7 天暫無高影響事件，建議改看外部風險與資金流向。" : "",
