@@ -2,6 +2,7 @@
 
 ## 溝通語言
 - 助理回覆一律使用中文（繁體，zh-Hant）。
+- 使用者的中文輸入若有錯字、同音字、選字錯誤或口語省略，應優先依上下文理解原意；不得把錯字當成玩笑、趣味點，或直接誤判成實際行為/實際操作已發生。
 
 ## 文件同步（必做）
 - 只要我們在開發/溝通中新增或變更了規則、約束、流程、或重要決策，且該內容會影響後續開發與使用，就必須即時同步更新文件。
@@ -18,15 +19,27 @@
   - Data pipeline (Node ESM): `v1/scripts/` + `v1/src/collectors/` + `v1/src/lib/`
 - V2 (currently placeholder UI): `v2/index.html`
   - V2 will have its **own** data pipeline later; keep all V2 pipeline code under `v2/` (do not mix into `v1/`).
+- V3 database-visualization UI: `v3/`
+  - Purpose: render the standalone database-side Upstash payload for derivatives / ETF structure data.
+  - Keep all V3 page code under `v3/` (do not mix into `v1/` or `v2/`).
+- New standalone database-side program: `database-side/`
+  - This is intentionally **outside** `v1/` and `v2/`.
+  - Current database-side sync must be implemented as a **pure Python program**, not GitHub Actions.
+  - Main entry: `database-side/sync_coinglass_to_upstash.py`
 - Deployment working copy (separate git repo for GitHub Pages): `.deploy-site/`
   - Website root files live here (`index.html`, `app.js`, `styles.css`, `.nojekyll`)
   - V2 is deployed at `.deploy-site/v2/index.html`
+  - V3 should be mirrored to `.deploy-site/v3/` when we decide to publish it.
 
 ## Big picture data flow
 - `v1/scripts/update-data.mjs` collects from multiple sources → builds payload → writes Upstash keys:
   - `crypto_dashboard:latest` (JSON payload)
   - `crypto_dashboard:last_updated`
 - Frontend (`v1/docs/app.js` and deployed `.deploy-site/app.js`) reads Upstash and renders sections.
+- `database-side/sync_coinglass_to_upstash.py` fetches Coinglass structure data → incrementally writes Upstash keys:
+  - `cryptopulse:database:coinglass:derivatives`
+  - `cryptopulse:database:coinglass:last_updated`
+- V3 frontend (`v3/index.html` + `v3/app.js`) reads `cryptopulse:database:coinglass:derivatives` and renders the database-side structure dashboard.
 
 ## Non-negotiable product constraints (do not break)
 - No price scraping/display anywhere (no CoinGecko `simple/price`, no BTC/ETH price cards).
@@ -61,12 +74,15 @@
 - Install deps (V1 only): run in `v1/` → `npm install`
 - Update data to Upstash: `npm run update:data` (from `v1/`) or `node v1/scripts/update-data.mjs` (from repo root)
 - Inspect current Upstash payload: `node v1/scripts/inspect-upstash.mjs`
+- Run standalone database-side sync: `python database-side/sync_coinglass_to_upstash.py`
 
 ## Deployment workflow (single deploy location)
 - Sync V1 site assets:
   - `v1/docs/*` → `.deploy-site/*`
 - Sync V2 placeholder:
   - `v2/index.html` → `.deploy-site/v2/index.html`
+- Sync V3 database dashboard when publishing it:
+  - `v3/*` → `.deploy-site/v3/*`
 - Publish: commit/push inside `.deploy-site/` (this pushes to `Felicia980317/CryptoPulse-site`).
 - Current decision: do NOT push the main repo for now; only push `.deploy-site/` to update the public GitHub Pages site.
 - `.deploy-site/` is the ONLY allowed deploy working copy (do not create `v1/.deploy-site` or other deploy dirs).
@@ -77,6 +93,12 @@
 
 ## Conventions/patterns to follow
 - Node is ESM (`"type": "module"`). Prefer `import ... from` and avoid CommonJS.
+- The standalone `database-side/` flow must stay isolated from `v1/` and `v2/`.
+- V3 is a standalone visualization layer for the database-side payload; keep its UI / transforms isolated under `v3/`.
+- The standalone database-side sync must be incremental: dedupe by `stream + series + timestamp` and never re-upload existing points.
+- Snapshot-style endpoints（例如 Hyperliquid Whale Alert / Whale Position / Wallet Position Distribution）應保存「最新同步快照」，並使用穩定 identity 去重；不要把每次同步時間當成 identity，避免每次都被誤判為全新資料。
+- The standalone database-side sync must remain a plain Python program; do not replace it with GitHub Actions workflow generation unless the user explicitly asks.
+- Coinglass ingestion may include ETF flow / net assets, funding, open interest, long-short ratio, liquidation; but must strip any `price_usd` or spot-price-like fields before writing to Upstash/frontends.
 - Collectors return structured sections added into the Upstash payload (e.g., `ratesIntel`, `liquidityIntel`).
   - Example: `v1/src/collectors/liquidityCollector.js` uses DeFiLlama `https://api.llama.fi/charts` for TVL 7D.
 - `cryptoSignals` must be category-isolated.

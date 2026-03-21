@@ -89,6 +89,13 @@ function shouldSkipBecauseRequiresApi(source, url) {
     return { skip: false };
   }
 
+  if (authType === "query") {
+    const envKey = String(source?.auth?.env || "");
+    const token = envKey ? process.env[envKey] : "";
+    if (!token) return { skip: true, reason: `requiresApi: missing env token (${envKey || "env not set"})` };
+    return { skip: false };
+  }
+
   // 預留：未來可能支援 query/header apiKey 等
   return { skip: true, reason: `requiresApi: unsupported auth type (${authType})` };
 }
@@ -211,8 +218,19 @@ async function validateOne(source) {
   const snippet = String(text).replace(/\s+/g, " ").slice(0, 140);
 
   if (format === "csv") {
+    // 預設以「時間序列 CSV」規則驗證（FRED / 觀測值資料）。
+    // 若不符合時間序列格式，且有提供 textIncludes，則用 textIncludes 作為 fallback
+    //（例如制裁名單/黑名單這類表格 CSV）。
     const v = validateCsv(text);
-    return v.ok ? { status: "PASS" } : failOrSkip(source, `${v.reason} (ct=${contentType}; sample=${snippet})`);
+    if (v.ok) return { status: "PASS" };
+
+    if (Array.isArray(expect.textIncludes) && expect.textIncludes.length) {
+      return okTextIncludes(text, expect.textIncludes)
+        ? { status: "PASS" }
+        : failOrSkip(source, `csv content check failed (ct=${contentType}; sample=${snippet})`);
+    }
+
+    return failOrSkip(source, `${v.reason} (ct=${contentType}; sample=${snippet})`);
   }
 
   if (format === "ics") {

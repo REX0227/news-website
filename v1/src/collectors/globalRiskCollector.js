@@ -6,7 +6,8 @@ const RISK_FEEDS = [
   "https://news.google.com/rss/search?q=(trump%20tariff%20policy%20crypto)%20OR%20(geopolitical%20war%20crypto)&hl=en-US&gl=US&ceid=US:en",
   "https://news.google.com/rss/search?q=(fed%20rate%20policy%20crypto)%20OR%20(boj%20policy%20crypto)&hl=en-US&gl=US&ceid=US:en",
   "https://news.google.com/rss/search?q=(trump%20tariff%2010%25%20OR%2015%25)%20(market%20OR%20crypto)&hl=en-US&gl=US&ceid=US:en",
-  "https://news.google.com/rss/search?q=(middle%20east%20war%20oil%20price)%20(crypto%20OR%20risk%20asset)&hl=en-US&gl=US&ceid=US:en"
+  "https://news.google.com/rss/search?q=(middle%20east%20war%20oil%20price)%20(crypto%20OR%20risk%20asset)&hl=en-US&gl=US&ceid=US:en",
+  "https://news.google.com/rss/search?q=(Iran%20OR%20Israel%20OR%20Middle%20East)%20(strike%20OR%20leader%20OR%20war%20OR%20conflict)&hl=en-US&gl=US&ceid=US:en"
 ];
 
 const MAX_RISK_AGE_DAYS = Number(process.env.MAX_RISK_AGE_DAYS || 14);

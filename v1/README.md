@@ -4,12 +4,12 @@
 
 - 顯示美國/日本重要宏觀事件（CPI/NFP/FOMC/BOJ…）的近期與未來窗口
 - 整合加密市場的「非價格型」訊號（資金流、監管、外部風險、槓桿清算、巨鯨…）
-- 顯示交易員手動撰寫的短/中/長線趨勢（並寫回 Upstash）
+- 顯示短/中/長線趨勢與理由（每次更新由交易員評估自動產生並覆蓋寫回 Upstash）
 
 本專案的核心約束（不可違反）：
 
 1. **網站端不顯示幣價**、更新端也不抓幣價（禁止 price endpoint / price 卡片）。
-2. **停用 OpenAI 自動評估**：趨勢只接受交易員手動回寫，並在自動更新時保護不被覆蓋。
+2. **不呼叫任何外部模型服務**：更新流程會同時產生交易員評估（短/中/長線 + 理由）並覆蓋寫回。
 3. 「7D 變化」只在能計算/抓到時才顯示；抓不到就不顯示該行（避免誤導）。
 
 ---
@@ -23,7 +23,6 @@
 - 更新管線（Node.js ESM）：
 	- `scripts/update-data.mjs`：整合 collectors、寫入 Upstash
 	- `src/collectors/*`：各資料源收集器
-	- `scripts/manual-ai-update.mjs`：交易員手動回寫趨勢到 Upstash
 	- `scripts/inspect-upstash.mjs`：本機檢查 Upstash payload 摘要
 - 儲存：Upstash Redis REST
 	- key：`crypto_dashboard:latest`
@@ -48,9 +47,16 @@ npm install
 - `UPSTASH_REDIS_REST_URL`
 - `UPSTASH_REDIS_REST_TOKEN_WRITE`（必填）
 - `UPSTASH_REDIS_REST_TOKEN_READ`（建議：用於讀取既有資料、保留交易員結論）
-- `WRITE_LOCAL_JSON=true`（可選：寫入本地 JSON 方便除錯）
+- `COINALYZE_API_KEY`（建議：用於 7D 槓桿清算硬數據）
+- `COINALYZE_LIQ_SYMBOLS`（可選，預設 `BTCUSDT_PERP.A,ETHUSDT_PERP.A`）
 
 安全提醒：Upstash token 請放 GitHub Secrets，不要硬寫進程式碼。
+
+補充：若有設定 `COINALYZE_API_KEY`，系統會優先使用 Coinalyze 的 `liquidation-history`
+作為 `cryptoSignalMetrics7d.liquidationTotalUsd`，避免僅靠新聞文案估算清算規模。
+若 Coinalyze 不可用，系統不會改用 OKX；僅保留主流交易所（Binance/Hyperliquid）no-key 可用性探測，
+並在 payload 的 `liquidationIntelNoKey.exchangeBreakdown` 明確標示來源可用性與限制。
+若 7D 內抓不到可量化清算金額，會以「最近一筆可量化的清算新聞」作暫代並加註 fallback 註記。
 
 ---
 
@@ -62,38 +68,7 @@ npm install
 npm run update:data
 ```
 
-### 2) 交易員手動回寫（短/中/長線趨勢）
-
-用 `npm run update:trader` 將短/中/長線趨勢與理由寫入 Upstash，並標記 `trendModelMeta.mode = manual_trader`。
-
-必要環境變數：
-
-- `TRADER_SHORT_TREND` / `TRADER_MID_TREND` / `TRADER_LONG_TREND`
-	- 只接受：`偏漲` / `偏跌` / `震盪`
-- `TRADER_SHORT_REASON` / `TRADER_MID_REASON` / `TRADER_LONG_REASON`
-
-理由模板（每行一段，建議固定格式）：
-
-```
-主因：...
-傳導：...
-風險情境：...
-觀察指標：...
-失效條件：...
-```
-
-（可選）附帶條件（偏漲/偏多但有前提）二選一：
-
-- `TRADER_*_CONDITION`（short/mid/long 任一）
-- 或在 `TRADER_*_REASON` 其中一行加入：`附帶條件：...`（腳本會自動抽出）
-
-執行：
-
-```bash
-npm run update:trader
-```
-
-### 3) 檢查 Upstash 目前資料（摘要）
+### 2) 檢查 Upstash 目前資料（摘要）
 
 ```bash
 node scripts/inspect-upstash.mjs
@@ -107,8 +82,7 @@ node scripts/inspect-upstash.mjs
 
 - `macroEvents[]`：宏觀事件（US/JP，含 upcoming/recent）
 - `cryptoSignals[]`：加密市場訊號（資金流/監管/風險/宏觀/市場）
-- `marketOverview`：短/中/長線趨勢與理由（來源：交易員手動回寫為主）
-	- `trendModelMeta.mode = manual_trader` 時，自動更新不會覆蓋
+- `marketOverview`：短/中/長線趨勢與理由（每次更新會重新評估並覆蓋寫回）
 - `marketIntel`：非價格型市場總覽
 	- `global`：CoinGecko global（總市值、成交量、市值變化、dominance）
 	- `sentiment`：Fear & Greed 指標
@@ -157,7 +131,7 @@ node scripts/inspect-upstash.mjs
 首頁區塊順序：
 
 1. 市場趨勢總覽
-2. AI 重點摘要
+2. 交易員重點摘要
 3. 短/中/長線總趨勢（交易員判斷）
 
 ---
@@ -186,5 +160,5 @@ node scripts/inspect-upstash.mjs
 ## 常見檢查點（非常重要）
 
 - 若看到任何「幣價」欄位/卡片/抓取端點，代表違反約束，必須移除。
-- 趨勢若不是交易員手動回寫（`manual_trader`），代表流程被改壞。
+- 趨勢/理由必須在每次執行 `scripts/update-data.mjs` 時自動重算並寫回。
 - 7D 變化若抓不到，前端不應顯示該行（避免 “未提供/—” 造成誤判）。

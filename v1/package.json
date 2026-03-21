@@ -5,8 +5,7 @@
   "type": "module",
   "scripts": {
     "update:data": "node scripts/update-data.mjs",
-    "update:data:local": "node scripts/update-data.mjs --write-local",
-    "update:trader": "node scripts/manual-ai-update.mjs"
+    "update:polymarket": "node ../scripts/polymarket_eth.mjs --interval 1m"
   },
   "dependencies": {
     "cheerio": "^1.1.2",
