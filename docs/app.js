@@ -39,7 +39,7 @@ function toTimestamp(value) {
 
 function biasClass(text = "") {
   const t = String(text);
-  if (/待確認|待公布|待判讀|判讀中/i.test(t)) return "bias-muted";
+  if (/待確認|待公布|待判讀|判讀中|待AI評估/i.test(t)) return "bias-muted";
   if (/偏漲|偏多|上漲|多頭|\bup\b/i.test(t)) return "bias-up";
   if (/偏跌|偏空|下跌|空頭|\bdown\b/i.test(t)) return "bias-down";
   return "bias-side";
@@ -51,7 +51,7 @@ function biasSpan(text = "") {
 
 function colorizeBiasWords(text = "") {
   return stripHtml(text)
-    .replace(/待公布後判讀|待公布|待確認|待判讀|判讀中/g, '<span class="bias-muted">$&</span>')
+    .replace(/待公布後判讀|待公布|待確認|待判讀|判讀中|待AI評估/g, '<span class="bias-muted">$&</span>')
     .replace(/偏漲|偏多|上漲|多頭/g, '<span class="bias-up">$&</span>')
     .replace(/偏跌|偏空|下跌|空頭/g, '<span class="bias-down">$&</span>')
     .replace(/震盪/g, '<span class="bias-side">$&</span>');
@@ -120,11 +120,11 @@ function buildRateCutOutlook(data) {
 
   if (!upcomingFomc?.datetime) {
     return {
-      mode: "estimate",
+      mode: "model",
       probability,
       monthLabel: "待定",
       eventTitle: "下一次 FOMC",
-      basis: "估算依據：FOMC/CPI/NFP/外部風險"
+      basis: "模型：FOMC/CPI/NFP/外部風險"
     };
   }
 
@@ -137,7 +137,7 @@ function buildRateCutOutlook(data) {
   ].join(" / ");
 
   return {
-    mode: "estimate",
+    mode: "model",
     probability,
     monthLabel: `${nextDate.getFullYear()}年${nextDate.getMonth() + 1}月`,
     eventTitle: upcomingFomc.title,
@@ -161,7 +161,7 @@ function signedSpan(value, { digits = 2, unit = "", reverse = false, prefix = ""
 
 function colorizeBiasWordsKeepHtml(text = "") {
   return String(text)
-    .replace(/待公布後判讀|待公布|待確認|待判讀|判讀中/g, '<span class="bias-muted">$&</span>')
+    .replace(/待公布後判讀|待公布|待確認|待判讀|判讀中|待AI評估/g, '<span class="bias-muted">$&</span>')
     .replace(/偏漲|偏多|上漲|多頭/g, '<span class="bias-up">$&</span>')
     .replace(/偏跌|偏空|下跌|空頭/g, '<span class="bias-down">$&</span>')
     .replace(/震盪/g, '<span class="bias-side">$&</span>');
@@ -257,19 +257,7 @@ function translateRiskText(text = "") {
   return translated;
 }
 
-const LOCAL_API_URL = "http://localhost:3000/api/dashboard";
-
-let _dataSource = "Upstash"; // tracks which source was used for the current load
-
-async function fetchFromAPI() {
-  const response = await fetch(LOCAL_API_URL, { signal: AbortSignal.timeout(3000) });
-  if (!response.ok) throw new Error(`本地 API 回應異常 (${response.status})`);
-  const data = await response.json();
-  if (!data || typeof data !== "object") throw new Error("本地 API 回傳格式異常");
-  return data;
-}
-
-async function fetchFromUpstash() {
+async function loadData() {
   const upstashResponse = await fetch(`${UPSTASH_URL}/get/${UPSTASH_KEY}`, {
     headers: {
       Authorization: `Bearer ${UPSTASH_READ_TOKEN}`
@@ -294,24 +282,8 @@ async function fetchFromUpstash() {
   throw new Error("Upstash 回傳資料格式異常");
 }
 
-async function loadData() {
-  try {
-    const data = await fetchFromAPI();
-    _dataSource = "本地 API";
-    return data;
-  } catch {
-    // Local API not available — fall back to Upstash
-    const data = await fetchFromUpstash();
-    _dataSource = "Upstash";
-    return data;
-  }
-}
-
 function renderMeta(data) {
-  const sourceLabel = _dataSource === "本地 API" ? "本地 API" : "Upstash";
-  const sourceCls = _dataSource === "本地 API" ? "badge medium" : "badge low";
-  const meta = document.getElementById("meta");
-  meta.innerHTML = `最後更新：${fmt.format(new Date(data.generatedAt))}（UTC 來源整合）&nbsp;&nbsp;<span class="${sourceCls}" title="資料來源">${sourceLabel}</span>`;
+  document.getElementById("meta").textContent = `最後更新：${fmt.format(new Date(data.generatedAt))}（UTC 來源整合）`;
 }
 
 function renderOverallTrend(data) {
@@ -327,7 +299,7 @@ function renderOverallTrend(data) {
   const midCond = overview.midTermCondition || "";
   const longCond = overview.longTermCondition || "";
   const external = overview.externalRiskBias || "外部風險中性";
-  const title = "短/中/長線總趨勢（交易員評估｜每次更新重算）";
+  const title = "短/中/長線總趨勢（交易員評估）";
 
   function reasonLines(text = "") {
     const raw = stripHtml(text);
@@ -425,11 +397,11 @@ function renderOverallTrend(data) {
           ${hasAnySection
             ? keys.map((k) => `
               <div class="reason-row">
-                <div class="reason-key" style="font-size: 1.1em;">${k}</div>
-                <div class="reason-val" style="font-size: 1.1em; color: #e2e8f0; line-height: 1.6;">${colorizeMultiline(String(sections[k] || "").trim() || "—")}</div>
+                <div class="reason-key">${k}</div>
+                <div class="reason-val">${colorizeMultiline(String(sections[k] || "").trim() || "—")}</div>
               </div>
             `).join("")
-            : `<div class="reason-row" style="grid-template-columns: 1fr;"><div class="reason-val" style="font-size: 1.15em; color: #e2e8f0; line-height: 1.6;">${colorizeMultiline(fallbackText || "—")}</div></div>`
+            : `<div class="reason-row"><div class="reason-key">說明</div><div class="reason-val">${colorizeMultiline(fallbackText || "—")}</div></div>`
           }
         </div>
       </div>
@@ -461,7 +433,7 @@ function renderOverallTrend(data) {
         reason: longReason
       })}
     </div>
-    <div class="kv"><div><strong>外部風險：</strong>${biasSpan(external)}</div></div>
+    <div class="kv"><div><strong>外部風險：</strong>${biasSpan(external)}</div><div><strong>模型：</strong>${model}</div></div>
   `;
 }
 
@@ -516,59 +488,32 @@ function renderOverview(data) {
       return Number.isFinite(t) && (Date.now() - t) <= days7;
     });
 
-  const metrics7d = data.cryptoSignalMetrics7d || null;
-
+  const etfSignals = recentSignals.filter((s) => /\bETF\b/i.test(String(s.title || "")) || /\bETF\b/i.test(String(s.keyChange || "")));
   let etfNetFlowUsd = 0;
   let etfCountWithAmount = 0;
-  if (metrics7d && Number.isFinite(metrics7d.etfNetFlowUsd) && Number.isFinite(metrics7d.etfCountWithAmount)) {
-    etfNetFlowUsd = Number(metrics7d.etfNetFlowUsd);
-    etfCountWithAmount = Number(metrics7d.etfCountWithAmount);
-  } else {
-    const etfSignals = recentSignals.filter((s) => {
-      const blob = `${s.title || ""} ${s.keyChange || ""} ${s.zhTitle || ""}`;
-      return /\bETF\b/i.test(blob) || /ETF/.test(blob);
-    });
-    for (const s of etfSignals) {
-      const text = `${s.keyChange || ""} ${s.title || ""} ${s.zhTitle || ""}`;
-      const amount = parseUsdAmount(text);
-      if (amount === null || amount < 5e6) continue;
-
-      const isOut = /net\s+outflow|淨流出|outflow/i.test(text);
-      const isIn = /net\s+inflow|淨流入|inflow/i.test(text);
-      if (isOut === isIn) continue;
-
-      const signed = isOut ? -amount : amount;
-      etfNetFlowUsd += signed;
-      etfCountWithAmount += 1;
-    }
+  for (const s of etfSignals) {
+    const text = `${s.keyChange || ""} ${s.title || ""}`;
+    const amount = parseUsdAmount(text);
+    if (amount === null) continue;
+    const isOut = /流出|淨流出|outflow/i.test(text);
+    const isIn = /流入|淨流入|inflow/i.test(text);
+    const signed = isOut && !isIn ? -amount : amount;
+    etfNetFlowUsd += signed;
+    etfCountWithAmount += 1;
   }
   const etfNetFlowText = etfCountWithAmount > 0
     ? `${etfNetFlowUsd >= 0 ? "+" : "-"}$${Math.round(Math.abs(etfNetFlowUsd) / 1e6).toLocaleString()}M`
     : "—";
 
+  const liquidationSignals = recentSignals.filter((s) => /清算|liquidation/i.test(String(s.title || "")) || /清算|liquidation/i.test(String(s.keyChange || "")));
   let liquidationTotalUsd = 0;
   let liquidationCountWithAmount = 0;
-  if (metrics7d && Number.isFinite(metrics7d.liquidationTotalUsd) && Number.isFinite(metrics7d.liquidationCountWithAmount)) {
-    liquidationTotalUsd = Number(metrics7d.liquidationTotalUsd);
-    liquidationCountWithAmount = Number(metrics7d.liquidationCountWithAmount);
-  } else {
-    const liquidationSignals = recentSignals.filter((s) => {
-      const blob = `${s.title || ""} ${s.keyChange || ""} ${s.zhTitle || ""}`;
-      return /清算|liquidation/i.test(blob);
-    });
-    for (const s of liquidationSignals) {
-      const text = `${s.keyChange || ""} ${s.title || ""} ${s.zhTitle || ""}`;
-      // 防呆：只接受「清算/ liquidation」在金額之前的描述，且至少 $1M
-      const m = text.match(/(?:liquidat(?:ion|ed)?|清算)[^$]{0,80}\$\s*([\d,.]+)\s*([kKmMbB])?/i);
-      if (!m) continue;
-      const n = Number(String(m[1]).replace(/,/g, ""));
-      if (!Number.isFinite(n)) continue;
-      const unit = String(m[2] || "").toUpperCase();
-      const amount = unit === "K" ? n * 1e3 : unit === "M" ? n * 1e6 : unit === "B" ? n * 1e9 : n;
-      if (!Number.isFinite(amount) || amount < 1e6) continue;
-      liquidationTotalUsd += Math.abs(amount);
-      liquidationCountWithAmount += 1;
-    }
+  for (const s of liquidationSignals) {
+    const text = `${s.keyChange || ""} ${s.title || ""}`;
+    const amount = parseUsdAmount(text);
+    if (amount === null) continue;
+    liquidationTotalUsd += Math.abs(amount);
+    liquidationCountWithAmount += 1;
   }
   const liquidationText = liquidationCountWithAmount > 0
     ? `$${Math.round(liquidationTotalUsd / 1e6).toLocaleString()}M`
@@ -716,7 +661,7 @@ function renderOverview(data) {
       targetId: "crypto-section"
     },
     {
-      title: rateCutOutlook.mode === "concrete" ? "降息機率（市場隱含）" : "降息機率（交易員估算）",
+      title: rateCutOutlook.mode === "concrete" ? "降息機率（市場隱含）" : "降息機率（模型估算）",
       valueHtml: probabilitySpan(rateCutOutlook.probability),
       subLines: rateCutOutlook.mode === "concrete"
         ? [
@@ -727,7 +672,7 @@ function renderOverview(data) {
         : [
           `可能時點：${rateCutOutlook.monthLabel}（${rateCutOutlook.eventTitle}）`,
           `依據：${rateCutOutlook.basis || "FOMC/CPI/NFP/外部風險"}`,
-          "估算（非官方機率）"
+          "模型評估（非官方機率）"
         ],
       targetId: "macro-section"
     },
@@ -1021,173 +966,4 @@ async function bootstrap() {
   }
 }
 
-function translatePolymarketQuestion(q) {
-  const MONTHS = { January:"1月", February:"2月", March:"3月", April:"4月", May:"5月", June:"6月",
-    July:"7月", August:"8月", September:"9月", October:"10月", November:"11月", December:"12月" };
-  const toZhDate = (s) => s.replace(/(\w+)\s+(\d+)/g, (_, m, d) => `${MONTHS[m] || m} ${d} 日`);
-
-  let r;
-  // Will Ethereum dip to $X in [Month]?
-  r = q.match(/Will (?:the price of )?Ethereum (?:dip|drop|fall) to \$([\d,]+)(?: in (\w+)| by (.+?))?[?？]?$/i);
-  if (r) return `以太坊${r[2] || r[3] ? `在 ${r[2] || toZhDate(r[3])}` : ""}內會跌至 $${r[1]} 嗎？`;
-
-  // Will Ethereum reach $X in [Month] / by [date]?
-  r = q.match(/Will (?:the price of )?Ethereum (?:reach|hit|exceed|surpass|touch) \$([\d,]+)(?: in (\w+)| by (.+?))?[?？]?$/i);
-  if (r) return `以太坊${r[2] ? `在 ${r[2]}` : r[3] ? `在 ${toZhDate(r[3])} 前` : ""}會漲至 $${r[1]} 嗎？`;
-
-  // Will the price of Ethereum be above $X on [date]?
-  r = q.match(/Will the price of Ethereum be above \$([\d,]+) on (.+?)[?？]?$/i);
-  if (r) return `以太坊在 ${toZhDate(r[2])} 的價格會高於 $${r[1]} 嗎？`;
-
-  // Will the price of Ethereum be between $X and $Y on [date]?
-  r = q.match(/Will the price of Ethereum be between \$([\d,]+) and \$([\d,]+) on (.+?)[?？]?$/i);
-  if (r) return `以太坊在 ${toZhDate(r[3])} 的價格會介於 $${r[1]}–$${r[2]} 之間嗎？`;
-
-  // Will the price of Ethereum be greater than $X on [date]?
-  r = q.match(/Will the price of Ethereum be greater than \$([\d,]+) on (.+?)[?？]?$/i);
-  if (r) return `以太坊在 ${toZhDate(r[2])} 的價格會高於 $${r[1]} 嗎？`;
-
-  // Ethereum all time high by [date]?
-  r = q.match(/Ethereum all.?time high by (.+?)[?？]?$/i);
-  if (r) return `以太坊會在 ${toZhDate(r[1])} 前創歷史新高嗎？`;
-
-  // Ethereum Up or Down - [date/time]
-  r = q.match(/Ethereum Up or Down[\s\-–]+(.+)/i);
-  if (r) return `以太坊漲跌預測（${r[1].trim()}）`;
-
-  return q; // 無法匹配時保留原文
-}
-
-// ── Polymarket K 線輔助 ────────────────────────────────────
-function aggregatePmOHLCV(data, mins) {
-  if (mins <= 1) return data;
-  const secs = mins * 60;
-  const buckets = {};
-  for (const c of data) {
-    const key = Math.floor(c.time / secs) * secs;
-    if (!buckets[key]) buckets[key] = { time: key, open: c.open, high: c.high, low: c.low, close: c.close };
-    else {
-      if (c.high > buckets[key].high) buckets[key].high = c.high;
-      if (c.low  < buckets[key].low)  buckets[key].low  = c.low;
-      buckets[key].close = c.close;
-    }
-  }
-  return Object.values(buckets).sort((a, b) => a.time - b.time);
-}
-
-function renderPolymarket(markets) {
-  const root = document.getElementById("polymarket-cards");
-  root.innerHTML = "";
-
-  if (!markets || markets.length === 0) {
-    const card = document.createElement("article");
-    card.className = "card";
-    card.innerHTML = "<h3>目前無法載入預測市場資料</h3><p>請先執行 node scripts/polymarket_eth.mjs 產生資料檔。</p>";
-    root.appendChild(card);
-    return;
-  }
-
-  const fmtUsd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
-
-  markets.forEach((m) => {
-    const yes = m.outcomes.find((o) => o.label.toLowerCase() === "yes");
-    const no  = m.outcomes.find((o) => o.label.toLowerCase() === "no");
-    const yesProb = yes?.probability ?? null;
-    const noProb  = no?.probability  ?? null;
-
-    const barColor = yesProb !== null
-      ? (yesProb >= 60 ? "var(--ok)" : yesProb <= 40 ? "var(--danger)" : "var(--accent)")
-      : "var(--muted)";
-
-    const probBar = yesProb !== null
-      ? `<div style="margin:8px 0 4px;background:#1f2937;border-radius:4px;height:8px;overflow:hidden">
-           <div style="width:${yesProb}%;height:100%;background:${barColor};transition:width .3s"></div>
-         </div>
-         <div class="kv">
-           <div style="color:${barColor}">是（Yes）${yesProb}%</div>
-           ${noProb !== null ? `<div style="color:var(--muted)">否（No）${noProb}%</div>` : ""}
-         </div>`
-      : "";
-
-    const endStr = m.endDate ? `到期：${new Date(m.endDate).toLocaleDateString("zh-Hant")}` : "";
-    const volStr = m.volume24hr > 0 ? `24h 成交量：${fmtUsd.format(m.volume24hr)}` : "";
-    const zhQuestion = translatePolymarketQuestion(m.question);
-    const chartId = `pm-chart-${m.id}`;
-    const hasChart = m.ohlcv && m.ohlcv.length > 1;
-
-    const card = document.createElement("article");
-    card.className = "card";
-    card.innerHTML = `
-      <h3><a href="${m.url}" target="_blank" rel="noreferrer">${zhQuestion}</a></h3>
-      ${probBar}
-      <div class="kv" style="font-size:13px;color:var(--muted);margin-top:6px">
-        ${volStr ? `<div>${volStr}</div>` : ""}
-        ${endStr ? `<div>${endStr}</div>` : ""}
-      </div>
-      ${hasChart
-        ? `<div style="display:flex;align-items:center;gap:6px;margin-top:10px">
-             <span style="font-size:12px;color:var(--muted)">K 線週期：</span>
-             ${[1, 5, 15].map((n) =>
-               `<button class="pm-iv-btn" data-mins="${n}" data-chart="${chartId}"
-                  style="padding:2px 10px;border:1px solid #334155;border-radius:5px;cursor:pointer;font-size:12px;
-                         background:${n === 1 ? "var(--accent)" : "#1f2937"};
-                         color:${n === 1 ? "#0f172a" : "var(--muted)"}">${n}m</button>`
-             ).join("")}
-           </div>
-           <div id="${chartId}" style="height:180px;margin-top:6px;border-radius:6px;overflow:hidden"></div>`
-        : ""}
-    `;
-    root.appendChild(card);
-
-    if (hasChart && typeof LightweightCharts !== "undefined") {
-      requestAnimationFrame(() => {
-        const el = document.getElementById(chartId);
-        if (!el) return;
-        const chart = LightweightCharts.createChart(el, {
-          width: el.clientWidth || 400,
-          height: 180,
-          layout: { background: { color: "#0f172a" }, textColor: "#94a3b8" },
-          grid: { vertLines: { color: "#1f2937" }, horzLines: { color: "#1f2937" } },
-          crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-          rightPriceScale: { borderColor: "#1f2937" },
-          timeScale: { borderColor: "#1f2937", timeVisible: true, secondsVisible: false },
-        });
-        const series = chart.addCandlestickSeries({
-          upColor: "#22c55e", downColor: "#fb7185",
-          borderUpColor: "#22c55e", borderDownColor: "#fb7185",
-          wickUpColor: "#22c55e", wickDownColor: "#fb7185",
-        });
-        series.setData(m.ohlcv);
-        chart.timeScale().fitContent();
-        new ResizeObserver(() => chart.applyOptions({ width: el.clientWidth })).observe(el);
-
-        // 綁定此卡片的週期切換按鈕
-        card.querySelectorAll(".pm-iv-btn").forEach((btn) => {
-          btn.addEventListener("click", () => {
-            const mins = Number(btn.dataset.mins);
-            card.querySelectorAll(".pm-iv-btn").forEach((b) => {
-              b.style.background = Number(b.dataset.mins) === mins ? "var(--accent)" : "#1f2937";
-              b.style.color      = Number(b.dataset.mins) === mins ? "#0f172a"       : "var(--muted)";
-            });
-            series.setData(aggregatePmOHLCV(m.ohlcv, mins));
-            chart.timeScale().fitContent();
-          });
-        });
-      });
-    }
-  });
-}
-
-async function initPolymarket() {
-  try {
-    const resp = await fetch("./data/polymarket_eth.json");
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data = await resp.json();
-    renderPolymarket(data.markets || []);
-  } catch {
-    renderPolymarket([]);
-  }
-}
-
 bootstrap();
-initPolymarket();

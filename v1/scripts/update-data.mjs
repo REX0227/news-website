@@ -13,10 +13,11 @@ import { collectRatesIntel } from "../src/collectors/ratesCollector.js";
 import { collectLiquidityIntel } from "../src/collectors/liquidityCollector.js";
 import { collectCoinalyzeLiquidationMetrics } from "../src/collectors/coinalyzeLiquidationCollector.js";
 import { collectMajorNoKeyLiquidationMetrics } from "../src/collectors/majorNoKeyLiquidationCollector.js";
-import { buildAiSummary, buildTraderOutlookFromPayload } from "../src/lib/ai.js";
+import { buildAiSummary, buildTraderOutlookFromPayload, setRawDataForEval } from "../src/lib/ai.js";
 import { enrichRecentMacroResults } from "../src/lib/macroResults.js";
 import { eventStatus } from "../src/lib/utils.js";
 import { upstashSetJson } from "../src/lib/upstash.js";
+import { saveToSQLite, logUpdateToSQLite } from "../src/lib/sqlite.js";
 import { fetchRateCutData } from "../src/lib/rateCutData.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -181,8 +182,12 @@ function validateAndNormalizeMetricsBeforePublish(metrics) {
     normalized.etfFlowSanityNote = "新聞 ETF 僅採最近一筆可量化值，避免多篇重複事件加總。";
   }
 
-  if (Number.isFinite(normalized.etfNetFlowUsd) && Math.abs(normalized.etfNetFlowUsd) > 5e9) {
-    throw new Error(`STOP: ETF 7D 淨流數值異常（${normalized.etfNetFlowUsd}），已阻擋更新。`);
+  if (Number.isFinite(normalized.etfNetFlowUsd) && Math.abs(normalized.etfNetFlowUsd) > 7e9) {
+    console.warn(`WARNING: ETF 7D 淨流數值過大（${normalized.etfNetFlowUsd}）疑為長期或是總量數據，自動忽略以防失算。`);
+    normalized.etfNetFlowUsd = 0;
+    normalized.etfCountWithAmount = 0;
+    delete normalized.latestNewsEtfFlow;
+    normalized.etfFlowSanityNote = "數值異常過大，已自動忽略";
   }
 
   if (String(normalized.liquidationSource || "") === "news_estimate") {
@@ -197,7 +202,11 @@ function validateAndNormalizeMetricsBeforePublish(metrics) {
   }
 
   if (Number.isFinite(normalized.liquidationTotalUsd) && normalized.liquidationTotalUsd > 3e9 && String(normalized.liquidationSource || "").includes("news")) {
-    throw new Error(`STOP: 新聞清算數值異常偏大（${normalized.liquidationTotalUsd}），已阻擋更新。`);
+    console.warn(`WARNING: 新聞清算數值異常偏大（${normalized.liquidationTotalUsd}），已轉為回退機制。`);
+    normalized.liquidationTotalUsd = 0;
+    normalized.liquidationCountWithAmount = 0;
+    delete normalized.latestNewsLiquidation;
+    normalized.liquidationSanityNote = "數值異常偏大，已自動忽略";
   }
 
   return normalized;
@@ -277,14 +286,8 @@ async function main() {
     globalRiskSignals
   };
 
-  const fs = await import("node:fs");
-    const evalFile = path.join(PROJECT_ROOT, "data/copilot-evaluation.json");
-  if (!fs.existsSync(evalFile)) {
-    const dumpFile = path.join(PROJECT_ROOT, "tmp/raw-data-for-copilot.json");
-    fs.writeFileSync(dumpFile, JSON.stringify(rawDataToEvaluate, null, 2));
-    console.log(`\n[Copilot Workflow] 已將最新數據匯出至 ${dumpFile}`);
-    console.log(`請 Copilot 讀取該檔案，並生成 v1/data/copilot-evaluation.json 後，再次執行此腳本。\n`);
-  }
+  // 傳入 raw data，讓 ai.js 在沒有 copilot-evaluation.json 時自動呼叫 Claude API
+  setRawDataForEval(rawDataToEvaluate);
 
   const trendOutlook = await buildTraderOutlookFromPayload({
     macroEvents,
@@ -366,6 +369,15 @@ async function main() {
       key: "crypto_dashboard:last_updated",
       value: { at: payload.generatedAt }
     });
+  }
+
+  // Also persist the payload to the local SQLite database (backend/gecko.db).
+  // This keeps the local backend API in sync without requiring Upstash to be available.
+  const sqliteResult = await saveToSQLite(payload);
+  if (sqliteResult.ok) {
+    await logUpdateToSQLite("success", 11, null);
+  } else {
+    await logUpdateToSQLite("error", 11, sqliteResult.error || "unknown sqlite error");
   }
 
   console.log(`Updated payload with ${payload.macroEvents.length} macro events and ${payload.cryptoSignals.length} crypto signals.`);

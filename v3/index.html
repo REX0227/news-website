@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CryptoPulse V3｜Coinglass 結構資料儀表板</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <header class="hero">
+        <div class="hero-top">
+          <div>
+            <p class="eyebrow">CryptoPulse V3</p>
+            <h1>Coinglass 結構資料儀表板</h1>
+            <p class="hero-copy">
+              專門呈現剛寫入 Upstash 的衍生品、槓桿、ETF 與資金流資料，
+              只看市場結構，不顯示任何幣價。
+            </p>
+          </div>
+          <nav class="hero-nav" aria-label="頁面導覽">
+            <a href="../v2/index.html">V2</a>
+            <a href="../database-side/README.md">database-side</a>
+          </nav>
+        </div>
+
+        <div id="hero-meta" class="hero-meta"></div>
+      </header>
+
+      <section class="section-block">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">總覽</p>
+            <h2>市場快照</h2>
+          </div>
+        </div>
+        <div id="overview-cards" class="overview-grid"></div>
+      </section>
+
+      <section class="section-block">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">橫向比較</p>
+            <h2>BTC / ETH 雷達表</h2>
+          </div>
+        </div>
+        <div class="table-shell">
+          <table>
+            <thead>
+              <tr>
+                <th>資產</th>
+                <th>總 OI</th>
+                <th>清算</th>
+                <th>Funding</th>
+                <th>全球多空比</th>
+                <th>大戶帳戶比</th>
+                <th>大戶持倉比</th>
+                <th>主動買賣差</th>
+                <th>CVD</th>
+                <th>Basis</th>
+              </tr>
+            </thead>
+            <tbody id="asset-radar-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section-block">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">細節面板</p>
+            <h2>資產結構拆解</h2>
+          </div>
+        </div>
+        <div id="asset-panels" class="asset-panels"></div>
+      </section>
+
+      <section class="section-block">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">Whales</p>
+            <h2>Hyperliquid 巨鯨流向</h2>
+          </div>
+        </div>
+        <div id="whale-overview" class="overview-grid"></div>
+        <div class="whale-layout">
+          <article class="whale-panel">
+            <div class="whale-panel-head">
+              <div>
+                <h3>最新鯨魚動作</h3>
+                <div class="stream-note">來自 `Hyperliquid Whale Alert`，重點看誰在開倉、平倉，以及資金集中在哪個幣種。</div>
+              </div>
+            </div>
+            <div class="table-shell whale-table-shell">
+              <table>
+                <thead>
+                  <tr>
+                    <th>時間</th>
+                    <th>地址</th>
+                    <th>幣種</th>
+                    <th>動作</th>
+                    <th>倉值</th>
+                    <th>進場 / 強平</th>
+                  </tr>
+                </thead>
+                <tbody id="whale-alert-body"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="whale-panel">
+            <div class="whale-panel-head">
+              <div>
+                <h3>當前大戶倉位</h3>
+                <div class="stream-note">來自 `Hyperliquid Whale Position`，看目前仍在場上的大戶倉位、PnL 與槓桿。</div>
+              </div>
+            </div>
+            <div class="table-shell whale-table-shell">
+              <table>
+                <thead>
+                  <tr>
+                    <th>地址</th>
+                    <th>幣種</th>
+                    <th>方向</th>
+                    <th>倉值</th>
+                    <th>未實現 PnL</th>
+                    <th>槓桿</th>
+                    <th>更新</th>
+                  </tr>
+                </thead>
+                <tbody id="whale-position-body"></tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+        <div id="whale-distribution" class="whale-tier-grid"></div>
+      </section>
+
+      <section class="section-block">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">ETF</p>
+            <h2>機構資金流</h2>
+          </div>
+        </div>
+        <div id="etf-panels" class="etf-grid"></div>
+      </section>
+
+      <section class="section-block">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">資料結構</p>
+            <h2>資料來源說明</h2>
+          </div>
+        </div>
+        <div id="stream-catalog" class="catalog-grid"></div>
+      </section>
+    </main>
+
+    <script defer src="./app.js"></script>
+  </body>
+</html>

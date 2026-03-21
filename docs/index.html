@@ -1,0 +1,84 @@
+﻿<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Crypto 關鍵節點儀表板</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header class="hero">
+        <h1>Crypto 關鍵節點儀表板</h1>
+        <p>追蹤美國、日本重要數據與政策時間點，搭配近期幣圈事件，定位交易高波動窗口。</p>
+        <div id="meta"></div>
+      </header>
+
+      <section id="overview-section">
+        <h2>市場趨勢總覽</h2>
+        <div id="overview-cards" class="card-grid"></div>
+      </section>
+
+      <section id="ai-section">
+        <h2>AI 重點摘要</h2>
+        <ul id="ai-insights" class="card-list"></ul>
+      </section>
+
+      <section id="trend-section">
+        <h2>短/中/長線總趨勢（交易員判斷）</h2>
+        <div id="overall-trend" class="trend-banner"></div>
+      </section>
+
+      <section id="windows-section">
+        <h2>未來 7 日關鍵窗口</h2>
+        <div id="key-windows-note" class="note"></div>
+        <div id="key-windows" class="card-grid"></div>
+      </section>
+
+      <section id="macro-section">
+        <h2>最近與未來：美日專業數據日程</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>時間</th>
+                <th>國家</th>
+                <th>事件</th>
+                <th>重要度</th>
+                <th>狀態</th>
+                <th>已公布數據</th>
+                <th>簡短分析</th>
+              </tr>
+            </thead>
+            <tbody id="macro-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="crypto-section">
+        <h2>近期影響虛擬幣操作 / 訊息</h2>
+        <div class="controls">
+          <label><input id="only-high-impact" type="checkbox" /> 只看高影響（僅篩選本區）</label>
+        </div>
+        <div id="crypto-signals" class="card-grid"></div>
+      </section>
+
+      <section id="whale-section">
+        <h2>巨鯨走向</h2>
+        <div id="whale-trend" class="card"></div>
+      </section>
+
+      <section id="policy-section">
+        <h2>政策 / 監管（官方 / 機構公告）</h2>
+        <div id="policy-signals" class="card-grid"></div>
+      </section>
+
+      <section id="risk-section">
+        <h2>外部風險（川普政策 / 戰爭 / 地緣政治）</h2>
+        <div id="global-risks" class="card-grid"></div>
+      </section>
+    </main>
+
+    <script defer src="./app.js?v=20260224-11"></script>
+  </body>
+</html>
