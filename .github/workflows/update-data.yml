@@ -38,6 +38,14 @@ jobs:
           UPSTASH_REDIS_REST_TOKEN_READ:  ${{ secrets.UPSTASH_REDIS_REST_TOKEN_READ }}
           COINGLASS_API_KEY:              ${{ secrets.COINGLASS_API_KEY }}
 
+      - name: Fetch Polymarket data
+        run: |
+          mkdir -p v1/docs/data
+          node scripts/polymarket_eth.mjs
+        env:
+          UPSTASH_REDIS_REST_URL:         ${{ secrets.UPSTASH_REDIS_REST_URL }}
+          UPSTASH_REDIS_REST_TOKEN_WRITE: ${{ secrets.UPSTASH_REDIS_REST_TOKEN_WRITE }}
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
