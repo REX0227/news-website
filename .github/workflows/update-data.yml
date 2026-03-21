@@ -5,6 +5,11 @@ on:
     - cron: "0 * * * *"   # 每小時整點自動執行
   workflow_dispatch:        # 支援手動從 GitHub 介面觸發
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   update:
     runs-on: ubuntu-latest
@@ -32,3 +37,23 @@ jobs:
           UPSTASH_REDIS_REST_TOKEN_WRITE: ${{ secrets.UPSTASH_REDIS_REST_TOKEN_WRITE }}
           UPSTASH_REDIS_REST_TOKEN_READ:  ${{ secrets.UPSTASH_REDIS_REST_TOKEN_READ }}
           COINGLASS_API_KEY:              ${{ secrets.COINGLASS_API_KEY }}
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: v1/docs
+
+  deploy:
+    needs: update
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
