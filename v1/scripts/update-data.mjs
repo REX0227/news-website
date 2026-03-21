@@ -356,19 +356,22 @@ async function main() {
   };
 
   if (upstashUrl && writeToken) {
+    console.log(`[upstash] Writing to ${upstashUrl}...`);
     await upstashSetJson({
       baseUrl: upstashUrl,
       token: writeToken,
       key: "crypto_dashboard:latest",
       value: payload
     });
-
     await upstashSetJson({
       baseUrl: upstashUrl,
       token: writeToken,
       key: "crypto_dashboard:last_updated",
       value: { at: payload.generatedAt }
     });
+    console.log(`[upstash] Write complete.`);
+  } else {
+    console.warn(`[upstash] SKIPPED — UPSTASH_REDIS_REST_URL=${upstashUrl ? "OK" : "MISSING"}, TOKEN_WRITE=${writeToken ? "OK" : "MISSING"}`);
   }
 
   // Also persist the payload to the local SQLite database (backend/gecko.db).
