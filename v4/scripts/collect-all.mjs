@@ -204,6 +204,23 @@ async function main() {
   fs.writeFileSync(outputPath, JSON.stringify(latestJson, null, 2), 'utf-8');
   console.log(`[collect-all] Exported latest.json to ${outputPath}`);
 
+  // Push to Upstash
+  const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN_WRITE;
+  if (upstashUrl && upstashToken) {
+    try {
+      const res = await fetch(`${upstashUrl}/set/${encodeURIComponent('cryptopulse:v4:latest')}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${upstashToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(latestJson),
+      });
+      if (res.ok) console.log('[collect-all] Pushed to Upstash OK');
+      else console.warn('[collect-all] Upstash push failed:', res.status);
+    } catch (err) {
+      console.warn('[collect-all] Upstash push error:', err.message);
+    }
+  }
+
   // Exit with error code if too many failures
   if (failed > total * 0.5 && total > 0) {
     console.error('[collect-all] WARNING: More than 50% of sources failed!');

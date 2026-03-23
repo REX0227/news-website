@@ -360,20 +360,28 @@ function render(latestJson) {
   root.innerHTML = html;
 }
 
+// ── Upstash config ────────────────────────────────────────────────────────────
+const UPSTASH_URL = 'https://guided-spider-19708.upstash.io';
+const UPSTASH_READ_TOKEN = 'Akz8AAIgcDE18SAeYebRfjHOi1t_RtbOFNv2r3NHF0kLYfDIUMnEOw';
+const UPSTASH_V4_KEY = 'cryptopulse:v4:latest';
+
 // ── Load data ─────────────────────────────────────────────────────────────────
 
 async function loadData() {
   const root = document.getElementById('root');
   try {
-    const res = await fetch('./data/latest.json?' + Date.now());
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
+    const res = await fetch(`${UPSTASH_URL}/get/${encodeURIComponent(UPSTASH_V4_KEY)}`, {
+      headers: { Authorization: `Bearer ${UPSTASH_READ_TOKEN}` }
+    });
+    if (!res.ok) throw new Error(`Upstash HTTP ${res.status}`);
+    const json = await res.json();
+    if (!json.result) throw new Error('Upstash 尚無資料，請先執行 keep-alive.mjs');
+    const data = typeof json.result === 'string' ? JSON.parse(json.result) : json.result;
     render(data);
   } catch (err) {
     root.innerHTML = `<div class="state-message">
       <h2>載入失敗</h2>
       <p>${escHtml(err.message)}</p>
-      <p style="margin-top:8px;font-size:12px;">請先執行 <code>node v4/scripts/collect-all.mjs</code> 產生資料</p>
     </div>`;
   }
 }
