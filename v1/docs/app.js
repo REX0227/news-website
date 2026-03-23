@@ -1090,8 +1090,8 @@ function computeGateScores(data) {
 
 function renderGate(data) {
   const scores = computeGateScores(data);
-  const dims   = ['市場趨勢總覽', '市場情緒', '宏觀變數', '資金流向', '槓桿大戶風險', '巨鯨走向', '政策監管', '外部風險', 'ETH預測市場'];
-  const values = [scores.trend, scores.sentiment, scores.macro, scores.flow, scores.leverage, scores.whale, scores.policy, scores.risk, scores.polymarket];
+  const dims   = ['市場情緒', '宏觀變數', '資金流向', '槓桿大戶風險', '巨鯨走向', '政策監管', '外部風險', 'ETH預測市場'];
+  const values = [scores.sentiment, scores.macro, scores.flow, scores.leverage, scores.whale, scores.policy, scores.risk, scores.polymarket];
   const avg    = values.reduce((a, b) => a + b, 0) / values.length;
 
   let gateLabel, gateColor, gateEmoji;
