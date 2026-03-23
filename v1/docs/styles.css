@@ -330,9 +330,9 @@ a { color: var(--accent); }
 }
 
 .gate-chart-wrap {
-  flex: 0 0 300px;
-  width: 300px;
-  height: 300px;
+  flex: 0 0 380px;
+  width: 380px;
+  height: 380px;
 }
 
 .gate-chart-wrap canvas {

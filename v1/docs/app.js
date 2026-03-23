@@ -991,85 +991,107 @@ function renderGlobalRisks(data) {
 
 // ── Gate Score 評分系統 ───────────────────────────────────────────
 let gateChart = null;
+let polymarketMarketsCache = null;
 
 function computeGateScores(data) {
   const clamp = v => Math.max(-3, Math.min(3, Math.round(v)));
+  const diff2score = (d, cap = 2) => Math.max(-cap, Math.min(cap, d >= 2 ? cap : d <= -2 ? -cap : d));
 
-  // 1. 宏觀環境：CPI + NFP + FOMC 利率方向
-  let macro = 0;
-  const macroEvents = data.macroEvents || [];
-  const recentCpi = macroEvents
-    .filter(e => e.eventType === 'cpi' && e.status === 'recent')
-    .sort((a, b) => new Date(b.datetime) - new Date(a.datetime))[0];
-  const recentNfp = macroEvents
-    .filter(e => e.eventType === 'nfp' && e.status === 'recent')
-    .sort((a, b) => new Date(b.datetime) - new Date(a.datetime))[0];
-  const recentFomc = macroEvents
-    .filter(e => e.eventType === 'central-bank' && e.country === 'US' && e.status === 'recent')
-    .sort((a, b) => new Date(b.datetime) - new Date(a.datetime))[0];
-
-  if (recentCpi?.result?.shortTermBias === '偏跌') macro += 1;      // CPI 降 = 好
-  else if (recentCpi?.result?.shortTermBias === '偏漲') macro -= 1; // CPI 升 = 壞
-  if (recentNfp?.result?.shortTermBias === '偏漲') macro += 1;
-  else if (recentNfp?.result?.shortTermBias === '偏跌') macro -= 1;
-  const rateActual = toNumber(recentFomc?.result?.actual);
-  const ratePrev   = toNumber(recentFomc?.result?.previous);
-  if (rateActual !== null && ratePrev !== null) {
-    if (rateActual < ratePrev) macro += 1;  // 降息 = 偏多
-    else if (rateActual > ratePrev) macro -= 1;
-  }
+  // 1. 市場趨勢總覽：short/mid/long trend (-3~+3)
+  const ov = data.marketOverview || {};
+  const ts = t => t === '偏漲' ? 1 : t === '偏跌' ? -1 : 0;
+  const trend = clamp(ts(ov.shortTermTrend) + ts(ov.midTermTrend) + ts(ov.longTermTrend));
 
   // 2. 市場情緒：Fear & Greed 0-100 → -3~+3
   const fng = Number(data.fearAndGreedIndex?.value ?? 50);
-  let sentiment = 0;
-  if      (fng <= 20) sentiment = -3;
-  else if (fng <= 35) sentiment = -2;
-  else if (fng <= 45) sentiment = -1;
-  else if (fng <= 55) sentiment =  0;
-  else if (fng <= 65) sentiment =  1;
-  else if (fng <= 80) sentiment =  2;
-  else                sentiment =  3;
+  const sentiment = fng <= 20 ? -3 : fng <= 35 ? -2 : fng <= 45 ? -1 :
+                    fng <= 55 ?  0 : fng <= 65 ?  1 : fng <= 80 ?  2 : 3;
 
-  // 3. 流動性：ETF 資金流 + 穩定幣供應變化
-  let liquidity = 0;
+  // 3. 宏觀變數：CPI + NFP + FOMC 利率方向
+  let macro = 0;
+  const macroEvents = data.macroEvents || [];
+  const recentCpi  = macroEvents.filter(e => e.eventType === 'cpi' && e.status === 'recent')
+    .sort((a, b) => new Date(b.datetime) - new Date(a.datetime))[0];
+  const recentNfp  = macroEvents.filter(e => e.eventType === 'nfp' && e.status === 'recent')
+    .sort((a, b) => new Date(b.datetime) - new Date(a.datetime))[0];
+  const recentFomc = macroEvents.filter(e => e.eventType === 'central-bank' && e.country === 'US' && e.status === 'recent')
+    .sort((a, b) => new Date(b.datetime) - new Date(a.datetime))[0];
+  if (recentCpi?.result?.shortTermBias === '偏跌') macro += 1;
+  else if (recentCpi?.result?.shortTermBias === '偏漲') macro -= 1;
+  if (recentNfp?.result?.shortTermBias === '偏漲') macro += 1;
+  else if (recentNfp?.result?.shortTermBias === '偏跌') macro -= 1;
+  const rateA = toNumber(recentFomc?.result?.actual);
+  const rateP = toNumber(recentFomc?.result?.previous);
+  if (rateA !== null && rateP !== null) {
+    if (rateA < rateP) macro += 1; else if (rateA > rateP) macro -= 1;
+  }
+
+  // 4. 資金流向：ETF 淨流 + 穩定幣供應
+  let flow = 0;
   const etf = Number(data.cryptoSignalMetrics7d?.etfNetFlowUsd ?? 0);
-  if      (etf >  500e6) liquidity += 2;
-  else if (etf >  200e6) liquidity += 1;
-  else if (etf < -500e6) liquidity -= 2;
-  else if (etf < -200e6) liquidity -= 1;
-  const stableChange = Number(data.cryptoSignalMetrics7d?.stablecoinSupplyChangeUsd ?? 0);
-  if (stableChange > 0) liquidity += 1;
-  else if (stableChange < 0) liquidity -= 1;
+  if (etf > 500e6) flow += 2; else if (etf > 200e6) flow += 1;
+  else if (etf < -500e6) flow -= 2; else if (etf < -200e6) flow -= 1;
+  const sc = Number(data.cryptoSignalMetrics7d?.stablecoinSupplyChangeUsd ?? 0);
+  if (sc > 0) flow += 1; else if (sc < 0) flow -= 1;
 
-  // 4. 政策/監管：偏漲 vs 偏跌訊號差
-  const policySignals = data.policySignals || [];
-  const policyBull = policySignals.filter(s => s.shortTermBias === '偏漲').length;
-  const policyBear = policySignals.filter(s => s.shortTermBias === '偏跌').length;
-  const policyDiff = policyBull - policyBear;
-  const policy = policyDiff >= 2 ? 2 : policyDiff === 1 ? 1 :
-                 policyDiff <= -2 ? -2 : policyDiff === -1 ? -1 : 0;
+  // 5. 槓桿大戶風險：清算量越高風險越高（負分）
+  const liq = Number(data.cryptoSignalMetrics7d?.liquidationTotalUsd ?? 0);
+  const leverage = liq > 1000e6 ? -3 : liq > 500e6 ? -2 : liq > 200e6 ? -1 : liq > 80e6 ? 0 : 1;
 
-  // 5. 外部風險：偏空訊號越多分越低
+  // 6. 巨鯨走向：bull vs bear count
+  const whale = data.whaleTrend || {};
+  const whaleDiff = Number(whale.bull ?? 0) - Number(whale.bear ?? 0);
+  const whaleScore = diff2score(whaleDiff);
+
+  // 7. 政策監管：policySignals 偏漲 vs 偏跌
+  const pol = data.policySignals || [];
+  const polDiff = pol.filter(s => s.shortTermBias === '偏漲').length -
+                  pol.filter(s => s.shortTermBias === '偏跌').length;
+  const policy = diff2score(polDiff);
+
+  // 8. 外部風險：globalRiskSignals 偏漲 vs 偏跌
   const risks = data.globalRiskSignals || [];
-  const riskBull = risks.filter(s => s.shortTermBias === '偏漲').length;
-  const riskBear = risks.filter(s => s.shortTermBias === '偏跌').length;
-  const riskDiff = riskBull - riskBear;
-  const risk = riskDiff >= 2 ? 2 : riskDiff === 1 ? 1 :
-               riskDiff <= -3 ? -3 : riskDiff === -2 ? -2 : riskDiff === -1 ? -1 : 0;
+  const riskDiff = risks.filter(s => s.shortTermBias === '偏漲').length -
+                   risks.filter(s => s.shortTermBias === '偏跌').length;
+  const risk = clamp(riskDiff >= 2 ? 2 : riskDiff === 1 ? 1 :
+               riskDiff <= -3 ? -3 : riskDiff === -2 ? -2 : riskDiff === -1 ? -1 : 0);
+
+  // 9. 以太坊預測市場（Polymarket）
+  let polyScore = 0;
+  if (polymarketMarketsCache?.length > 0) {
+    let bull = 0, bear = 0;
+    for (const m of polymarketMarketsCache) {
+      const yes = m.outcomes?.find(o => o.label?.toLowerCase() === 'yes');
+      const yp = yes?.probability ?? 50;
+      const isDown = /dip|drop|fall|below/i.test(m.question || '');
+      if (isDown) {
+        if (yp > 65) bear += 2; else if (yp > 55) bear += 1;
+        else if (yp < 35) bull += 1;
+      } else {
+        if (yp > 65) bull += 2; else if (yp > 55) bull += 1;
+        else if (yp < 35) bear += 1;
+      }
+    }
+    polyScore = clamp(diff2score(bull - bear, 3));
+  }
 
   return {
-    macro:     clamp(macro),
-    sentiment: clamp(sentiment),
-    liquidity: clamp(liquidity),
-    policy:    clamp(policy),
-    risk:      clamp(risk),
+    trend:      clamp(trend),
+    sentiment:  clamp(sentiment),
+    macro:      clamp(macro),
+    flow:       clamp(flow),
+    leverage:   clamp(leverage),
+    whale:      clamp(whaleScore),
+    policy:     clamp(policy),
+    risk:       clamp(risk),
+    polymarket: clamp(polyScore),
   };
 }
 
 function renderGate(data) {
   const scores = computeGateScores(data);
-  const dims   = ['宏觀環境', '市場情緒', '流動性', '政策監管', '外部風險'];
-  const values = [scores.macro, scores.sentiment, scores.liquidity, scores.policy, scores.risk];
+  const dims   = ['市場趨勢總覽', '市場情緒', '宏觀變數', '資金流向', '槓桿大戶風險', '巨鯨走向', '政策監管', '外部風險', 'ETH預測市場'];
+  const values = [scores.trend, scores.sentiment, scores.macro, scores.flow, scores.leverage, scores.whale, scores.policy, scores.risk, scores.polymarket];
   const avg    = values.reduce((a, b) => a + b, 0) / values.length;
 
   let gateLabel, gateColor, gateEmoji;
@@ -1339,7 +1361,9 @@ async function initPolymarket() {
     const resp = await fetch("./data/polymarket_eth.json");
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
-    renderPolymarket(data.markets || []);
+    polymarketMarketsCache = data.markets || [];
+    renderPolymarket(polymarketMarketsCache);
+    if (dashboardData) renderGate(dashboardData); // 更新 Gate 的 ETH預測市場分數
   } catch {
     renderPolymarket([]);
   }
