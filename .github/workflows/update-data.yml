@@ -1,9 +1,7 @@
 name: Update Dashboard Data
 
 on:
-  schedule:
-    - cron: "0 * * * *"   # 每小時整點自動執行
-  workflow_dispatch:        # 支援手動從 GitHub 介面觸發
+  workflow_dispatch:        # 僅支援手動從 GitHub 介面觸發（資料更新已改由本機 keep-alive.mjs 負責）
 
 permissions:
   contents: read
