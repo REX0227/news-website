@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-02-23T22:10:11.775Z",
+  "generatedAt": "2026-03-23T02:38:42.622Z",
   "sourcesFile": "data/sources.json",
   "totals": {
     "total": 65,
@@ -14,6 +14,43 @@
     "目前策略：requiresApi 缺 token → SKIP；optional 的抓取/解析失敗 → SKIP；required 才會 FAIL 並導致 exit code=1。"
   ],
   "results": [
+    {
+      "id": "crypto_coingecko_global",
+      "name": "CoinGecko Global（總市值/成交量/主導率；不含幣價）",
+      "category": "crypto_market_structure",
+      "url": "https://api.coingecko.com/api/v3/global",
+      "format": "json",
+      "required": true,
+      "region": "GLOBAL",
+      "access": "public",
+      "requiresApi": false,
+      "stability": "high",
+      "tags": [
+        "total_mcap",
+        "total_volume",
+        "dominance"
+      ],
+      "status": "PASS",
+      "reason": null
+    },
+    {
+      "id": "macro_us_fed_fomc_calendar_html",
+      "name": "Federal Reserve — FOMC Calendars（HTML）",
+      "category": "macro_calendar_us",
+      "url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+      "format": "html",
+      "required": true,
+      "region": "US",
+      "access": "public",
+      "requiresApi": false,
+      "stability": "high",
+      "tags": [
+        "calendar",
+        "fomc"
+      ],
+      "status": "PASS",
+      "reason": null
+    },
     {
       "id": "macro_us_bls_ics",
       "name": "BLS News Release Calendar（ICS；含 CPI/NFP/PPI）",
@@ -30,6 +67,25 @@
         "cpi",
         "nfp",
         "ppi"
+      ],
+      "status": "PASS",
+      "reason": null
+    },
+    {
+      "id": "macro_jp_boj_stats_release_schedule_xlsx",
+      "name": "BOJ — Schedule for Releases of Statistical Data（XLSX）",
+      "category": "macro_calendar_jp",
+      "url": "https://www.boj.or.jp/en/statistics/outline/tkohyos.xlsx",
+      "format": "xlsx",
+      "required": false,
+      "region": "JP",
+      "access": "public",
+      "requiresApi": false,
+      "stability": "high",
+      "tags": [
+        "calendar",
+        "boj",
+        "statistics"
       ],
       "status": "PASS",
       "reason": null
@@ -70,38 +126,19 @@
       "reason": null
     },
     {
-      "id": "macro_jp_boj_stats_release_schedule_xlsx",
-      "name": "BOJ — Schedule for Releases of Statistical Data（XLSX）",
-      "category": "macro_calendar_jp",
-      "url": "https://www.boj.or.jp/en/statistics/outline/tkohyos.xlsx",
-      "format": "xlsx",
-      "required": false,
-      "region": "JP",
-      "access": "public",
-      "requiresApi": false,
-      "stability": "high",
-      "tags": [
-        "calendar",
-        "boj",
-        "statistics"
-      ],
-      "status": "PASS",
-      "reason": null
-    },
-    {
-      "id": "macro_us_fed_fomc_calendar_html",
-      "name": "Federal Reserve — FOMC Calendars（HTML）",
-      "category": "macro_calendar_us",
-      "url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
-      "format": "html",
+      "id": "policy_us_whitehouse_news_rss",
+      "name": "White House — News（RSS）",
+      "category": "policy_us",
+      "url": "https://www.whitehouse.gov/news/feed/",
+      "format": "rss",
       "required": true,
       "region": "US",
       "access": "public",
       "requiresApi": false,
       "stability": "high",
       "tags": [
-        "calendar",
-        "fomc"
+        "whitehouse",
+        "policy"
       ],
       "status": "PASS",
       "reason": null
@@ -125,10 +162,10 @@
       "reason": null
     },
     {
-      "id": "policy_us_whitehouse_news_rss",
-      "name": "White House — News（RSS）",
+      "id": "policy_us_fed_press_rss",
+      "name": "Federal Reserve — Press Releases（RSS）",
       "category": "policy_us",
-      "url": "https://www.whitehouse.gov/news/feed/",
+      "url": "https://www.federalreserve.gov/feeds/press_all.xml",
       "format": "rss",
       "required": true,
       "region": "US",
@@ -136,8 +173,44 @@
       "requiresApi": false,
       "stability": "high",
       "tags": [
-        "whitehouse",
-        "policy"
+        "fed",
+        "press"
+      ],
+      "status": "PASS",
+      "reason": null
+    },
+    {
+      "id": "policy_us_cftc_press_rss",
+      "name": "CFTC — Press Releases（RSS）",
+      "category": "policy_us",
+      "url": "https://www.cftc.gov/RSS/RSSGP/rssgp.xml",
+      "format": "rss",
+      "required": true,
+      "region": "US",
+      "access": "public",
+      "requiresApi": false,
+      "stability": "high",
+      "tags": [
+        "cftc",
+        "regulation"
+      ],
+      "status": "PASS",
+      "reason": null
+    },
+    {
+      "id": "policy_us_sec_press_rss",
+      "name": "SEC — Press Releases（RSS）",
+      "category": "policy_us",
+      "url": "https://www.sec.gov/news/pressreleases.rss",
+      "format": "rss",
+      "required": true,
+      "region": "US",
+      "access": "public",
+      "requiresApi": false,
+      "stability": "high",
+      "tags": [
+        "sec",
+        "regulation"
       ],
       "status": "PASS",
       "reason": null
@@ -162,19 +235,20 @@
       "reason": null
     },
     {
-      "id": "policy_us_fed_press_rss",
-      "name": "Federal Reserve — Press Releases（RSS）",
-      "category": "policy_us",
-      "url": "https://www.federalreserve.gov/feeds/press_all.xml",
+      "id": "policy_global_bis_press_rss_optional",
+      "name": "BIS — Press Releases（RSS；若端點變動則以 HTML fallback）",
+      "category": "policy_global",
+      "url": "https://www.bis.org/doclist/all_pressrels.rss",
       "format": "rss",
-      "required": true,
-      "region": "US",
+      "required": false,
+      "region": "GLOBAL",
       "access": "public",
       "requiresApi": false,
       "stability": "high",
       "tags": [
-        "fed",
-        "press"
+        "bis",
+        "policy",
+        "banking"
       ],
       "status": "PASS",
       "reason": null
@@ -198,59 +272,23 @@
       "reason": "http 503"
     },
     {
-      "id": "policy_us_sec_press_rss",
-      "name": "SEC — Press Releases（RSS）",
-      "category": "policy_us",
-      "url": "https://www.sec.gov/news/pressreleases.rss",
-      "format": "rss",
-      "required": true,
-      "region": "US",
-      "access": "public",
-      "requiresApi": false,
-      "stability": "high",
-      "tags": [
-        "sec",
-        "regulation"
-      ],
-      "status": "PASS",
-      "reason": null
-    },
-    {
-      "id": "policy_us_cftc_press_rss",
-      "name": "CFTC — Press Releases（RSS）",
-      "category": "policy_us",
-      "url": "https://www.cftc.gov/RSS/RSSGP/rssgp.xml",
-      "format": "rss",
-      "required": true,
-      "region": "US",
-      "access": "public",
-      "requiresApi": false,
-      "stability": "high",
-      "tags": [
-        "cftc",
-        "regulation"
-      ],
-      "status": "PASS",
-      "reason": null
-    },
-    {
-      "id": "policy_global_bis_press_rss_optional",
-      "name": "BIS — Press Releases（RSS；若端點變動則以 HTML fallback）",
+      "id": "policy_global_fatf_publications_html",
+      "name": "FATF — Publications（HTML）",
       "category": "policy_global",
-      "url": "https://www.bis.org/doclist/all_pressrels.rss",
-      "format": "rss",
+      "url": "https://www.fatf-gafi.org/en/publications.html",
+      "format": "html",
       "required": false,
       "region": "GLOBAL",
       "access": "public",
       "requiresApi": false,
-      "stability": "high",
+      "stability": "medium",
       "tags": [
-        "bis",
-        "policy",
-        "banking"
+        "fatf",
+        "aml",
+        "policy"
       ],
-      "status": "PASS",
-      "reason": null
+      "status": "SKIP",
+      "reason": "http 403"
     },
     {
       "id": "policy_global_imf_whats_new_archive_html",
@@ -270,44 +308,6 @@
       ],
       "status": "PASS",
       "reason": null
-    },
-    {
-      "id": "crypto_coingecko_global",
-      "name": "CoinGecko Global（總市值/成交量/主導率；不含幣價）",
-      "category": "crypto_market_structure",
-      "url": "https://api.coingecko.com/api/v3/global",
-      "format": "json",
-      "required": true,
-      "region": "GLOBAL",
-      "access": "public",
-      "requiresApi": false,
-      "stability": "high",
-      "tags": [
-        "total_mcap",
-        "total_volume",
-        "dominance"
-      ],
-      "status": "PASS",
-      "reason": null
-    },
-    {
-      "id": "policy_global_fatf_publications_html",
-      "name": "FATF — Publications（HTML）",
-      "category": "policy_global",
-      "url": "https://www.fatf-gafi.org/en/publications.html",
-      "format": "html",
-      "required": false,
-      "region": "GLOBAL",
-      "access": "public",
-      "requiresApi": false,
-      "stability": "medium",
-      "tags": [
-        "fatf",
-        "aml",
-        "policy"
-      ],
-      "status": "SKIP",
-      "reason": "http 403"
     },
     {
       "id": "policy_global_bis_press_html",
@@ -348,20 +348,55 @@
       "reason": null
     },
     {
-      "id": "policy_global_fsb_press_html",
-      "name": "FSB — Press Releases（HTML）",
-      "category": "policy_global",
-      "url": "https://www.fsb.org/press/",
-      "format": "html",
-      "required": false,
-      "region": "GLOBAL",
+      "id": "macro_us_fred_cpi",
+      "name": "FRED CSV — CPIAUCSL（CPI 指數）",
+      "category": "macro_data_us",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=CPIAUCSL",
+      "format": "csv",
+      "required": true,
+      "region": "US",
       "access": "public",
       "requiresApi": false,
       "stability": "high",
       "tags": [
-        "fsb",
-        "policy",
-        "financial_stability"
+        "cpi",
+        "inflation"
+      ],
+      "status": "PASS",
+      "reason": null
+    },
+    {
+      "id": "macro_us_fred_core_cpi",
+      "name": "FRED CSV — CPILFESL（Core CPI）",
+      "category": "macro_data_us",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=CPILFESL",
+      "format": "csv",
+      "required": false,
+      "region": "US",
+      "access": "public",
+      "requiresApi": false,
+      "stability": "high",
+      "tags": [
+        "core_cpi",
+        "inflation"
+      ],
+      "status": "PASS",
+      "reason": null
+    },
+    {
+      "id": "macro_us_fred_ppi",
+      "name": "FRED CSV — PPIACO（PPI 指數）",
+      "category": "macro_data_us",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=PPIACO",
+      "format": "csv",
+      "required": true,
+      "region": "US",
+      "access": "public",
+      "requiresApi": false,
+      "stability": "high",
+      "tags": [
+        "ppi",
+        "inflation"
       ],
       "status": "PASS",
       "reason": null
@@ -386,37 +421,20 @@
       "reason": null
     },
     {
-      "id": "macro_us_fred_core_cpi",
-      "name": "FRED CSV — CPILFESL（Core CPI）",
-      "category": "macro_data_us",
-      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=CPILFESL",
-      "format": "csv",
+      "id": "policy_global_fsb_press_html",
+      "name": "FSB — Press Releases（HTML）",
+      "category": "policy_global",
+      "url": "https://www.fsb.org/press/",
+      "format": "html",
       "required": false,
-      "region": "US",
+      "region": "GLOBAL",
       "access": "public",
       "requiresApi": false,
       "stability": "high",
       "tags": [
-        "core_cpi",
-        "inflation"
-      ],
-      "status": "PASS",
-      "reason": null
-    },
-    {
-      "id": "macro_us_fred_cpi",
-      "name": "FRED CSV — CPIAUCSL（CPI 指數）",
-      "category": "macro_data_us",
-      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=CPIAUCSL",
-      "format": "csv",
-      "required": true,
-      "region": "US",
-      "access": "public",
-      "requiresApi": false,
-      "stability": "high",
-      "tags": [
-        "cpi",
-        "inflation"
+        "fsb",
+        "policy",
+        "financial_stability"
       ],
       "status": "PASS",
       "reason": null
@@ -458,10 +476,10 @@
       "reason": null
     },
     {
-      "id": "macro_us_fred_core_pcepi",
-      "name": "FRED CSV — PCEPILFE（Core PCE Price Index）",
+      "id": "macro_us_fred_gdp_real",
+      "name": "FRED CSV — GDPC1（Real GDP）",
       "category": "macro_data_us",
-      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=PCEPILFE",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=GDPC1",
       "format": "csv",
       "required": false,
       "region": "US",
@@ -469,27 +487,7 @@
       "requiresApi": false,
       "stability": "high",
       "tags": [
-        "pce",
-        "core_pce",
-        "inflation"
-      ],
-      "status": "PASS",
-      "reason": null
-    },
-    {
-      "id": "macro_us_fred_ppi",
-      "name": "FRED CSV — PPIACO（PPI 指數）",
-      "category": "macro_data_us",
-      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=PPIACO",
-      "format": "csv",
-      "required": true,
-      "region": "US",
-      "access": "public",
-      "requiresApi": false,
-      "stability": "high",
-      "tags": [
-        "ppi",
-        "inflation"
+        "gdp"
       ],
       "status": "PASS",
       "reason": null
@@ -532,10 +530,10 @@
       "reason": "requiresApi: missing env token (ESTAT_APP_ID)"
     },
     {
-      "id": "macro_us_fred_gdp_real",
-      "name": "FRED CSV — GDPC1（Real GDP）",
+      "id": "macro_us_fred_core_pcepi",
+      "name": "FRED CSV — PCEPILFE（Core PCE Price Index）",
       "category": "macro_data_us",
-      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=GDPC1",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=PCEPILFE",
       "format": "csv",
       "required": false,
       "region": "US",
@@ -543,7 +541,9 @@
       "requiresApi": false,
       "stability": "high",
       "tags": [
-        "gdp"
+        "pce",
+        "core_pce",
+        "inflation"
       ],
       "status": "PASS",
       "reason": null
@@ -561,25 +561,6 @@
       "stability": "high",
       "tags": [
         "retail_sales"
-      ],
-      "status": "PASS",
-      "reason": null
-    },
-    {
-      "id": "macro_jp_cabinet_office_esri_html",
-      "name": "Bank of Japan — Statistics（HTML；日本宏觀/金融統計入口）",
-      "category": "macro_data_jp",
-      "url": "https://www.boj.or.jp/en/statistics/",
-      "format": "html",
-      "required": false,
-      "region": "JP",
-      "access": "public",
-      "requiresApi": false,
-      "stability": "high",
-      "tags": [
-        "jp",
-        "boj",
-        "macro"
       ],
       "status": "PASS",
       "reason": null
@@ -618,6 +599,25 @@
         "jp",
         "boj",
         "rss"
+      ],
+      "status": "PASS",
+      "reason": null
+    },
+    {
+      "id": "macro_jp_cabinet_office_esri_html",
+      "name": "Bank of Japan — Statistics（HTML；日本宏觀/金融統計入口）",
+      "category": "macro_data_jp",
+      "url": "https://www.boj.or.jp/en/statistics/",
+      "format": "html",
+      "required": false,
+      "region": "JP",
+      "access": "public",
+      "requiresApi": false,
+      "stability": "high",
+      "tags": [
+        "jp",
+        "boj",
+        "macro"
       ],
       "status": "PASS",
       "reason": null
@@ -677,38 +677,20 @@
       "reason": null
     },
     {
-      "id": "rates_us_fred_dgs3mo",
-      "name": "FRED CSV — DGS3MO（3M）",
-      "category": "rates_yields_us",
-      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS3MO",
-      "format": "csv",
-      "required": true,
-      "region": "US",
-      "access": "public",
-      "requiresApi": false,
-      "stability": "high",
-      "tags": [
-        "3m",
-        "yield"
-      ],
-      "status": "PASS",
-      "reason": null
-    },
-    {
-      "id": "geo_conflict_ofac_sdn_csv",
-      "name": "US Treasury OFAC — SDN List Export（XML）",
-      "category": "geopolitics_conflict",
-      "url": "https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/SDN.XML",
-      "format": "xml",
+      "id": "macro_jp_estat_portal_html",
+      "name": "e-Stat Portal（HTML；日本官方統計入口）",
+      "category": "macro_data_jp",
+      "url": "https://www.e-stat.go.jp/en",
+      "format": "html",
       "required": false,
-      "region": "US",
+      "region": "JP",
       "access": "public",
       "requiresApi": false,
       "stability": "high",
       "tags": [
-        "ofac",
-        "sanctions",
-        "geopolitics"
+        "jp",
+        "estat",
+        "portal"
       ],
       "status": "PASS",
       "reason": null
@@ -750,19 +732,19 @@
       "reason": null
     },
     {
-      "id": "liquidity_defillama_chains_optional",
-      "name": "DeFiLlama Chains（JSON；fallback aggregate TVL）",
-      "category": "liquidity_flows",
-      "url": "https://api.llama.fi/v2/chains",
-      "format": "json",
-      "required": false,
-      "region": "GLOBAL",
+      "id": "rates_us_fred_dgs3mo",
+      "name": "FRED CSV — DGS3MO（3M）",
+      "category": "rates_yields_us",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS3MO",
+      "format": "csv",
+      "required": true,
+      "region": "US",
       "access": "public",
       "requiresApi": false,
       "stability": "high",
       "tags": [
-        "defi",
-        "chains"
+        "3m",
+        "yield"
       ],
       "status": "PASS",
       "reason": null
@@ -820,25 +802,6 @@
       "reason": null
     },
     {
-      "id": "macro_jp_estat_portal_html",
-      "name": "e-Stat Portal（HTML；日本官方統計入口）",
-      "category": "macro_data_jp",
-      "url": "https://www.e-stat.go.jp/en",
-      "format": "html",
-      "required": false,
-      "region": "JP",
-      "access": "public",
-      "requiresApi": false,
-      "stability": "high",
-      "tags": [
-        "jp",
-        "estat",
-        "portal"
-      ],
-      "status": "PASS",
-      "reason": null
-    },
-    {
       "id": "news_crypto_google_general",
       "name": "Google News RSS Search（crypto + macro 關鍵字）",
       "category": "news_crypto",
@@ -852,6 +815,24 @@
       "tags": [
         "google_news",
         "keyword"
+      ],
+      "status": "PASS",
+      "reason": null
+    },
+    {
+      "id": "liquidity_defillama_chains_optional",
+      "name": "DeFiLlama Chains（JSON；fallback aggregate TVL）",
+      "category": "liquidity_flows",
+      "url": "https://api.llama.fi/v2/chains",
+      "format": "json",
+      "required": false,
+      "region": "GLOBAL",
+      "access": "public",
+      "requiresApi": false,
+      "stability": "high",
+      "tags": [
+        "defi",
+        "chains"
       ],
       "status": "PASS",
       "reason": null
@@ -875,23 +856,6 @@
       "reason": null
     },
     {
-      "id": "rates_us_atlanta_fed_mpt_xlsx",
-      "name": "Atlanta Fed — Market Probability Tracker（XLSX）",
-      "category": "rates_yields_us",
-      "url": "https://www.atlantafed.org/-/media/Project/Atlanta/FRBA/Documents/cenfis/market-probability-tracker/mpt_histdata.xlsx",
-      "format": "xlsx",
-      "required": true,
-      "region": "US",
-      "access": "public",
-      "requiresApi": false,
-      "stability": "medium",
-      "tags": [
-        "rate_cut_probability"
-      ],
-      "status": "PASS",
-      "reason": null
-    },
-    {
       "id": "news_crypto_google_fomc_cut",
       "name": "Google News RSS Search（fomc rate cut probability + crypto）",
       "category": "news_crypto",
@@ -910,10 +874,27 @@
       "reason": null
     },
     {
-      "id": "news_macro_google_fed_boj_policy",
-      "name": "Google News RSS Search（fed/boj policy crypto）",
-      "category": "news_macro",
-      "url": "https://news.google.com/rss/search?q=(fed%20rate%20policy%20crypto)%20OR%20(boj%20policy%20crypto)&hl=en-US&gl=US&ceid=US:en",
+      "id": "rates_us_atlanta_fed_mpt_xlsx",
+      "name": "Atlanta Fed — Market Probability Tracker（XLSX）",
+      "category": "rates_yields_us",
+      "url": "https://www.atlantafed.org/-/media/Project/Atlanta/FRBA/Documents/cenfis/market-probability-tracker/mpt_histdata.xlsx",
+      "format": "xlsx",
+      "required": true,
+      "region": "US",
+      "access": "public",
+      "requiresApi": false,
+      "stability": "medium",
+      "tags": [
+        "rate_cut_probability"
+      ],
+      "status": "PASS",
+      "reason": null
+    },
+    {
+      "id": "news_geo_google_trump_tariff_policy",
+      "name": "Google News RSS Search（trump tariff policy / geopolitical war + crypto）",
+      "category": "news_geopolitics",
+      "url": "https://news.google.com/rss/search?q=(trump%20tariff%20policy%20crypto)%20OR%20(geopolitical%20war%20crypto)&hl=en-US&gl=US&ceid=US:en",
       "format": "rss",
       "required": true,
       "region": "GLOBAL",
@@ -922,8 +903,26 @@
       "stability": "low",
       "tags": [
         "google_news",
-        "fed",
-        "boj"
+        "war",
+        "sanctions"
+      ],
+      "status": "PASS",
+      "reason": null
+    },
+    {
+      "id": "news_macro_google_tariff_market",
+      "name": "Google News RSS Search（trump tariff 10%/15% + market/crypto）",
+      "category": "news_macro",
+      "url": "https://news.google.com/rss/search?q=(trump%20tariff%2010%25%20OR%2015%25)%20(market%20OR%20crypto)&hl=en-US&gl=US&ceid=US:en",
+      "format": "rss",
+      "required": true,
+      "region": "GLOBAL",
+      "access": "public",
+      "requiresApi": false,
+      "stability": "low",
+      "tags": [
+        "google_news",
+        "tariff"
       ],
       "status": "PASS",
       "reason": null
@@ -948,29 +947,28 @@
       "reason": "html content check failed (ct=text/html; charset=UTF-8; sample=)"
     },
     {
-      "id": "news_geo_google_middle_east_oil",
-      "name": "Google News RSS Search（middle east war oil + crypto/risk asset）",
-      "category": "news_geopolitics",
-      "url": "https://news.google.com/rss/search?q=(middle%20east%20war%20oil%20price)%20(crypto%20OR%20risk%20asset)&hl=en-US&gl=US&ceid=US:en",
-      "format": "rss",
-      "required": true,
-      "region": "GLOBAL",
-      "access": "public",
+      "id": "exch_coinbase_blog_html",
+      "name": "Coinbase — Blog（HTML）",
+      "category": "exchanges_announcements",
+      "url": "https://www.coinbase.com/blog",
+      "format": "html",
+      "required": false,
+      "region": "US",
+      "access": "html_scrape",
       "requiresApi": false,
       "stability": "low",
       "tags": [
-        "google_news",
-        "war",
-        "oil"
+        "exchange",
+        "blog"
       ],
-      "status": "PASS",
-      "reason": null
+      "status": "SKIP",
+      "reason": "http 403"
     },
     {
-      "id": "news_macro_google_tariff_market",
-      "name": "Google News RSS Search（trump tariff 10%/15% + market/crypto）",
+      "id": "news_macro_google_fed_boj_policy",
+      "name": "Google News RSS Search（fed/boj policy crypto）",
       "category": "news_macro",
-      "url": "https://news.google.com/rss/search?q=(trump%20tariff%2010%25%20OR%2015%25)%20(market%20OR%20crypto)&hl=en-US&gl=US&ceid=US:en",
+      "url": "https://news.google.com/rss/search?q=(fed%20rate%20policy%20crypto)%20OR%20(boj%20policy%20crypto)&hl=en-US&gl=US&ceid=US:en",
       "format": "rss",
       "required": true,
       "region": "GLOBAL",
@@ -979,7 +977,8 @@
       "stability": "low",
       "tags": [
         "google_news",
-        "tariff"
+        "fed",
+        "boj"
       ],
       "status": "PASS",
       "reason": null
@@ -1041,38 +1040,20 @@
       "reason": "requiresApi: missing env token (X_BEARER_TOKEN)"
     },
     {
-      "id": "exch_coinbase_blog_html",
-      "name": "Coinbase — Blog（HTML）",
-      "category": "exchanges_announcements",
-      "url": "https://www.coinbase.com/blog",
-      "format": "html",
-      "required": false,
-      "region": "US",
-      "access": "html_scrape",
-      "requiresApi": false,
-      "stability": "low",
-      "tags": [
-        "exchange",
-        "blog"
-      ],
-      "status": "SKIP",
-      "reason": "http 403"
-    },
-    {
-      "id": "news_geo_google_trump_tariff_policy",
-      "name": "Google News RSS Search（trump tariff policy / geopolitical war + crypto）",
-      "category": "news_geopolitics",
-      "url": "https://news.google.com/rss/search?q=(trump%20tariff%20policy%20crypto)%20OR%20(geopolitical%20war%20crypto)&hl=en-US&gl=US&ceid=US:en",
+      "id": "policy_jp_boj_whatsnew_rss",
+      "name": "BOJ — What's New（RSS）",
+      "category": "policy_jp",
+      "url": "https://www.boj.or.jp/en/rss/whatsnew.xml",
       "format": "rss",
-      "required": true,
-      "region": "GLOBAL",
+      "required": false,
+      "region": "JP",
       "access": "public",
       "requiresApi": false,
-      "stability": "low",
+      "stability": "high",
       "tags": [
-        "google_news",
-        "war",
-        "sanctions"
+        "boj",
+        "policy",
+        "announcements"
       ],
       "status": "PASS",
       "reason": null
@@ -1096,25 +1077,6 @@
       "reason": "http 404"
     },
     {
-      "id": "policy_jp_boj_whatsnew_rss",
-      "name": "BOJ — What's New（RSS）",
-      "category": "policy_jp",
-      "url": "https://www.boj.or.jp/en/rss/whatsnew.xml",
-      "format": "rss",
-      "required": false,
-      "region": "JP",
-      "access": "public",
-      "requiresApi": false,
-      "stability": "high",
-      "tags": [
-        "boj",
-        "policy",
-        "announcements"
-      ],
-      "status": "PASS",
-      "reason": null
-    },
-    {
       "id": "policy_jp_fsa_news_html",
       "name": "Japan FSA — News List（RSS）",
       "category": "policy_jp",
@@ -1129,6 +1091,42 @@
         "jp",
         "fsa",
         "regulation"
+      ],
+      "status": "PASS",
+      "reason": null
+    },
+    {
+      "id": "tradfi_us_fred_vix",
+      "name": "FRED CSV — VIXCLS（VIX；風險偏好代理）",
+      "category": "tradfi_equities_risk",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=VIXCLS",
+      "format": "csv",
+      "required": false,
+      "region": "US",
+      "access": "public",
+      "requiresApi": false,
+      "stability": "high",
+      "tags": [
+        "vix",
+        "risk_off"
+      ],
+      "status": "PASS",
+      "reason": null
+    },
+    {
+      "id": "tradfi_us_fred_dxy_proxy",
+      "name": "FRED CSV — DTWEXBGS（美元廣義指數；代理）",
+      "category": "tradfi_equities_risk",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DTWEXBGS",
+      "format": "csv",
+      "required": false,
+      "region": "US",
+      "access": "public",
+      "requiresApi": false,
+      "stability": "high",
+      "tags": [
+        "usd",
+        "dxy_proxy"
       ],
       "status": "PASS",
       "reason": null
@@ -1172,37 +1170,39 @@
       "reason": null
     },
     {
-      "id": "tradfi_us_fred_vix",
-      "name": "FRED CSV — VIXCLS（VIX；風險偏好代理）",
-      "category": "tradfi_equities_risk",
-      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=VIXCLS",
-      "format": "csv",
-      "required": false,
-      "region": "US",
+      "id": "news_geo_google_middle_east_oil",
+      "name": "Google News RSS Search（middle east war oil + crypto/risk asset）",
+      "category": "news_geopolitics",
+      "url": "https://news.google.com/rss/search?q=(middle%20east%20war%20oil%20price)%20(crypto%20OR%20risk%20asset)&hl=en-US&gl=US&ceid=US:en",
+      "format": "rss",
+      "required": true,
+      "region": "GLOBAL",
       "access": "public",
       "requiresApi": false,
-      "stability": "high",
+      "stability": "low",
       "tags": [
-        "vix",
-        "risk_off"
+        "google_news",
+        "war",
+        "oil"
       ],
       "status": "PASS",
       "reason": null
     },
     {
-      "id": "tradfi_us_fred_dxy_proxy",
-      "name": "FRED CSV — DTWEXBGS（美元廣義指數；代理）",
-      "category": "tradfi_equities_risk",
-      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DTWEXBGS",
-      "format": "csv",
+      "id": "geo_conflict_ofac_sdn_csv",
+      "name": "US Treasury OFAC — SDN List Export（XML）",
+      "category": "geopolitics_conflict",
+      "url": "https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/SDN.XML",
+      "format": "xml",
       "required": false,
       "region": "US",
       "access": "public",
       "requiresApi": false,
       "stability": "high",
       "tags": [
-        "usd",
-        "dxy_proxy"
+        "ofac",
+        "sanctions",
+        "geopolitics"
       ],
       "status": "PASS",
       "reason": null
