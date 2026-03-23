@@ -1199,6 +1199,18 @@ async function bootstrap() {
   }
 }
 
+async function autoRefresh() {
+  try {
+    const data = await loadData();
+    dashboardData = data;
+    renderAll(data);
+  } catch (_) {
+    // 靜默失敗，等下次輪詢
+  }
+}
+
+const POLL_INTERVAL = 5 * 60 * 1000; // 5 分鐘
+
 function translatePolymarketQuestion(q) {
   const MONTHS = { January:"1月", February:"2月", March:"3月", April:"4月", May:"5月", June:"6月",
     July:"7月", August:"8月", September:"9月", October:"10月", November:"11月", December:"12月" };
@@ -1371,3 +1383,4 @@ async function initPolymarket() {
 
 bootstrap();
 initPolymarket();
+setInterval(autoRefresh, POLL_INTERVAL);

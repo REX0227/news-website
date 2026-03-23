@@ -966,4 +966,15 @@ async function bootstrap() {
   }
 }
 
+async function autoRefresh() {
+  try {
+    const data = await loadData();
+    dashboardData = data;
+    renderAll(data);
+  } catch (_) {
+    // 靜默失敗，等下次輪詢
+  }
+}
+
 bootstrap();
+setInterval(autoRefresh, 5 * 60 * 1000);
