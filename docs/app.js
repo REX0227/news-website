@@ -977,4 +977,4 @@ async function autoRefresh() {
 }
 
 bootstrap();
-setInterval(autoRefresh, 5 * 60 * 1000);
+setInterval(autoRefresh, 1 * 60 * 1000);

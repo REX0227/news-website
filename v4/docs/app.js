@@ -28,7 +28,7 @@ function unlock() {
     localStorage.setItem(SESSION_KEY, '1');
     overlay.style.display = 'none';
     loadData();
-    setInterval(loadData, 5 * 60 * 1000);
+    setInterval(loadData, 1 * 60 * 1000);
   } else {
     pwError.textContent = '密碼錯誤，請重新輸入。';
     pwInput.value = '';
@@ -42,7 +42,7 @@ pwInput.addEventListener('keydown', e => { if (e.key === 'Enter') unlock(); });
 if (checkAuth()) {
   overlay.style.display = 'none';
   loadData();
-  setInterval(loadData, 5 * 60 * 1000);
+  setInterval(loadData, 1 * 60 * 1000);
 }
 
 // ── Category labels ──────────────────────────────────────────────────────────
