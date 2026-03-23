@@ -50,13 +50,14 @@ jobs:
           UPSTASH_REDIS_REST_URL:         ${{ secrets.UPSTASH_REDIS_REST_URL }}
           UPSTASH_REDIS_REST_TOKEN_WRITE: ${{ secrets.UPSTASH_REDIS_REST_TOKEN_WRITE }}
 
-      - name: Update V2 source availability report
-        run: node v2/scripts/test-sources.mjs --report v2/data/fetch-report.json
-        continue-on-error: true   # 測試失敗不中斷整個部署流程
-
       - name: Run V4 data collection
         run: node v4/scripts/collect-all.mjs
         continue-on-error: true   # 收集失敗不中斷整個部署流程
+        # 必須在 V2 test 之前執行，確保讀到提交版的 fetch-report.json（穩定 55 PASS）
+
+      - name: Update V2 source availability report
+        run: node v2/scripts/test-sources.mjs --report v2/data/fetch-report.json
+        continue-on-error: true   # 測試失敗不中斷整個部署流程
 
       - name: Build site (_site = V1 + V2 + V4)
         run: |
