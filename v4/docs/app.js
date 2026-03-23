@@ -7,7 +7,7 @@
 
 // ── Password protection ──────────────────────────────────────────────────────
 const PASSWORD = 'TRAXXAS';
-const SESSION_KEY = 'cpv4_auth';
+const SESSION_KEY = 'cp_auth';
 
 const overlay = document.getElementById('pw-overlay');
 const pwInput = document.getElementById('pw-input');
@@ -15,12 +15,12 @@ const pwBtn = document.getElementById('pw-btn');
 const pwError = document.getElementById('pw-error');
 
 function checkAuth() {
-  return sessionStorage.getItem(SESSION_KEY) === '1';
+  return localStorage.getItem(SESSION_KEY) === '1';
 }
 
 function unlock() {
   if (pwInput.value.trim().toUpperCase() === PASSWORD) {
-    sessionStorage.setItem(SESSION_KEY, '1');
+    localStorage.setItem(SESSION_KEY, '1');
     overlay.style.display = 'none';
     loadData();
   } else {

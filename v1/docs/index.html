@@ -59,10 +59,10 @@
         const input   = document.getElementById("auth-input");
         const btn     = document.getElementById("auth-btn");
         const errMsg  = document.getElementById("auth-error");
-        if (sessionStorage.getItem("cp_auth") === "1") { overlay.classList.add("hidden"); return; }
+        if (localStorage.getItem("cp_auth") === "1") { overlay.classList.add("hidden"); return; }
         function tryLogin() {
           if (input.value === SITE_PASSWORD) {
-            sessionStorage.setItem("cp_auth", "1");
+            localStorage.setItem("cp_auth", "1");
             overlay.classList.add("hidden");
           } else {
             errMsg.textContent = "密碼錯誤，請再試一次";
