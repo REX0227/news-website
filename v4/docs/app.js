@@ -5,6 +5,11 @@
 
 'use strict';
 
+// ── Upstash config ────────────────────────────────────────────────────────────
+const UPSTASH_URL = 'https://guided-spider-19708.upstash.io';
+const UPSTASH_READ_TOKEN = 'Akz8AAIgcDE18SAeYebRfjHOi1t_RtbOFNv2r3NHF0kLYfDIUMnEOw';
+const UPSTASH_V4_KEY = 'cryptopulse:v4:latest';
+
 // ── Password protection ──────────────────────────────────────────────────────
 const PASSWORD = 'TRAXXAS';
 const SESSION_KEY = 'cp_auth';
@@ -359,11 +364,6 @@ function render(latestJson) {
 
   root.innerHTML = html;
 }
-
-// ── Upstash config ────────────────────────────────────────────────────────────
-const UPSTASH_URL = 'https://guided-spider-19708.upstash.io';
-const UPSTASH_READ_TOKEN = 'Akz8AAIgcDE18SAeYebRfjHOi1t_RtbOFNv2r3NHF0kLYfDIUMnEOw';
-const UPSTASH_V4_KEY = 'cryptopulse:v4:latest';
 
 // ── Load data ─────────────────────────────────────────────────────────────────
 
