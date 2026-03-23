@@ -9,7 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const INTERVAL_MS = 5 * 60 * 1000; // 5 分鐘
+const INTERVAL_MS = 2 * 60 * 1000; // 2 分鐘
 
 function timestamp() {
   return new Date().toLocaleString('zh-Hant', { timeZone: 'Asia/Taipei' });
@@ -49,5 +49,5 @@ runUpdate();
 setInterval(runUpdate, INTERVAL_MS);
 
 console.log(`CryptoPulse Keep-Alive Server 已啟動`);
-console.log(`更新頻率：每 ${INTERVAL_MS / 60000} 分鐘（V1 + V4）`);
+console.log(`更新頻率：每 ${INTERVAL_MS / 60000} 分鐘（V1 + V4，前端每 1 分鐘自動拉）`);
 console.log(`按 Ctrl+C 停止\n`);
