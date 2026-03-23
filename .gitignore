@@ -3,6 +3,10 @@ node_modules/
 backend/gecko.db
 backend/gecko.db-shm
 backend/gecko.db-wal
+backend/gecko_v4.db
+backend/gecko_v4.db-shm
+backend/gecko_v4.db-wal
+v4/docs/data/
 .DS_Store
 npm-debug.log*
 docs/data/latest.json

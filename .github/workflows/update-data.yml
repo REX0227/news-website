@@ -26,9 +26,13 @@ jobs:
           cache: "npm"
           cache-dependency-path: v1/package-lock.json
 
-      - name: Install dependencies
+      - name: Install dependencies (V1)
         run: npm ci
         working-directory: v1
+
+      - name: Install dependencies (V4)
+        run: npm install
+        working-directory: v4
 
       - name: Run data update (V1)
         run: node v1/scripts/update-data.mjs
@@ -50,15 +54,20 @@ jobs:
         run: node v2/scripts/test-sources.mjs --report v2/data/fetch-report.json
         continue-on-error: true   # 測試失敗不中斷整個部署流程
 
-      - name: Build site (_site = V1 + V2)
+      - name: Run V4 data collection
+        run: node v4/scripts/collect-all.mjs
+        continue-on-error: true   # 收集失敗不中斷整個部署流程
+
+      - name: Build site (_site = V1 + V2 + V4)
         run: |
-          mkdir -p _site/v2/data _site/v2/scripts
+          mkdir -p _site/v2/data _site/v2/scripts _site/v4/data
           cp -r v1/docs/. _site/
           cp v2/index.html _site/v2/index.html
           cp v2/app.js _site/v2/app.js
           cp v2/data/sources.json _site/v2/data/sources.json
           cp v2/data/kol.json _site/v2/data/kol.json
           cp v2/data/fetch-report.json _site/v2/data/fetch-report.json
+          cp -r v4/docs/. _site/v4/
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
