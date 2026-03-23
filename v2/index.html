@@ -5,8 +5,72 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CryptoPulse V2 — 資料抓取對象清單</title>
     <link rel="stylesheet" href="../styles.css" />
+    <style>
+      #auth-overlay {
+        position: fixed; inset: 0; z-index: 9999;
+        background: #0a0f1e;
+        display: flex; align-items: center; justify-content: center;
+      }
+      #auth-overlay.hidden { display: none; }
+      #auth-box {
+        background: #111827;
+        border: 1px solid #1e40af;
+        border-radius: 12px;
+        padding: 40px 48px;
+        text-align: center;
+        max-width: 360px; width: 90%;
+      }
+      #auth-box h2 { color: #38bdf8; margin: 0 0 6px; font-size: 1.5em; }
+      #auth-box p { color: #94a3b8; margin: 0 0 24px; font-size: 0.95em; }
+      #auth-input {
+        width: 100%; box-sizing: border-box;
+        padding: 10px 14px; border-radius: 8px;
+        border: 1px solid #334155; background: #0f172a;
+        color: #e2e8f0; font-size: 1em; margin-bottom: 12px;
+        outline: none;
+      }
+      #auth-input:focus { border-color: #38bdf8; }
+      #auth-btn {
+        width: 100%; padding: 10px; border-radius: 8px;
+        background: #1e40af; color: #fff;
+        border: none; font-size: 1em; cursor: pointer;
+      }
+      #auth-btn:hover { background: #2563eb; }
+      #auth-error { color: #f87171; font-size: 0.88em; margin-top: 10px; min-height: 1.2em; }
+    </style>
   </head>
   <body>
+    <div id="auth-overlay">
+      <div id="auth-box">
+        <h2>CryptoPulse V2</h2>
+        <p>請輸入存取密碼</p>
+        <input type="password" id="auth-input" placeholder="密碼" autocomplete="current-password" />
+        <button id="auth-btn">進入</button>
+        <p id="auth-error"></p>
+      </div>
+    </div>
+    <script>
+      const SITE_PASSWORD = "TRAXXAS";
+      (function () {
+        const overlay = document.getElementById("auth-overlay");
+        const input   = document.getElementById("auth-input");
+        const btn     = document.getElementById("auth-btn");
+        const errMsg  = document.getElementById("auth-error");
+        if (sessionStorage.getItem("cp_auth") === "1") { overlay.classList.add("hidden"); return; }
+        function tryLogin() {
+          if (input.value === SITE_PASSWORD) {
+            sessionStorage.setItem("cp_auth", "1");
+            overlay.classList.add("hidden");
+          } else {
+            errMsg.textContent = "密碼錯誤，請再試一次";
+            input.value = ""; input.focus();
+          }
+        }
+        btn.addEventListener("click", tryLogin);
+        input.addEventListener("keydown", (e) => { if (e.key === "Enter") tryLogin(); });
+        input.focus();
+      })();
+    </script>
     <main class="container">
       <header class="hero">
         <h1>CryptoPulse V2</h1>
