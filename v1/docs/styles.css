@@ -314,3 +314,66 @@ td.analysis {
 .recent { color: #fbbf24; }
 
 a { color: var(--accent); }
+
+/* ── Gate Score 雷達圖 ───────────────────────────────────────────── */
+#gate-section h2 { margin-bottom: 16px; }
+
+.gate-layout {
+  display: flex;
+  align-items: center;
+  gap: 36px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px 32px;
+  flex-wrap: wrap;
+}
+
+.gate-chart-wrap {
+  flex: 0 0 300px;
+  width: 300px;
+  height: 300px;
+}
+
+.gate-chart-wrap canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.gate-summary-wrap {
+  flex: 1;
+  min-width: 220px;
+}
+
+.gate-status {
+  font-size: 1.5em;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.gate-avg {
+  font-size: 1em;
+  margin-bottom: 16px;
+  color: var(--muted);
+}
+
+.gate-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+
+.gate-table th {
+  color: var(--muted);
+  font-weight: 600;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.gate-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #1e293b;
+}
+
+.gate-table tr:last-child td { border-bottom: none; }

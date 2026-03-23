@@ -85,6 +85,16 @@
         <div id="meta"></div>
       </header>
 
+      <section id="gate-section">
+        <h2>市場 Gate 評分</h2>
+        <div class="gate-layout">
+          <div class="gate-chart-wrap">
+            <canvas id="gate-radar"></canvas>
+          </div>
+          <div class="gate-summary-wrap" id="gate-summary"></div>
+        </div>
+      </section>
+
       <section id="overview-section">
         <h2>市場趨勢總覽</h2>
         <div id="overview-cards" class="card-grid"></div>
@@ -157,6 +167,7 @@
     </main>
 
     <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
-    <script defer src="./app.js?v=20260319-01"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script defer src="./app.js?v=20260323-gate"></script>
   </body>
 </html>

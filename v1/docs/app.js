@@ -989,8 +989,164 @@ function renderGlobalRisks(data) {
   });
 }
 
+// ── Gate Score 評分系統 ───────────────────────────────────────────
+let gateChart = null;
+
+function computeGateScores(data) {
+  const clamp = v => Math.max(-3, Math.min(3, Math.round(v)));
+
+  // 1. 宏觀環境：CPI + NFP + FOMC 利率方向
+  let macro = 0;
+  const macroEvents = data.macroEvents || [];
+  const recentCpi = macroEvents
+    .filter(e => e.eventType === 'cpi' && e.status === 'recent')
+    .sort((a, b) => new Date(b.datetime) - new Date(a.datetime))[0];
+  const recentNfp = macroEvents
+    .filter(e => e.eventType === 'nfp' && e.status === 'recent')
+    .sort((a, b) => new Date(b.datetime) - new Date(a.datetime))[0];
+  const recentFomc = macroEvents
+    .filter(e => e.eventType === 'central-bank' && e.country === 'US' && e.status === 'recent')
+    .sort((a, b) => new Date(b.datetime) - new Date(a.datetime))[0];
+
+  if (recentCpi?.result?.shortTermBias === '偏跌') macro += 1;      // CPI 降 = 好
+  else if (recentCpi?.result?.shortTermBias === '偏漲') macro -= 1; // CPI 升 = 壞
+  if (recentNfp?.result?.shortTermBias === '偏漲') macro += 1;
+  else if (recentNfp?.result?.shortTermBias === '偏跌') macro -= 1;
+  const rateActual = toNumber(recentFomc?.result?.actual);
+  const ratePrev   = toNumber(recentFomc?.result?.previous);
+  if (rateActual !== null && ratePrev !== null) {
+    if (rateActual < ratePrev) macro += 1;  // 降息 = 偏多
+    else if (rateActual > ratePrev) macro -= 1;
+  }
+
+  // 2. 市場情緒：Fear & Greed 0-100 → -3~+3
+  const fng = Number(data.fearAndGreedIndex?.value ?? 50);
+  let sentiment = 0;
+  if      (fng <= 20) sentiment = -3;
+  else if (fng <= 35) sentiment = -2;
+  else if (fng <= 45) sentiment = -1;
+  else if (fng <= 55) sentiment =  0;
+  else if (fng <= 65) sentiment =  1;
+  else if (fng <= 80) sentiment =  2;
+  else                sentiment =  3;
+
+  // 3. 流動性：ETF 資金流 + 穩定幣供應變化
+  let liquidity = 0;
+  const etf = Number(data.cryptoSignalMetrics7d?.etfNetFlowUsd ?? 0);
+  if      (etf >  500e6) liquidity += 2;
+  else if (etf >  200e6) liquidity += 1;
+  else if (etf < -500e6) liquidity -= 2;
+  else if (etf < -200e6) liquidity -= 1;
+  const stableChange = Number(data.cryptoSignalMetrics7d?.stablecoinSupplyChangeUsd ?? 0);
+  if (stableChange > 0) liquidity += 1;
+  else if (stableChange < 0) liquidity -= 1;
+
+  // 4. 政策/監管：偏漲 vs 偏跌訊號差
+  const policySignals = data.policySignals || [];
+  const policyBull = policySignals.filter(s => s.shortTermBias === '偏漲').length;
+  const policyBear = policySignals.filter(s => s.shortTermBias === '偏跌').length;
+  const policyDiff = policyBull - policyBear;
+  const policy = policyDiff >= 2 ? 2 : policyDiff === 1 ? 1 :
+                 policyDiff <= -2 ? -2 : policyDiff === -1 ? -1 : 0;
+
+  // 5. 外部風險：偏空訊號越多分越低
+  const risks = data.globalRiskSignals || [];
+  const riskBull = risks.filter(s => s.shortTermBias === '偏漲').length;
+  const riskBear = risks.filter(s => s.shortTermBias === '偏跌').length;
+  const riskDiff = riskBull - riskBear;
+  const risk = riskDiff >= 2 ? 2 : riskDiff === 1 ? 1 :
+               riskDiff <= -3 ? -3 : riskDiff === -2 ? -2 : riskDiff === -1 ? -1 : 0;
+
+  return {
+    macro:     clamp(macro),
+    sentiment: clamp(sentiment),
+    liquidity: clamp(liquidity),
+    policy:    clamp(policy),
+    risk:      clamp(risk),
+  };
+}
+
+function renderGate(data) {
+  const scores = computeGateScores(data);
+  const dims   = ['宏觀環境', '市場情緒', '流動性', '政策監管', '外部風險'];
+  const values = [scores.macro, scores.sentiment, scores.liquidity, scores.policy, scores.risk];
+  const avg    = values.reduce((a, b) => a + b, 0) / values.length;
+
+  let gateLabel, gateColor, gateEmoji;
+  if      (avg >= 1.5)  { gateLabel = '全開 — 多頭環境';  gateColor = '#34d399'; gateEmoji = '🟢'; }
+  else if (avg >= 0.5)  { gateLabel = '偏開 — 謹慎偏多'; gateColor = '#86efac'; gateEmoji = '🟢'; }
+  else if (avg > -0.5)  { gateLabel = '半開 — 震盪觀望'; gateColor = '#fbbf24'; gateEmoji = '🟡'; }
+  else if (avg > -1.5)  { gateLabel = '偏關 — 謹慎偏空'; gateColor = '#f87171'; gateEmoji = '🔴'; }
+  else                  { gateLabel = '關閉 — 空頭環境';  gateColor = '#ef4444'; gateEmoji = '🔴'; }
+
+  const scoreRows = dims.map((d, i) => {
+    const v   = values[i];
+    const cls = v > 0 ? 'bias-up' : v < 0 ? 'bias-down' : 'bias-side';
+    const bar = '█'.repeat(Math.abs(v)) + '░'.repeat(3 - Math.abs(v));
+    const sign = v > 0 ? '+' : '';
+    return `<tr>
+      <td>${d}</td>
+      <td style="color:${v > 0 ? '#34d399' : v < 0 ? '#f87171' : '#94a3b8'};letter-spacing:2px;font-size:0.85em">${v < 0 ? bar.split('').reverse().join('') : bar}</td>
+      <td class="${cls}" style="text-align:right;font-weight:700;width:40px">${sign}${v}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('gate-summary').innerHTML = `
+    <div class="gate-status" style="color:${gateColor}">${gateEmoji} ${gateLabel}</div>
+    <div class="gate-avg">平均分：<strong style="color:${gateColor}">${avg >= 0 ? '+' : ''}${avg.toFixed(1)}</strong> / 3</div>
+    <table class="gate-table">
+      <thead><tr><th>維度</th><th>強度</th><th>分數</th></tr></thead>
+      <tbody>${scoreRows}</tbody>
+    </table>
+  `;
+
+  const fillColor   = avg > 0 ? 'rgba(52,211,153,0.2)' : avg < 0 ? 'rgba(248,113,113,0.2)' : 'rgba(251,191,36,0.15)';
+  const borderColor = avg > 0 ? '#34d399' : avg < 0 ? '#f87171' : '#fbbf24';
+
+  const ctx = document.getElementById('gate-radar').getContext('2d');
+  if (gateChart) gateChart.destroy();
+  gateChart = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: dims,
+      datasets: [{
+        data: values,
+        backgroundColor: fillColor,
+        borderColor: borderColor,
+        borderWidth: 2,
+        pointBackgroundColor: borderColor,
+        pointBorderColor: borderColor,
+        pointRadius: 5,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      scales: {
+        r: {
+          min: -3, max: 3,
+          ticks: {
+            stepSize: 1,
+            color: '#64748b',
+            backdropColor: 'transparent',
+            font: { size: 10 }
+          },
+          grid:       { color: 'rgba(51,65,85,0.7)' },
+          angleLines: { color: 'rgba(51,65,85,0.7)' },
+          pointLabels: {
+            color: '#94a3b8',
+            font: { size: 12, family: "'Microsoft JhengHei', 'Segoe UI', system-ui, sans-serif" }
+          }
+        }
+      },
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
 function renderAll(data) {
   renderMeta(data);
+  renderGate(data);
   renderOverallTrend(data);
   renderOverview(data);
   renderAi(data);
