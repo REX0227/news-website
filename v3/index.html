@@ -7,6 +7,40 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
+    <!-- 密碼保護遮罩 -->
+    <div id="auth-overlay" style="position:fixed;inset:0;z-index:9999;background:#0a0f1e;display:flex;align-items:center;justify-content:center;">
+      <div style="background:#111827;border:1px solid #1e40af;border-radius:12px;padding:40px 48px;text-align:center;max-width:360px;width:90%;">
+        <h2 style="color:#38bdf8;margin:0 0 6px;font-size:1.5em;">CryptoPulse V3</h2>
+        <p style="color:#94a3b8;margin:0 0 24px;font-size:0.95em;">請輸入存取密碼</p>
+        <input type="password" id="auth-input" placeholder="密碼" autocomplete="current-password"
+          style="width:100%;box-sizing:border-box;padding:10px 14px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:1em;margin-bottom:12px;outline:none;" />
+        <button id="auth-btn"
+          style="width:100%;padding:10px;border-radius:8px;background:#1e40af;color:#fff;border:none;font-size:1em;cursor:pointer;">進入</button>
+        <p id="auth-error" style="color:#f87171;font-size:0.88em;margin-top:10px;min-height:1.2em;"></p>
+      </div>
+    </div>
+    <script>
+      const SITE_PASSWORD = "TRAXXAS";
+      (function () {
+        const overlay = document.getElementById("auth-overlay");
+        const input   = document.getElementById("auth-input");
+        const btn     = document.getElementById("auth-btn");
+        const errMsg  = document.getElementById("auth-error");
+        if (localStorage.getItem("cp_auth") === "1") { overlay.style.display = "none"; return; }
+        function tryLogin() {
+          if (input.value === SITE_PASSWORD) {
+            localStorage.setItem("cp_auth", "1");
+            overlay.style.display = "none";
+          } else {
+            errMsg.textContent = "密碼錯誤，請再試一次";
+            input.value = ""; input.focus();
+          }
+        }
+        btn.addEventListener("click", tryLogin);
+        input.addEventListener("keydown", (e) => { if (e.key === "Enter") tryLogin(); });
+        input.focus();
+      })();
+    </script>
     <main class="page-shell">
       <header class="hero">
         <div class="hero-top">
@@ -19,8 +53,9 @@
             </p>
           </div>
           <nav class="hero-nav" aria-label="頁面導覽">
+            <a href="../index.html">← V1 主頁</a>
             <a href="../v2/index.html">V2</a>
-            <a href="../database-side/README.md">database-side</a>
+            <a href="../v4/index.html">V4</a>
           </nav>
         </div>
 
