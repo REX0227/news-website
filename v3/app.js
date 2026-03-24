@@ -944,15 +944,8 @@ async function bootstrap() {
     const payload = await fetchPayload();
     renderAll(payload);
   } catch (error) {
-    document.body.innerHTML = `
-      <main class="page-shell">
-        <section class="hero">
-          <p class="eyebrow">CryptoPulse V3</p>
-          <h1>資料載入失敗</h1>
-          <p class="hero-copy">${escapeHtml(error?.message || "未知錯誤")}</p>
-        </section>
-      </main>
-    `;
+    const el = document.getElementById("overview-cards");
+    if (el) el.innerHTML = `<p style="color:#f87171;padding:16px;">資料載入失敗：${escapeHtml(error?.message || "未知錯誤")}<br><small style="color:#94a3b8;">Coinglass 資料尚未寫入，請確認 database-side 已執行</small></p>`;
   }
 }
 
