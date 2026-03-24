@@ -1339,7 +1339,7 @@ async function autoRefresh() {
   }
 }
 
-const POLL_INTERVAL = 1 * 60 * 1000; // 1 分鐘
+const POLL_INTERVAL = 2 * 60 * 1000; // 2 分鐘
 
 function translatePolymarketQuestion(q) {
   const MONTHS = { January:"1月", February:"2月", March:"3月", April:"4月", May:"5月", June:"6月",
