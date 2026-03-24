@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CryptoPulse V4 — 完整資料來源儀表板</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface2: #263450;
+      --border: #334155;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent2: #818cf8;
+      --ok: #34d399;
+      --error: #f87171;
+      --skip: #fb923c;
+      --up: #34d399;
+      --down: #f87171;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .site-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .site-header h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.02em;
+    }
+    .header-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .header-meta a {
+      color: var(--accent2);
+      text-decoration: none;
+    }
+    .header-meta a:hover { text-decoration: underline; }
+
+    /* ── Password overlay ── */
+    #pw-overlay {
+      position: fixed; inset: 0;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    .pw-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 40px 48px;
+      text-align: center;
+      min-width: 320px;
+    }
+    .pw-box h2 {
+      font-size: 1.1rem;
+      margin-bottom: 8px;
+      color: var(--accent);
+    }
+    .pw-box p {
+      color: var(--text-muted);
+      font-size: 12px;
+      margin-bottom: 20px;
+    }
+    .pw-box input {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 15px;
+      outline: none;
+      margin-bottom: 12px;
+    }
+    .pw-box input:focus { border-color: var(--accent); }
+    .pw-box button {
+      width: 100%;
+      padding: 10px;
+      background: var(--accent);
+      color: #0f172a;
+      border: none;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .pw-box button:hover { opacity: 0.9; }
+    .pw-error {
+      color: var(--error);
+      font-size: 12px;
+      margin-top: 8px;
+    }
+
+    /* ── Main layout ── */
+    #root {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    /* ── Summary bar ── */
+    .summary-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 28px;
+      padding: 16px 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    .summary-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .summary-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .summary-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .summary-value.ok { color: var(--ok); }
+    .summary-value.error { color: var(--error); }
+    .summary-value.skip { color: var(--skip); }
+    .summary-value.total { color: var(--text); }
+    .summary-time {
+      margin-left: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      text-align: right;
+    }
+
+    /* ── Category section ── */
+    .category-section {
+      margin-bottom: 32px;
+    }
+    .category-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .category-label {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--accent2);
+    }
+    .category-count {
+      font-size: 12px;
+      color: var(--text-muted);
+      background: var(--surface2);
+      padding: 2px 8px;
+      border-radius: 99px;
+    }
+
+    /* ── Source table ── */
+    .source-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .source-table th {
+      text-align: left;
+      padding: 8px 12px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+    .source-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(51,65,85,0.5);
+      vertical-align: top;
+    }
+    .source-table tr:last-child td { border-bottom: none; }
+    .source-table tr:hover td { background: rgba(30,41,59,0.6); }
+
+    .source-name {
+      font-weight: 600;
+      color: var(--text);
+      font-size: 13px;
+    }
+    .source-name a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .source-name a:hover { color: var(--accent); }
+    .source-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* ── Status badges ── */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .badge-ok { background: rgba(52,211,153,0.15); color: var(--ok); }
+    .badge-error { background: rgba(248,113,113,0.15); color: var(--error); }
+    .badge-skip { background: rgba(251,146,60,0.15); color: var(--skip); }
+
+    /* ── Data preview ── */
+    .data-preview {
+      font-size: 12px;
+      color: var(--text-muted);
+      max-width: 480px;
+    }
+    .data-preview strong {
+      color: var(--text);
+      font-size: 13px;
+    }
+    .data-value {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .data-change-up { color: var(--up); }
+    .data-change-down { color: var(--down); }
+    .data-change-flat { color: var(--text-muted); }
+    .rss-title {
+      color: var(--text);
+      font-weight: 600;
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 400px;
+      display: block;
+    }
+    .rss-title a { color: inherit; text-decoration: none; }
+    .rss-title a:hover { color: var(--accent); text-decoration: underline; }
+    .rss-date { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .rss-more { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+    .excerpt-text {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .error-msg {
+      font-size: 11px;
+      color: var(--error);
+      opacity: 0.8;
+    }
+    .fetched-at {
+      font-size: 11px;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    /* ── Loading / Error states ── */
+    .state-message {
+      text-align: center;
+      padding: 60px 24px;
+      color: var(--text-muted);
+    }
+    .state-message h2 { font-size: 1.1rem; margin-bottom: 8px; color: var(--text); }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .source-table th:nth-child(3),
+      .source-table td:nth-child(3) { display: none; }
+      #root { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Password overlay -->
+  <div id="pw-overlay">
+    <div class="pw-box">
+      <h2>CryptoPulse V4</h2>
+      <p>請輸入存取密碼</p>
+      <input type="password" id="pw-input" placeholder="密碼" autocomplete="current-password" />
+      <button id="pw-btn">進入</button>
+      <div class="pw-error" id="pw-error"></div>
+    </div>
+  </div>
+
+  <!-- Site header -->
+  <header class="site-header">
+    <h1>CryptoPulse V4 — 完整資料來源儀表板</h1>
+    <div class="header-meta">
+      <span id="collection-time">載入中...</span>
+      <a href="../v2/index.html">V2</a>
+      <a href="../v3/index.html">V3</a>
+      <a href="../index.html">← V1 主頁</a>
+    </div>
+  </header>
+
+  <!-- Main content -->
+  <main id="root">
+    <div class="state-message">
+      <h2>載入資料中...</h2>
+      <p>正在讀取最新快照</p>
+    </div>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>

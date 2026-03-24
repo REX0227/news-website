@@ -1,0 +1,1570 @@
+{
+  "generatedAt": "2026-03-24T09:11:22.935Z",
+  "totals": {
+    "total": 55,
+    "success": 52,
+    "failed": 1,
+    "skipped": 2
+  },
+  "snapshots": [
+    {
+      "source_id": "crypto_alternative_fng",
+      "category": "crypto_market_structure",
+      "source_name": "Alternative.me Fear & Greed（情緒指標）",
+      "fetched_at": "2026-03-24T09:11:07.295Z",
+      "status": "ok",
+      "data": {
+        "name": "Fear and Greed Index",
+        "data": [
+          {
+            "value": "11",
+            "value_classification": "Extreme Fear",
+            "timestamp": "1774310400",
+            "time_until_update": "53333"
+          }
+        ],
+        "metadata": {
+          "error": null
+        }
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "crypto_coingecko_global",
+      "category": "crypto_market_structure",
+      "source_name": "CoinGecko Global（總市值/成交量/主導率；不含幣價）",
+      "fetched_at": "2026-03-24T09:11:06.926Z",
+      "status": "ok",
+      "data": {
+        "data": {
+          "active_cryptocurrencies": 18014,
+          "upcoming_icos": 0,
+          "ongoing_icos": 49,
+          "ended_icos": 3376,
+          "markets": 1481,
+          "total_market_cap": {
+            "btc": 35311206.896428846,
+            "eth": 1162670676.7093208,
+            "ltc": 44883434383.0918,
+            "bch": 5252042462.855176,
+            "bnb": 3947138721.1631923,
+            "eos": 31748866944635.375,
+            "xrp": 1767830474566.1345,
+            "xlm": 15010736783665.41,
+            "link": 272051176232.7378,
+            "dot": 1763556118231.7336,
+            "yfi": 959150050.3483667,
+            "sol": 27346672301.125755,
+            "usd": 2505460593052.961,
+            "aed": 9201304027986.998,
+            "ars": 3500721992109481,
+            "aud": 3598064397616.8325,
+            "bdt": 306654220737331.7,
+            "bhd": 946467804552.8724,
+            "bmd": 2505460593052.961,
+            "brl": 13108817863451.8,
+            "cad": 3444477157802.0938,
+            "chf": 1972175811282.2312,
+            "clp": 2280395067979013.5,
+            "cny": 17261871847956.984,
+            "czk": 52912727057182.92,
+            "dkk": 16153368390469.596,
+            "eur": 2161974473048.3652,
+            "gbp": 1871080476352.5442,
+            "gel": 6802325510138.786,
+            "hkd": 19622391545701.832,
+            "huf": 842063743331236,
+            "idr": 42361497543015620,
+            "ils": 7828161295358.391,
+            "inr": 235171285343263.06,
+            "jpy": 397503015245638,
+            "krw": 3753733828017495,
+            "kwd": 768011362891.4891,
+            "lkr": 784826709047091.8,
+            "mmk": 5260991207898536,
+            "mxn": 44708553752400.94,
+            "myr": 9911602106117.514,
+            "ngn": 3440698923227770,
+            "nok": 24412824683237.316,
+            "nzd": 4302369414008.7637,
+            "php": 149973097876497.1,
+            "pkr": 697666573059184.2,
+            "pln": 9236287774247.795,
+            "rub": 203350625455600.25,
+            "sar": 9405443946187.768,
+            "sek": 23435875445109.355,
+            "sgd": 3204138344952.895,
+            "thb": 81669872586599.1,
+            "try": 111110497743957.72,
+            "twd": 80170356927117.5,
+            "uah": 109737507844425.27,
+            "vef": 250871769182.39297,
+            "vnd": 66037443147951170,
+            "zar": 42557550691289.54,
+            "xdr": 1764242625743.5798,
+            "xag": 35944740725.869865,
+            "xau": 567812534.2035924,
+            "bits": 35311206896428.84,
+            "sats": 3531120689642884.5
+          },
+          "total_volume": {
+            "btc": 1762514.0986057052,
+            "eth": 58033231.93529415,
+            "ltc": 2240299690.862274,
+            "bch": 262149037.11473688,
+            "bnb": 197016422.16896856,
+            "eos": 1584704418877.7278,
+            "xrp": 88239015576.74434,
+            "xlm": 749241884857.388,
+            "link": 13579089354.234411,
+            "dot": 88025666502.49878,
+            "yfi": 47874758.04426092,
+            "sol": 1364974457.6008475,
+            "usd": 125056887228.72432,
+            "aed": 459271418347.4901,
+            "ars": 174734097435112.38,
+            "aud": 179592820123.41144,
+            "bdt": 15306256425383.016,
+            "bhd": 47241739833.29735,
+            "bmd": 125056887228.72432,
+            "brl": 654310014612.5212,
+            "cad": 171926707879.40344,
+            "chf": 98438653838.97758,
+            "clp": 113823027048968.02,
+            "cny": 861604435939.742,
+            "czk": 2641071649221.7134,
+            "dkk": 806274892038.7012,
+            "eur": 107912213274.10236,
+            "gbp": 93392608439.29855,
+            "gel": 339529448825.98645,
+            "hkd": 979426782242.2847,
+            "huf": 42030543558002.734,
+            "idr": 2114420412664141.8,
+            "ils": 390732740732.9153,
+            "inr": 11738276384052.043,
+            "jpy": 19840858758061.04,
+            "krw": 187362862269176.66,
+            "kwd": 38334312926.657,
+            "lkr": 39173629599097.96,
+            "mmk": 262595702371747.56,
+            "mxn": 2231570746024.1733,
+            "myr": 494725045876.83344,
+            "ngn": 171738122093462.53,
+            "nok": 1218535175452.9438,
+            "nzd": 214747311578.50363,
+            "php": 7485716933839.271,
+            "pkr": 34823141977259.87,
+            "pln": 461017587663.8646,
+            "rub": 10149988511495.223,
+            "sar": 469460803405.1121,
+            "sek": 1169771993529.6218,
+            "sgd": 159930500915.10083,
+            "thb": 4076448088772.919,
+            "try": 5545939546932.571,
+            "twd": 4001601666823.4155,
+            "uah": 5477408497788.116,
+            "vef": 12521946118.212168,
+            "vnd": 3296175203683219.5,
+            "zar": 2124206156859.2449,
+            "xdr": 88059932654.0913,
+            "xag": 1794136136.0401263,
+            "xau": 28341642.352645792,
+            "bits": 1762514098605.705,
+            "sats": 176251409860570.53
+          },
+          "market_cap_percentage": {
+            "btc": 56.64781931593712,
+            "eth": 10.380361041189074,
+            "usdt": 7.3500585990838445,
+            "xrp": 3.4700453122102783,
+            "bnb": 3.454492635506811,
+            "usdc": 3.1400405330030203,
+            "sol": 2.0921348368117156,
+            "trx": 1.1713960974311952,
+            "steth": 0.7896987011900086,
+            "figr_heloc": 0.6560932346386547
+          },
+          "market_cap_change_percentage_24h_usd": 3.4502093720988065,
+          "volume_change_percentage_24h_usd": 56.92882864006348,
+          "updated_at": 1774342909
+        }
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "geo_conflict_un_consolidated_list_xml",
+      "category": "geopolitics_conflict",
+      "source_name": "UN Security Council — Consolidated Sanctions List（XML）",
+      "fetched_at": "2026-03-24T09:11:11.917Z",
+      "status": "ok",
+      "data": {
+        "type": "xml_raw",
+        "excerpt": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<CONSOLIDATED_LIST xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:noNamespaceSchemaLocation=\"https://www.un.org/sc/resources/sc-sanctions.xsd\" dateGenerated=\"2026-03-23T23:00:06.683Z\">\n  <INDIVIDUALS>\n    <INDIVIDUAL>\n      <DATAID>6907993</DATAID>\n      <VERSIONNUM>1</VERSIONNUM>\n      <FIRST_NAME>ERIC</FIRST_NAME>\n      <SECOND_NAME>BADEGE</SECOND_NAME>\n      <UN_LIST_TYPE>DRC</UN_LIST_TYPE>\n      <REFERENCE_NUMBER>CDi.001</REF",
+        "items": []
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "geo_conflict_ofac_recent_actions_html",
+      "category": "geopolitics_conflict",
+      "source_name": "US Treasury OFAC — Recent Actions（HTML）",
+      "fetched_at": "2026-03-24T09:11:08.769Z",
+      "status": "ok",
+      "data": {
+        "title": "Recent Actions | Office of Foreign Assets Control",
+        "excerpt": "The .gov means it’s official. Federal government websites often end in .gov or .mil. Before sharing sensitive information, make sure you’re on a federal government site. The https:// ensures that you are connecting to the official website and that any information you provide is encrypted and transmitted securely. Specially Designated Nationals List (SDN List) Consolidated Sanctions List (Non-SDN Lists) Additional Sanctions Lists Search OFAC's Sanctions Lists Sanctions Programs and Country Inform",
+        "links": [
+          {
+            "text": "Specially Designated Nationals List (SDN List)",
+            "href": "https://ofac.treasury.gov/specially-designated-nationals-and-blocked-persons-list-sdn-human-readable-lists"
+          },
+          {
+            "text": "Consolidated Sanctions List (Non-SDN Lists)",
+            "href": "https://ofac.treasury.gov/consolidated-sanctions-list-non-sdn-lists"
+          },
+          {
+            "text": "Additional Sanctions Lists",
+            "href": "https://ofac.treasury.gov/other-ofac-sanctions-lists"
+          },
+          {
+            "text": "Search OFAC's Sanctions Lists",
+            "href": "https://ofac.treasury.gov/sanctions-list-search-tool"
+          },
+          {
+            "text": "Sanctions Programs and Country Information",
+            "href": "https://ofac.treasury.gov/sanctions-programs-and-country-information"
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "geo_conflict_ofac_sdn_csv",
+      "category": "geopolitics_conflict",
+      "source_name": "US Treasury OFAC — SDN List Export（XML）",
+      "fetched_at": "2026-03-24T09:11:22.755Z",
+      "status": "error",
+      "data": null,
+      "error_message": "This operation was aborted"
+    },
+    {
+      "source_id": "liquidity_defillama_chains_optional",
+      "category": "liquidity_flows",
+      "source_name": "DeFiLlama Chains（JSON；fallback aggregate TVL）",
+      "fetched_at": "2026-03-24T09:11:12.490Z",
+      "status": "ok",
+      "data": [
+        {
+          "gecko_id": "harmony",
+          "tvl": 306987.6188280882,
+          "tokenSymbol": "ONE",
+          "cmcId": "3945",
+          "name": "Harmony",
+          "chainId": 1666600000
+        },
+        {
+          "gecko_id": "stable-2",
+          "tvl": 42025.704318933684,
+          "tokenSymbol": "STABLE",
+          "cmcId": null,
+          "name": "Stable",
+          "chainId": 988
+        },
+        {
+          "gecko_id": "aurora-near",
+          "tvl": 3064882.8541666274,
+          "tokenSymbol": "AURORA",
+          "cmcId": "14803",
+          "name": "Aurora",
+          "chainId": 1313161554
+        }
+      ],
+      "error_message": null
+    },
+    {
+      "source_id": "liquidity_defillama_defi_charts",
+      "category": "liquidity_flows",
+      "source_name": "DeFiLlama DeFi TVL — Charts（JSON 序列；可算 7D）",
+      "fetched_at": "2026-03-24T09:11:12.359Z",
+      "status": "ok",
+      "data": [
+        {
+          "date": "1506470400",
+          "totalLiquidityUSD": 0
+        },
+        {
+          "date": "1506556800",
+          "totalLiquidityUSD": 0
+        },
+        {
+          "date": "1506643200",
+          "totalLiquidityUSD": 0
+        }
+      ],
+      "error_message": null
+    },
+    {
+      "source_id": "liquidity_defillama_stablecoins_all",
+      "category": "liquidity_flows",
+      "source_name": "DeFiLlama Stablecoins — Total（JSON 序列；可算 7D）",
+      "fetched_at": "2026-03-24T09:11:12.386Z",
+      "status": "ok",
+      "data": [
+        {
+          "date": "1511913600",
+          "totalCirculating": {
+            "peggedUSD": 109970
+          },
+          "totalCirculatingUSD": {
+            "peggedUSD": 110105
+          }
+        },
+        {
+          "date": "1512000000",
+          "totalCirculating": {
+            "peggedUSD": 109970
+          },
+          "totalCirculatingUSD": {
+            "peggedUSD": 110105
+          }
+        },
+        {
+          "date": "1512086400",
+          "totalCirculating": {
+            "peggedUSD": 109970
+          },
+          "totalCirculatingUSD": {
+            "peggedUSD": 110105
+          }
+        }
+      ],
+      "error_message": null
+    },
+    {
+      "source_id": "macro_jp_boj_schedule_html",
+      "category": "macro_calendar_jp",
+      "source_name": "BOJ — Monetary Policy Meetings Schedule（HTML）",
+      "fetched_at": "2026-03-24T09:11:06.821Z",
+      "status": "ok",
+      "data": {
+        "title": "Monetary Policy Meetings  : 日本銀行 Bank of Japan",
+        "excerpt": "Statements on Monetary Policy List by Year Summary of Opinions at the Monetary Policy Meetings List by Year Minutes of the Monetary Policy Meetings List by Year Past Monetary Policy Meetings A list of scheduled dates of the meetings; policy statements; minutes of the meetings; and the Outlook for Economic Activity and Prices (the Outlook Report). Note: The time of release will be, in principle, as follows. Outlook for Economic Activity and Prices (Outlook Report) \"The Bank's View\" in the Outlook",
+        "links": [
+          {
+            "text": "日本語",
+            "href": "https://www.boj.or.jp/mopo/mpmsche_minu/index.htm"
+          },
+          {
+            "text": "Statements on Monetary Policy List by Year",
+            "href": "https://www.boj.or.jp/en/mopo/mpmdeci/state_all/index.htm"
+          },
+          {
+            "text": "Summary of Opinions at the Monetary Policy Meetings List by Year",
+            "href": "https://www.boj.or.jp/en/mopo/mpmsche_minu/opinion_all/index.htm"
+          },
+          {
+            "text": "Minutes of the Monetary Policy Meetings List by Year",
+            "href": "https://www.boj.or.jp/en/mopo/mpmsche_minu/minu_all/index.htm"
+          },
+          {
+            "text": "Jan. 22 (Thurs.), 23 (Fri.) [PDF 171KB]",
+            "href": "https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2026/k260123a.pdf"
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "macro_jp_boj_stats_release_schedule_xlsx",
+      "category": "macro_calendar_jp",
+      "source_name": "BOJ — Schedule for Releases of Statistical Data（XLSX）",
+      "fetched_at": "2026-03-24T09:11:06.781Z",
+      "status": "skip",
+      "data": null,
+      "error_message": null
+    },
+    {
+      "source_id": "macro_us_bls_ics",
+      "category": "macro_calendar_us",
+      "source_name": "BLS News Release Calendar（ICS；含 CPI/NFP/PPI）",
+      "fetched_at": "2026-03-24T09:11:06.768Z",
+      "status": "ok",
+      "data": {
+        "type": "ics",
+        "event_count": 307,
+        "excerpt": "BEGIN:VCALENDAR\nPRODID:-//Department of Labor//Bureau of Labor Statistics//EN\nVERSION:2.0\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\nSUMMARY:BLS.gov Economic News Release Schedule\nX-WR-CALNAME:BLS.gov Economic News Release Schedule\nX-WR-TIMEZONE:US-Eastern\nBEGIN:VTIMEZONE\nTZID:US-Eastern\nBEGIN:DAYLIGHT\nTZOFFSETFROM:-0500\nTZOFFSETTO:-0400\nDTSTART:20070311T020000\nRRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU\nTZNAME:EDT\nEND:DAYLIGHT\nBEGIN:STANDARD\nTZOFFSETFROM:-0400\nTZOFFSETTO:-0500\nDTSTART:20071104T020000\nRRULE:FR"
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "macro_us_fed_fomc_calendar_html",
+      "category": "macro_calendar_us",
+      "source_name": "Federal Reserve — FOMC Calendars（HTML）",
+      "fetched_at": "2026-03-24T09:11:07.226Z",
+      "status": "ok",
+      "data": {
+        "title": "The Fed - Meeting calendars and information",
+        "excerpt": "An official website of the United States Government Official websites use .govA .gov website belongs to an official government organization in the United States. Secure .gov websites use HTTPSA lock (LockLocked padlock icon) or https:// means you've safely connected to the .gov website. Share sensitive information only on official, secure websites. Stay Connected Federal Reserve Facebook Page Federal Reserve Instagram Page Federal Reserve YouTube Page Federal Reserve Flickr Page Federal Reserve ",
+        "links": [
+          {
+            "text": "Back to Home",
+            "href": "https://www.federalreserve.gov/default.htm"
+          },
+          {
+            "text": "Board of Governors of the Federal Reserve System",
+            "href": "https://www.federalreserve.gov/default.htm"
+          },
+          {
+            "text": "Federal Reserve Facebook Page",
+            "href": "https://www.facebook.com/federalreserve"
+          },
+          {
+            "text": "Federal Reserve Instagram Page",
+            "href": "https://www.instagram.com/federalreserveboard/"
+          },
+          {
+            "text": "Federal Reserve YouTube Page",
+            "href": "https://www.youtube.com/federalreserve"
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "macro_jp_boj_statistics_rss",
+      "category": "macro_data_jp",
+      "source_name": "Bank of Japan — Statistics RSS（RSS）",
+      "fetched_at": "2026-03-24T09:11:12.131Z",
+      "status": "ok",
+      "data": {
+        "type": "rss",
+        "items": [
+          {
+            "title": "Foreign Exchange Rates (Mar. 24)",
+            "link": "http://www.boj.or.jp/en/statistics/market/forex/fxdaily/fxlist/fx260324.pdf",
+            "pubDate": "Tue, 24 Mar 2026 17:40:00 +0900",
+            "description": ""
+          },
+          {
+            "title": "Japanese Government Bonds Held by the Bank of Japan",
+            "link": "http://www.boj.or.jp/en/statistics/boj/other/mei/release/2026/mei260319.xlsx",
+            "pubDate": "Tue, 24 Mar 2026 17:00:00 +0900",
+            "description": ""
+          },
+          {
+            "title": "Bank of Japan Accounts (March 20)",
+            "link": "http://www.boj.or.jp/en/statistics/boj/other/acmai/release/2026/ac260320.htm",
+            "pubDate": "Tue, 24 Mar 2026 10:00:00 +0900",
+            "description": ""
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "macro_jp_cabinet_office_esri_html",
+      "category": "macro_data_jp",
+      "source_name": "Bank of Japan — Statistics（HTML；日本宏觀/金融統計入口）",
+      "fetched_at": "2026-03-24T09:11:12.081Z",
+      "status": "ok",
+      "data": {
+        "title": "Statistics  : 日本銀行 Bank of Japan",
+        "excerpt": "Outline of Statistics and Statistical Release Schedule Notices of Changes and Corrections Explanations of Statistics Notices of Changes and Revisions Bank of Japan Statistics Financial Institutions Accounts Deposits and Loans Market Payment and Settlement Balance of Payments Related Statistics Discontinued Statistics / Revised Base Statistics Historical Statistics on the Web Site of IMES BOJ Time-Series Data Search",
+        "links": [
+          {
+            "text": "日本語",
+            "href": "https://www.boj.or.jp/statistics/index.htm"
+          },
+          {
+            "text": "Statistics RSS",
+            "href": "https://www.boj.or.jp/en/rss/statistics.xml"
+          },
+          {
+            "text": "Outline of Statistics and Statistical Release Schedule",
+            "href": "https://www.boj.or.jp/en/statistics/outline/index.htm"
+          },
+          {
+            "text": "Notices of Changes and Corrections",
+            "href": "https://www.boj.or.jp/en/statistics/outline/notice_all/index.htm"
+          },
+          {
+            "text": "Explanations of Statistics",
+            "href": "https://www.boj.or.jp/en/statistics/outline/exp/index.htm"
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "macro_jp_stat_go_jp_english_html",
+      "category": "macro_data_jp",
+      "source_name": "Statistics Bureau of Japan（英語入口；HTML）",
+      "fetched_at": "2026-03-24T09:11:12.109Z",
+      "status": "ok",
+      "data": {
+        "title": "Statistics Bureau Home Page",
+        "excerpt": "March 24 Consumer Price Index (2020-base) (February 2026, Japan) Retail Prices of Major Items by Cities(February 2026) \"Monthly Business Survey of Services\" (Jan. 2026 (preliminary), Oct. 2025 (final)) March 19 \"Population Estimates\"(March 2026) March 13 National Survey of Family Income, Consumption and Wealth[Private Income and Expenditures](2024) Search Statistics Surveys and Data Tools for utilizing government statistics e-Stat is a portal site for Japanese Government Statistics. Tools for ut",
+        "links": [
+          {
+            "text": "Preliminary counts of population of Japan 12,285 ten thousand",
+            "href": "https://www.stat.go.jp/english/data/jinsui/2.html"
+          },
+          {
+            "text": "Consumer Price Index 1.3%",
+            "href": "https://www.stat.go.jp/english/data/cpi/1581-z.html"
+          },
+          {
+            "text": "Unemployment rate 2.7%",
+            "href": "https://www.stat.go.jp/english/data/roudou/results/month/index.html"
+          },
+          {
+            "text": "Consumption expenditures -1.0%",
+            "href": "https://www.stat.go.jp/english/data/kakei/156.html"
+          },
+          {
+            "text": "Statistics Bureau of Japan News Bulletin",
+            "href": "https://www.stat.go.jp/english/info/news/index.html"
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "macro_jp_estat_portal_html",
+      "category": "macro_data_jp",
+      "source_name": "e-Stat Portal（HTML；日本官方統計入口）",
+      "fetched_at": "2026-03-24T09:11:13.157Z",
+      "status": "ok",
+      "data": {
+        "title": "Portal Site of Official Statistics of Japan",
+        "excerpt": "Browse Statistics All Statistics by ThemePopulation and HouseholdsLabor and WagesAgriculture,Forestry and FisheriesMining and ManufacturingDomestic Trade and ServicesBusiness,Household,EconomyHousing,Estate and ConstructionEnergy and WaterTransport and SightseeingInformation and Communication,Science and TechnologyEducation,Culture,Sports and LifeAdministration and Public FinanceJustice,Security and EnvironmentSocial Security and SanitationInternationalOthers Statistics by Organization Cabinet O",
+        "links": [
+          {
+            "text": "Login",
+            "href": "https://www.e-stat.go.jp/en/mypage/login"
+          },
+          {
+            "text": "Sign up",
+            "href": "https://www.e-stat.go.jp/en/mypage/user/preregister"
+          },
+          {
+            "text": "All",
+            "href": "https://www.e-stat.go.jp/en/stat-search"
+          },
+          {
+            "text": "Statistics by Theme",
+            "href": "https://www.e-stat.go.jp/en/statistics-by-theme"
+          },
+          {
+            "text": "Population and Households",
+            "href": "https://www.e-stat.go.jp/en/stat-search?bunya_l=02"
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "macro_us_fred_cpi",
+      "category": "macro_data_us",
+      "source_name": "FRED CSV — CPIAUCSL（CPI 指數）",
+      "fetched_at": "2026-03-24T09:11:09.024Z",
+      "status": "ok",
+      "data": {
+        "latest_date": "2026-02-01",
+        "latest_value": 327.46,
+        "previous_date": "2026-01-01",
+        "previous_value": 326.588,
+        "change": 0.872,
+        "change_pct": 0.267
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "macro_us_fred_core_cpi",
+      "category": "macro_data_us",
+      "source_name": "FRED CSV — CPILFESL（Core CPI）",
+      "fetched_at": "2026-03-24T09:11:09.245Z",
+      "status": "ok",
+      "data": {
+        "latest_date": "2026-02-01",
+        "latest_value": 333.512,
+        "previous_date": "2026-01-01",
+        "previous_value": 332.793,
+        "change": 0.719,
+        "change_pct": 0.2161
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "macro_us_fred_gdp_real",
+      "category": "macro_data_us",
+      "source_name": "FRED CSV — GDPC1（Real GDP）",
+      "fetched_at": "2026-03-24T09:11:11.727Z",
+      "status": "ok",
+      "data": {
+        "latest_date": "2025-10-01",
+        "latest_value": 24065.956,
+        "previous_date": "2025-07-01",
+        "previous_value": 24026.834,
+        "change": 39.122,
+        "change_pct": 0.1628
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "macro_us_fred_payems",
+      "category": "macro_data_us",
+      "source_name": "FRED CSV — PAYEMS（總就業）",
+      "fetched_at": "2026-03-24T09:11:09.674Z",
+      "status": "ok",
+      "data": {
+        "latest_date": "2026-02-01",
+        "latest_value": 158466,
+        "previous_date": "2026-01-01",
+        "previous_value": 158558,
+        "change": -92,
+        "change_pct": -0.058
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "macro_us_fred_core_pcepi",
+      "category": "macro_data_us",
+      "source_name": "FRED CSV — PCEPILFE（Core PCE Price Index）",
+      "fetched_at": "2026-03-24T09:11:11.897Z",
+      "status": "ok",
+      "data": {
+        "latest_date": "2026-01-01",
+        "latest_value": 128.394,
+        "previous_date": "2025-12-01",
+        "previous_value": 127.929,
+        "change": 0.465,
+        "change_pct": 0.3635
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "macro_us_fred_pcepi",
+      "category": "macro_data_us",
+      "source_name": "FRED CSV — PCEPI（PCE Price Index）",
+      "fetched_at": "2026-03-24T09:11:11.138Z",
+      "status": "ok",
+      "data": {
+        "latest_date": "2026-01-01",
+        "latest_value": 128.969,
+        "previous_date": "2025-12-01",
+        "previous_value": 128.615,
+        "change": 0.354,
+        "change_pct": 0.2752
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "macro_us_fred_ppi",
+      "category": "macro_data_us",
+      "source_name": "FRED CSV — PPIACO（PPI 指數）",
+      "fetched_at": "2026-03-24T09:11:09.449Z",
+      "status": "ok",
+      "data": {
+        "latest_date": "2026-02-01",
+        "latest_value": 267.848,
+        "previous_date": "2026-01-01",
+        "previous_value": 262.39,
+        "change": 5.458,
+        "change_pct": 2.0801
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "macro_us_fred_retail_sales",
+      "category": "macro_data_us",
+      "source_name": "FRED CSV — RSAFS（Retail Sales）",
+      "fetched_at": "2026-03-24T09:11:11.715Z",
+      "status": "ok",
+      "data": {
+        "latest_date": "2026-01-01",
+        "latest_value": 733537,
+        "previous_date": "2025-12-01",
+        "previous_value": 734685,
+        "change": -1148,
+        "change_pct": -0.1563
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "macro_us_fred_unrate",
+      "category": "macro_data_us",
+      "source_name": "FRED CSV — UNRATE（失業率）",
+      "fetched_at": "2026-03-24T09:11:09.863Z",
+      "status": "ok",
+      "data": {
+        "latest_date": "2026-02-01",
+        "latest_value": 4.4,
+        "previous_date": "2026-01-01",
+        "previous_value": 4.3,
+        "change": 0.1,
+        "change_pct": 2.3256
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "news_crypto_coindesk_rss",
+      "category": "news_crypto",
+      "source_name": "CoinDesk RSS",
+      "fetched_at": "2026-03-24T09:11:12.910Z",
+      "status": "ok",
+      "data": {
+        "type": "rss",
+        "items": [
+          {
+            "title": "Here’s how Treasuries could shape Trump’s Iran war and bitcoin moves",
+            "link": "https://www.coindesk.com/markets/2026/03/24/here-s-where-treasuries-could-shape-trump-s-iran-war-and-bitcoin-moves",
+            "pubDate": "Tue, 24 Mar 2026 07:38:17 +0000",
+            "description": "Treasury yields and swap spreads could eventually pressure the Trump administration to moderate the conflict, analysts argue."
+          },
+          {
+            "title": "Balancer Labs will shut down as corporate entity became 'a liability' after $110 million exploit",
+            "link": "https://www.coindesk.com/tech/2026/03/24/balancer-labs-will-shut-down-as-corporate-entity-became-a-liability-after-usd110-million-exploit",
+            "pubDate": "Tue, 24 Mar 2026 06:25:47 +0000",
+            "description": "Co-founder Fernando Martinelli said he considered winding down the entire protocol but decided the team deserved a chance to restructure, with the DAO targeting zero emissions, fee restructuring, and a BAL buyback to offer holders a fair exit."
+          },
+          {
+            "title": "Bitcoin, ether, solana prices move higher as Gulf allies inch toward joining Iran war",
+            "link": "https://www.coindesk.com/markets/2026/03/24/bitcoin-ether-solana-prices-move-higher-as-gulf-allies-inch-toward-joining-iran-war",
+            "pubDate": "Tue, 24 Mar 2026 05:07:19 +0000",
+            "description": "Crypto recovered on Tuesday morning even as Monday's relief rally unraveled across traditional markets, with oil jumping 4% on reports that Saudi Arabia and the UAE are moving to join the conflict."
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "news_crypto_cointelegraph_rss",
+      "category": "news_crypto",
+      "source_name": "Cointelegraph RSS",
+      "fetched_at": "2026-03-24T09:11:12.716Z",
+      "status": "ok",
+      "data": {
+        "type": "rss",
+        "items": [
+          {
+            "title": "Aave DAO backs V4 mainnet plan in near-unanimous vote",
+            "link": "https://cointelegraph.com/news/aave-dao-backs-v4-deployment-near-unanimous-snapshot-vote?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound",
+            "pubDate": "Tue, 24 Mar 2026 08:28:05 +0000",
+            "description": "Aave founder Stani Kulechov says the proposal will move to a binding onchain vote to formalize V4’s deployment on Ethereum."
+          },
+          {
+            "title": "As mass adoption approaches, crypto has forgotten its roots",
+            "link": "https://cointelegraph.com/news/crypto-has-forgotten-roots?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound",
+            "pubDate": "Tue, 24 Mar 2026 08:00:00 +0000",
+            "description": "Mass adoption risks crypto’s cypherpunk roots. Privacy as a permissionless foundation must reclaim DeFi from surveillance, TradFi and memecoin casinos."
+          },
+          {
+            "title": "SEC’s top enforcer clashed over Trump cases before quitting: Report",
+            "link": "https://cointelegraph.com/news/sec-top-enforcer-clashed-over-trump-cases-before-quitting-report?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound",
+            "pubDate": "Tue, 24 Mar 2026 06:26:11 +0000",
+            "description": "The SEC’s handling of cases involving Justin Sun and Elon Musk was among the factors that caused the agency’s top enforcement official to quit, according to sources."
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "news_crypto_google_general",
+      "category": "news_crypto",
+      "source_name": "Google News RSS Search（crypto + macro 關鍵字）",
+      "fetched_at": "2026-03-24T09:11:12.567Z",
+      "status": "ok",
+      "data": {
+        "type": "rss",
+        "items": [
+          {
+            "title": "Stablecoins Could Become One Of The US Government’s Most Resilient Financial Allies - Ark Invest",
+            "link": "https://news.google.com/rss/articles/CBMikAFBVV95cUxPcDJjLThxY3BLZjhncVhxV2ozQVpoXzNDY0paUnFaQVFCRDFPVDVhWlgzc1hDTDZfaEdiRk85Znd4MVVBSHJ1Y3JFM1pJc1JZZUYxNnFfbnlNSG5SR19Xd3BDWFlCZ0JZTW9uNk1ZTm81dzlpdzE3Nkw0Ym16cTB3M29INkhzV0JsakVsemZJcEg?oc=5",
+            "pubDate": "Thu, 05 Jun 2025 07:00:00 GMT",
+            "description": "&lt;a href=\"https://news.google.com/rss/articles/CBMikAFBVV95cUxPcDJjLThxY3BLZjhncVhxV2ozQVpoXzNDY0paUnFaQVFCRDFPVDVhWlgzc1hDTDZfaEdiRk85Znd4MVVBSHJ1Y3JFM1pJc1JZZUYxNnFfbnlNSG5SR19Xd3BDWFlCZ0JZTW9uNk1ZTm81dzlpdzE3Nkw0Ym16cTB3M29INkhzV0JsakVsemZJcEg?oc=5\" target=\"_blank\"&gt;Stablecoins Could Become O"
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "news_crypto_google_fomc_cut",
+      "category": "news_crypto",
+      "source_name": "Google News RSS Search（fomc rate cut probability + crypto）",
+      "fetched_at": "2026-03-24T09:11:12.764Z",
+      "status": "ok",
+      "data": {
+        "type": "rss",
+        "items": [
+          {
+            "title": "Markets Flip Script as Fed Hike Odds Overtake Cuts for First Time in 2026 Cycle - Bitcoin.com News",
+            "link": "https://news.google.com/rss/articles/CBMiqAFBVV95cUxQQXlUODBXaU9vQ0tCb2hEaHBHX1EzRDJrbnZ4RkR6SWNIVWNhVVZDMERHMmlSZzNONnNfSGszeHVDQUk1czJSTjFrcXlSTW90STNKUFY1X0g0MmhiY0FiN0ZyVWhfdUhuUHFrcnZnLUVNaTdQYTI1OVB2dnczdFpmcGtJQ2lHdTdtb1ZZREkwRFUtUThaNHZNa0Itd0xPUUhnV0xWVmY0OHQ?oc=5",
+            "pubDate": "Mon, 23 Mar 2026 23:35:19 GMT",
+            "description": "&lt;a href=\"https://news.google.com/rss/articles/CBMiqAFBVV95cUxQQXlUODBXaU9vQ0tCb2hEaHBHX1EzRDJrbnZ4RkR6SWNIVWNhVVZDMERHMmlSZzNONnNfSGszeHVDQUk1czJSTjFrcXlSTW90STNKUFY1X0g0MmhiY0FiN0ZyVWhfdUhuUHFrcnZnLUVNaTdQYTI1OVB2dnczdFpmcGtJQ2lHdTdtb1ZZREkwRFUtUThaNHZNa0Itd0xPUUhnV0xWVmY0OHQ?oc=5\" target=\"_blan"
+          },
+          {
+            "title": "What Vanishing Fed Rate Cut Odds Mean for Bitcoin and Crypto Markets - Bitget",
+            "link": "https://news.google.com/rss/articles/CBMiY0FVX3lxTE94YVd3UG15bXZfTlZqR194TFY2WGFGTHVhdVRjd1NBWUJySVpnNXFuRUdDb2hQUUgzLVE2UzdISlU2dUJSZEpDa3l1VzdNdkJiTEFtZVd0V3NfeThIU3oxaFNQZ9IBY0FVX3lxTE94YVd3UG15bXZfTlZqR194TFY2WGFGTHVhdVRjd1NBWUJySVpnNXFuRUdDb2hQUUgzLVE2UzdISlU2dUJSZEpDa3l1VzdNdkJiTEFtZVd0V3NfeThIU3oxaFNQZw?oc=5",
+            "pubDate": "Sun, 22 Mar 2026 21:02:29 GMT",
+            "description": "&lt;a href=\"https://news.google.com/rss/articles/CBMiY0FVX3lxTE94YVd3UG15bXZfTlZqR194TFY2WGFGTHVhdVRjd1NBWUJySVpnNXFuRUdDb2hQUUgzLVE2UzdISlU2dUJSZEpDa3l1VzdNdkJiTEFtZVd0V3NfeThIU3oxaFNQZ9IBY0FVX3lxTE94YVd3UG15bXZfTlZqR194TFY2WGFGTHVhdVRjd1NBWUJySVpnNXFuRUdDb2hQUUgzLVE2UzdISlU2dUJSZEpDa3l1VzdNdkJiTEF"
+          },
+          {
+            "title": "Fed seen certain to keep rates unchanged as odds hit 100% - thestreet.com",
+            "link": "https://news.google.com/rss/articles/CBMipAFBVV95cUxPelR5dXJRMW56anpiUWJDU29IY0MwQTB4dkUtTC1lMU1HU21vejVDUXJ0SE9fTzZac2lraHlsVm04RGJaOE1ZdTNEV3Z4eV9jcnNUa0gyTGI1NG5UZHp6RzZkaTJWV1c1OW1Fbmtvd05aODNEaFFqUWlrM2dvRXQyVzlxUnA0R1VzcWFtMWo4NGtsdDNhYmN0MzBiV1N1RkFrSmdlVA?oc=5",
+            "pubDate": "Wed, 18 Mar 2026 18:13:10 GMT",
+            "description": "&lt;a href=\"https://news.google.com/rss/articles/CBMipAFBVV95cUxPelR5dXJRMW56anpiUWJDU29IY0MwQTB4dkUtTC1lMU1HU21vejVDUXJ0SE9fTzZac2lraHlsVm04RGJaOE1ZdTNEV3Z4eV9jcnNUa0gyTGI1NG5UZHp6RzZkaTJWV1c1OW1Fbmtvd05aODNEaFFqUWlrM2dvRXQyVzlxUnA0R1VzcWFtMWo4NGtsdDNhYmN0MzBiV1N1RkFrSmdlVA?oc=5\" target=\"_blank\"&gt"
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "news_crypto_google_tariff",
+      "category": "news_crypto",
+      "source_name": "Google News RSS Search（trump tariff 10%/15% + crypto）",
+      "fetched_at": "2026-03-24T09:11:12.751Z",
+      "status": "ok",
+      "data": {
+        "type": "rss",
+        "items": [
+          {
+            "title": "Bitcoin slumps under $65K, Ethereum underperforms after Trump’s 15% tariff announcement - MSN",
+            "link": "https://news.google.com/rss/articles/CBMikwJBVV95cUxQVVk3RzBWRjA4bkg4ckJFRUlzMjdUblU0aUtLaloxdHp1QnhULVJmWDRIQ1pCWDJTcmQtMS1LekhYck1sMzZNUnNmcFVtWWJBbmRSWUhFQTduQUJHMzZsdHpCbUhWejFkQVhDZk1tdW5mUmd2UkdrRnZ0cktsQ0oxdUQ0QnBKdEd1X2hFdXpLYkJYVERzQXQ3eDMwakRFaTRGV0RSMGI2dG13Tms2UklmQ01aSEFtNXJ3UWI4WGpPNG1VTlJHaDJzNUUyWnluMGttWl9ZNnByaE1XbmlaUFl3T1BRZlVvY2M4WENqS2tYTkhWT1pMeVZzUHFIZTdUZGVUMExrdFpmcjNBYm1jOGtBNHJiNA?oc=5",
+            "pubDate": "Wed, 18 Mar 2026 21:23:25 GMT",
+            "description": "&lt;a href=\"https://news.google.com/rss/articles/CBMikwJBVV95cUxQVVk3RzBWRjA4bkg4ckJFRUlzMjdUblU0aUtLaloxdHp1QnhULVJmWDRIQ1pCWDJTcmQtMS1LekhYck1sMzZNUnNmcFVtWWJBbmRSWUhFQTduQUJHMzZsdHpCbUhWejFkQVhDZk1tdW5mUmd2UkdrRnZ0cktsQ0oxdUQ0QnBKdEd1X2hFdXpLYkJYVERzQXQ3eDMwakRFaTRGV0RSMGI2dG13Tms2UklmQ01aSEFtNXJ"
+          },
+          {
+            "title": "'Sit still and do nothing': Trump's latest tariff salvos leave markets unfazed - CNBC",
+            "link": "https://news.google.com/rss/articles/CBMiigFBVV95cUxPem43RjBSaUV6RHRGM0Jhd2JKTzBhejZwLTE3dHB6TE1iVGVzOEczUFk1cUM0OTlNRy1FLVA1ak9rQ0p4ZTZpeVM3blhEaUx0OUt1UmN2RHYtZFJaT2RnU2JWaVlHOVNObkxnSl90NmZ0eXQ0WHdhM0tHR1lpNFJUY2ZhYTFIUGI1ZWfSAY8BQVVfeXFMUFhRUmJDREg4dmpXa3hjcGxHaHE1ZEM2Nl95bDVmQmZUc0lneUJ4S2xLLUduYTV4WUdlaks2MlZqZUQ3dzFzYlhOYzE1U3lEeGFmeTN1Q09TU1NlSnVKTE4tRFg0eEdFTnY3TVRWRTJUWHdLdmhveUtUYTJ6OG9VT1BBM2c2MllJVlBGREJZWFE?oc=5",
+            "pubDate": "Mon, 23 Feb 2026 08:00:00 GMT",
+            "description": "&lt;a href=\"https://news.google.com/rss/articles/CBMiigFBVV95cUxPem43RjBSaUV6RHRGM0Jhd2JKTzBhejZwLTE3dHB6TE1iVGVzOEczUFk1cUM0OTlNRy1FLVA1ak9rQ0p4ZTZpeVM3blhEaUx0OUt1UmN2RHYtZFJaT2RnU2JWaVlHOVNObkxnSl90NmZ0eXQ0WHdhM0tHR1lpNFJUY2ZhYTFIUGI1ZWfSAY8BQVVfeXFMUFhRUmJDREg4dmpXa3hjcGxHaHE1ZEM2Nl95bDVmQmZUc0l"
+          },
+          {
+            "title": "Bitcoin, Ethereum hold firm as Trump announces global tariff hike - dlnews.com",
+            "link": "https://news.google.com/rss/articles/CBMioAFBVV95cUxNOGZjeXlzSW9ia2tITUxvQTdTODB5VjFoRzZXRzdCb000dWZVc0xfUnp4WjNBcDZKNjMzOFVzazJoNkFBTFl1SkhNMVlRS0JKY3prelRGeDBqNWc0SXQwVmRpTHZwRXZqVHItcVNUQVZ2UG13cTA4NmdFQ2hNMi1oVkgtWUZ0MS1RUkNMQllwQnctekpLa1RMcjJXYUNPYXlh?oc=5",
+            "pubDate": "Sat, 21 Feb 2026 08:00:00 GMT",
+            "description": "&lt;a href=\"https://news.google.com/rss/articles/CBMioAFBVV95cUxNOGZjeXlzSW9ia2tITUxvQTdTODB5VjFoRzZXRzdCb000dWZVc0xfUnp4WjNBcDZKNjMzOFVzazJoNkFBTFl1SkhNMVlRS0JKY3prelRGeDBqNWc0SXQwVmRpTHZwRXZqVHItcVNUQVZ2UG13cTA4NmdFQ2hNMi1oVkgtWUZ0MS1RUkNMQllwQnctekpLa1RMcjJXYUNPYXlh?oc=5\" target=\"_blank\"&gt;Bitco"
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "news_geo_google_middle_east_oil",
+      "category": "news_geopolitics",
+      "source_name": "Google News RSS Search（middle east war oil + crypto/risk asset）",
+      "fetched_at": "2026-03-24T09:11:12.951Z",
+      "status": "ok",
+      "data": {
+        "type": "rss",
+        "items": [
+          {
+            "title": "Weekly market commentary - blackrock.com",
+            "link": "https://news.google.com/rss/articles/CBMingFBVV95cUxQLWJDTjBBalYwVHVpc0VxV1BwRE1xeUt1RWlLQ1VJdnJQRXNnb3p6MnFNbjRBV0s0TnlldW4wSVIycFRQeVNISWJ3VV9wMWdjX1ZndE1Tc24tNzc0anNYWjl0SVBsRDhSa0dVTWlyVVYxX0w5b2JhTFB0Tm9Vb2FwYVZubTU1SVJlcy0zMEpXOEM4ZlhiSU1QazdVQVlldw?oc=5",
+            "pubDate": "Tue, 24 Mar 2026 01:40:28 GMT",
+            "description": "&lt;a href=\"https://news.google.com/rss/articles/CBMingFBVV95cUxQLWJDTjBBalYwVHVpc0VxV1BwRE1xeUt1RWlLQ1VJdnJQRXNnb3p6MnFNbjRBV0s0TnlldW4wSVIycFRQeVNISWJ3VV9wMWdjX1ZndE1Tc24tNzc0anNYWjl0SVBsRDhSa0dVTWlyVVYxX0w5b2JhTFB0Tm9Vb2FwYVZubTU1SVJlcy0zMEpXOEM4ZlhiSU1QazdVQVlldw?oc=5\" target=\"_blank\"&gt;Weekly "
+          },
+          {
+            "title": "Bitcoin holds $68,000. Why analysts say price will ‘outperform other assets’ as Trump and Iran tensions intensify - dlnews.com",
+            "link": "https://news.google.com/rss/articles/CBMipAFBVV95cUxQQ3ZjVi1IMWVQZjlqbnhfU1B4UFRyLUp0a3gyQ0RLXzdIZWI5YUt1cjNlMjktVHFLb3NpY2ZpYmNvOHNrVWRRakpWQmlDU3FsUTFqSVhPS2ZCX3lwOEg5UVJKSXhhREk3Smx6OWRZM3IwcWlydG9xOC05ZTJIc001SGwzU21VOFc0bEFHTldnYkpOWXlWb3ZSSC1tUVNKaXRpQlBGZw?oc=5",
+            "pubDate": "Mon, 23 Mar 2026 09:53:17 GMT",
+            "description": "&lt;a href=\"https://news.google.com/rss/articles/CBMipAFBVV95cUxQQ3ZjVi1IMWVQZjlqbnhfU1B4UFRyLUp0a3gyQ0RLXzdIZWI5YUt1cjNlMjktVHFLb3NpY2ZpYmNvOHNrVWRRakpWQmlDU3FsUTFqSVhPS2ZCX3lwOEg5UVJKSXhhREk3Smx6OWRZM3IwcWlydG9xOC05ZTJIc001SGwzU21VOFc0bEFHTldnYkpOWXlWb3ZSSC1tUVNKaXRpQlBGZw?oc=5\" target=\"_blank\"&gt"
+          },
+          {
+            "title": "Iran war escalation wakes markets up to risks of deeper economic pain - Reuters",
+            "link": "https://news.google.com/rss/articles/CBMiuAFBVV95cUxPME9SMldJUFpWWnpSUlBURTBYVkg5Skd5WlE4QnJzcHFBOUkwYXVxdkFMNGZrOUFFZjJNM3d3ei1OT0hFZnJTOGhhRmJRN3BCZEdBVjQwV2RnbWh3cG5rb0pjalFaVTZ3RzJCaENXbmtpdEo5cnhWREx2QlZyLTViRk1PTzVnLWZDUTQwVzVCbzJhM0Q2MkdaTy1zNVc3a190ZVluMnZzNWFsS1NVd1RZNmp1OWM3ZGM2?oc=5",
+            "pubDate": "Thu, 19 Mar 2026 15:05:19 GMT",
+            "description": "&lt;a href=\"https://news.google.com/rss/articles/CBMiuAFBVV95cUxPME9SMldJUFpWWnpSUlBURTBYVkg5Skd5WlE4QnJzcHFBOUkwYXVxdkFMNGZrOUFFZjJNM3d3ei1OT0hFZnJTOGhhRmJRN3BCZEdBVjQwV2RnbWh3cG5rb0pjalFaVTZ3RzJCaENXbmtpdEo5cnhWREx2QlZyLTViRk1PTzVnLWZDUTQwVzVCbzJhM0Q2MkdaTy1zNVc3a190ZVluMnZzNWFsS1NVd1RZNmp1OWM3ZGM"
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "news_geo_google_trump_tariff_policy",
+      "category": "news_geopolitics",
+      "source_name": "Google News RSS Search（trump tariff policy / geopolitical war + crypto）",
+      "fetched_at": "2026-03-24T09:11:12.934Z",
+      "status": "ok",
+      "data": {
+        "type": "rss",
+        "items": [
+          {
+            "title": "Treasury Secretary Bessent sends blunt words on Spain trade halt - thestreet.com",
+            "link": "https://news.google.com/rss/articles/CBMiqAFBVV95cUxQTXkybXJ0Mzg0VTY5d2pJV0dydFBFWmhrZ0pnbXEySjMtQmRETDg2S2xWaDVYOWVjODRzWldTbUdINDlWVjg4bGNnMXphQ3N5U3BGWlpMc2pwdklqaXM3MHMwcDZjUHEwUFV0M2tLZFQ1NUpRVVV4RFBCeUxqN1dseklZOHNCN1lMZjVEY0VfcThtbGI2UllnblZ5b1VzcDV2TnJlV2tXT1M?oc=5",
+            "pubDate": "Tue, 03 Mar 2026 08:00:00 GMT",
+            "description": "&lt;a href=\"https://news.google.com/rss/articles/CBMiqAFBVV95cUxQTXkybXJ0Mzg0VTY5d2pJV0dydFBFWmhrZ0pnbXEySjMtQmRETDg2S2xWaDVYOWVjODRzWldTbUdINDlWVjg4bGNnMXphQ3N5U3BGWlpMc2pwdklqaXM3MHMwcDZjUHEwUFV0M2tLZFQ1NUpRVVV4RFBCeUxqN1dseklZOHNCN1lMZjVEY0VfcThtbGI2UllnblZ5b1VzcDV2TnJlV2tXT1M?oc=5\" target=\"_blan"
+          },
+          {
+            "title": "Bitcoin, Ethereum hold firm as Trump announces global tariff hike - dlnews.com",
+            "link": "https://news.google.com/rss/articles/CBMioAFBVV95cUxNOGZjeXlzSW9ia2tITUxvQTdTODB5VjFoRzZXRzdCb000dWZVc0xfUnp4WjNBcDZKNjMzOFVzazJoNkFBTFl1SkhNMVlRS0JKY3prelRGeDBqNWc0SXQwVmRpTHZwRXZqVHItcVNUQVZ2UG13cTA4NmdFQ2hNMi1oVkgtWUZ0MS1RUkNMQllwQnctekpLa1RMcjJXYUNPYXlh?oc=5",
+            "pubDate": "Sat, 21 Feb 2026 08:00:00 GMT",
+            "description": "&lt;a href=\"https://news.google.com/rss/articles/CBMioAFBVV95cUxNOGZjeXlzSW9ia2tITUxvQTdTODB5VjFoRzZXRzdCb000dWZVc0xfUnp4WjNBcDZKNjMzOFVzazJoNkFBTFl1SkhNMVlRS0JKY3prelRGeDBqNWc0SXQwVmRpTHZwRXZqVHItcVNUQVZ2UG13cTA4NmdFQ2hNMi1oVkgtWUZ0MS1RUkNMQllwQnctekpLa1RMcjJXYUNPYXlh?oc=5\" target=\"_blank\"&gt;Bitco"
+          },
+          {
+            "title": "Bitcoin-Gold Decoupling Deepens Amid Tariff Turmoil - 조선일보",
+            "link": "https://news.google.com/rss/articles/CBMijgFBVV95cUxQdDYwMFdiREZQQkFPdUtZemo5aC1VSklMTXJZV0hXN2huRndCeF9sUEZsRmlva3pCQUN4eFVYR0RMMlhYYUNIc1RmckxEaVEzOTJ2MzJMUzNWYUZHbDI2TnRBN1A0UWU5Vl9kM1NUNXFfRU1CNldQbnpVWFpQS294bFhwbUNVR3RIcUZVTW9B?oc=5",
+            "pubDate": "Tue, 24 Feb 2026 08:00:00 GMT",
+            "description": "&lt;a href=\"https://news.google.com/rss/articles/CBMijgFBVV95cUxQdDYwMFdiREZQQkFPdUtZemo5aC1VSklMTXJZV0hXN2huRndCeF9sUEZsRmlva3pCQUN4eFVYR0RMMlhYYUNIc1RmckxEaVEzOTJ2MzJMUzNWYUZHbDI2TnRBN1A0UWU5Vl9kM1NUNXFfRU1CNldQbnpVWFpQS294bFhwbUNVR3RIcUZVTW9B?oc=5\" target=\"_blank\"&gt;Bitcoin-Gold Decoupling Deepe"
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "news_macro_google_fed_boj_policy",
+      "category": "news_macro",
+      "source_name": "Google News RSS Search（fed/boj policy crypto）",
+      "fetched_at": "2026-03-24T09:11:12.897Z",
+      "status": "ok",
+      "data": {
+        "type": "rss",
+        "items": [
+          {
+            "title": "Fed’s hawkishness is great for crypto startups as ‘best companies aren’t built during periods of loose monetary policy,’ VC says - dlnews.com",
+            "link": "https://news.google.com/rss/articles/CBMingFBVV95cUxQMWNkeTVYc3hwUFlrVmJOVkZJT2QzMGRwc2F1THl4RC04QUFmR1h6SGVOQWpkbDJ1NHRLSjRfOGhfdDAtUkJmMkNrY09PalRwWE9JU3hDMk1xdzE0cjlPcHhwSFM0SExXalRKaFJrUExLWDRYcEJXQU1fVTlIb3ZtOUtLaVMxaHE4ZXVCbUlhMmZWbTBqRkdhbWw4c3BEUQ?oc=5",
+            "pubDate": "Sat, 21 Mar 2026 08:02:02 GMT",
+            "description": "&lt;a href=\"https://news.google.com/rss/articles/CBMingFBVV95cUxQMWNkeTVYc3hwUFlrVmJOVkZJT2QzMGRwc2F1THl4RC04QUFmR1h6SGVOQWpkbDJ1NHRLSjRfOGhfdDAtUkJmMkNrY09PalRwWE9JU3hDMk1xdzE0cjlPcHhwSFM0SExXalRKaFJrUExLWDRYcEJXQU1fVTlIb3ZtOUtLaVMxaHE4ZXVCbUlhMmZWbTBqRkdhbWw4c3BEUQ?oc=5\" target=\"_blank\"&gt;Fed’s h"
+          },
+          {
+            "title": "Interest Rates and Crypto: Why Macro Trends Move Markets - FinanceFeeds",
+            "link": "https://news.google.com/rss/articles/CBMifkFVX3lxTE9uMV8wckxURnNyT1A4T29GT1FjcUplbU9FUklLZGd3cGtxZmU5TDhlOXdmVGZ3Ymx2MWZVQ0tzS3ZCdzlhaGRONldrUDlhbmd3QUp4NFNJZFBqYWVLamtudXpUcVRKbjdEdm90U0VsSzBQWTM0RHROVzVBejlXQQ?oc=5",
+            "pubDate": "Mon, 23 Mar 2026 18:31:01 GMT",
+            "description": "&lt;a href=\"https://news.google.com/rss/articles/CBMifkFVX3lxTE9uMV8wckxURnNyT1A4T29GT1FjcUplbU9FUklLZGd3cGtxZmU5TDhlOXdmVGZ3Ymx2MWZVQ0tzS3ZCdzlhaGRONldrUDlhbmd3QUp4NFNJZFBqYWVLamtudXpUcVRKbjdEdm90U0VsSzBQWTM0RHROVzVBejlXQQ?oc=5\" target=\"_blank\"&gt;Interest Rates and Crypto: Why Macro Trends Move Ma"
+          },
+          {
+            "title": "Fed Rate Hike Pivot Shocks Markets: Bitcoin, Crypto Crash &amp; Oil Price Fears - National Today",
+            "link": "https://news.google.com/rss/articles/CBMixwFBVV95cUxQeFhiZDJHSGxVaTF1QnRUZGpadFB6eDNXYjhkRFBfQ3ZNX1ZwV1Jjdi1DT2Z6T3RhTjJtN2NHME5Vc1pETzcyZEhoYUFGQWlRTlVVVHgyU2hjR0NTVHN6NWJJcDFLQ0x2SndrN293T0t0cjRvUHNGSi1tTWs2UjRSWk9JLVU0R2QybnpESi1sNEFZd243T2NMTXRDUFJUOGlhTkdpTHhvVFItUGFwTklMX01yNjhVUFlKVkpQUHotd09kcFhkeEdn?oc=5",
+            "pubDate": "Sun, 22 Mar 2026 18:51:05 GMT",
+            "description": "&lt;a href=\"https://news.google.com/rss/articles/CBMixwFBVV95cUxQeFhiZDJHSGxVaTF1QnRUZGpadFB6eDNXYjhkRFBfQ3ZNX1ZwV1Jjdi1DT2Z6T3RhTjJtN2NHME5Vc1pETzcyZEhoYUFGQWlRTlVVVHgyU2hjR0NTVHN6NWJJcDFLQ0x2SndrN293T0t0cjRvUHNGSi1tTWs2UjRSWk9JLVU0R2QybnpESi1sNEFZd243T2NMTXRDUFJUOGlhTkdpTHhvVFItUGFwTklMX01yNjhVUFl"
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "news_macro_google_tariff_market",
+      "category": "news_macro",
+      "source_name": "Google News RSS Search（trump tariff 10%/15% + market/crypto）",
+      "fetched_at": "2026-03-24T09:11:12.921Z",
+      "status": "ok",
+      "data": {
+        "type": "rss",
+        "items": [
+          {
+            "title": "Classic 'TACO'? Investors shrug off Trump's latest tariff announcement - CNBC",
+            "link": "https://news.google.com/rss/articles/CBMiiwFBVV95cUxQUFUtSmlVLWJzUU9YU2JsX1JQU3hXWm9XQnd3bXQyaEgzbXkwcEkySEJRdjFpSTdfc2ctRDdpMXBBRWhKS2dLUTJuRnMtSkNoMWtQWFpiOHgxdU5CS1hEdWFXVC1HbWNxNDdKQmhIQjN1TkJiaExpVVB0R1VkVnNsMDRXcmsxYVI3Si1n?oc=5",
+            "pubDate": "Tue, 24 Feb 2026 08:00:00 GMT",
+            "description": "&lt;a href=\"https://news.google.com/rss/articles/CBMiiwFBVV95cUxQUFUtSmlVLWJzUU9YU2JsX1JQU3hXWm9XQnd3bXQyaEgzbXkwcEkySEJRdjFpSTdfc2ctRDdpMXBBRWhKS2dLUTJuRnMtSkNoMWtQWFpiOHgxdU5CS1hEdWFXVC1HbWNxNDdKQmhIQjN1TkJiaExpVVB0R1VkVnNsMDRXcmsxYVI3Si1n?oc=5\" target=\"_blank\"&gt;Classic 'TACO'? Investors shrug o"
+          },
+          {
+            "title": "US trade war: Trump raises global tariffs to 15% from 10% - DW.com",
+            "link": "https://news.google.com/rss/articles/CBMilAFBVV95cUxQdTBwanZTNHI3SHVRWEFYT080aFJJZUZ0WFZFVXVXdFM4OVZOUkRWYjRSZjZyQUxsRmUwcHppNW9WX19TQjBOMXkxY2x6dEtwYS1VWVpYVXJwd2Q0U3lNM1RhZGJfVkpOb0dVOHhvSXFVRW5DU3ZleFlKckpsb0dfYlZvbjJmNUdNVHFqZ2ZFUVhkQzk2?oc=5",
+            "pubDate": "Sat, 21 Feb 2026 08:00:00 GMT",
+            "description": "&lt;a href=\"https://news.google.com/rss/articles/CBMilAFBVV95cUxQdTBwanZTNHI3SHVRWEFYT080aFJJZUZ0WFZFVXVXdFM4OVZOUkRWYjRSZjZyQUxsRmUwcHppNW9WX19TQjBOMXkxY2x6dEtwYS1VWVpYVXJwd2Q0U3lNM1RhZGJfVkpOb0dVOHhvSXFVRW5DU3ZleFlKckpsb0dfYlZvbjJmNUdNVHFqZ2ZFUVhkQzk2?oc=5\" target=\"_blank\"&gt;US trade war: Trump r"
+          },
+          {
+            "title": "Dow Jones Futures Fall After Trump Hikes Global Tariff; Novo Dives On Obesity Drug News - Investor's Business Daily",
+            "link": "https://news.google.com/rss/articles/CBMivwFBVV95cUxNOGI4OE9oTExGRzJsdS1mZUFWV1Zjc0J2Mk9jeHZpckFyMk1BSktUanlMUHJYaWVoVWZiTGdhTTRTWW9Ga0czWEpVNzJlTV9vSWVUUzFhV2VCQ0NMZndvVy16NXlyTGpGZTdsR000Nm9MdDUxNWRORE5IdUgwLVpqTE8wVUR5SVk3X3pjeHM1OHRhWXBwY09xUUVFOWpRaUxCUnV0bGdSQV92NzNKZng5VV9MZDZrWWtvZWNLWFBZWQ?oc=5",
+            "pubDate": "Mon, 23 Feb 2026 08:00:00 GMT",
+            "description": "&lt;a href=\"https://news.google.com/rss/articles/CBMivwFBVV95cUxNOGI4OE9oTExGRzJsdS1mZUFWV1Zjc0J2Mk9jeHZpckFyMk1BSktUanlMUHJYaWVoVWZiTGdhTTRTWW9Ga0czWEpVNzJlTV9vSWVUUzFhV2VCQ0NMZndvVy16NXlyTGpGZTdsR000Nm9MdDUxNWRORE5IdUgwLVpqTE8wVUR5SVk3X3pjeHM1OHRhWXBwY09xUUVFOWpRaUxCUnV0bGdSQV92NzNKZng5VV9MZDZrWWt"
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "policy_global_bis_press_html",
+      "category": "policy_global",
+      "source_name": "BIS — Press Releases（HTML）",
+      "fetched_at": "2026-03-24T09:11:11.517Z",
+      "status": "ok",
+      "data": {
+        "title": "Press releases",
+        "excerpt": "Sign up to receive email alerts Copyright and permissions",
+        "links": [
+          {
+            "text": "Sitemap",
+            "href": "https://www.bis.org/sitemap/index.htm"
+          },
+          {
+            "text": "FAQ",
+            "href": "https://www.bis.org/about/faq.htm"
+          },
+          {
+            "text": "Contact",
+            "href": "https://www.bis.org/about/contact.htm"
+          },
+          {
+            "text": "Careers",
+            "href": "https://www.bis.org/careers/index.htm"
+          },
+          {
+            "text": "Translations",
+            "href": "https://www.bis.org/translations/index.htm"
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "policy_global_bis_press_rss_optional",
+      "category": "policy_global",
+      "source_name": "BIS — Press Releases（RSS；若端點變動則以 HTML fallback）",
+      "fetched_at": "2026-03-24T09:11:08.376Z",
+      "status": "ok",
+      "data": {
+        "type": "rss",
+        "items": [
+          {
+            "title": "Statement on the nomination of Hyun Song Shin as Governor of the Bank of Korea",
+            "link": "https://www.bis.org/press/p260322.htm",
+            "pubDate": "2026-03-22T12:08:00Z",
+            "description": "Following the nomination of Hyun Song Shin as Governor of the Bank of Korea, the BIS today announced that Mr. Shin will step back from his duties with immediate effect. In the interim, the Monetary and Economic Department will be led by Frank Smets, who will serve as Acting Head."
+          },
+          {
+            "title": "Ben Gully appointed Secretary General of the Basel Committee on Banking Supervision",
+            "link": "https://www.bis.org/press/p260317.htm",
+            "pubDate": "2026-03-17T15:30:00Z",
+            "description": "Ben Gully will lead the international standard setter's Secretariat in Basel.&#13; Mr Gully has been appointed for a three-year term, starting in August.&#13; He is currently Deputy Superintendent at the Office of the Superintendent of Financial Institutions (OSFI) in Canada."
+          },
+          {
+            "title": "Hélène Rey appointed as Economic Adviser and Head of Monetary and Economic Department",
+            "link": "https://www.bis.org/press/p260316.htm",
+            "pubDate": "2026-03-16T13:00:00Z",
+            "description": "Hélène Rey, Professor of Economics at London Business School, appointed as Economic Adviser and Head of the Monetary and Economic Department of the BIS. Ms Rey is appointed for a five-year term, effective September 2026. She will lead the economics work of the Bank and join its Executive Committee."
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "policy_global_fsb_press_html",
+      "category": "policy_global",
+      "source_name": "FSB — Press Releases（HTML）",
+      "fetched_at": "2026-03-24T09:11:11.174Z",
+      "status": "ok",
+      "data": {
+        "title": "Press - Financial Stability Board",
+        "excerpt": "FSB publishes 2025 Annual Report Multilateralism in a shifting landscape: FSB Chair’s foreword to the FSB Annual Report 2025 FSB kicks off new implementation phase to enhance cross-border payments through public-private partnership Reforming Cross-border payments: keynote speech at the FSB Payments Summit FSB Regional Consultative Group for Sub-Saharan Africa meets in Zanzibar Strategic review of FSB crisis preparedness activities FSB warns of financial stability challenges in repo markets “Sens",
+        "links": [
+          {
+            "text": "FSB publishes 2025 Annual Report",
+            "href": "https://www.fsb.org/2026/03/fsb-publishes-2025-annual-report/"
+          },
+          {
+            "text": "Multilateralism in a shifting landscape: FSB Chair’s foreword to the FSB Annual Report 2025",
+            "href": "https://www.fsb.org/2026/03/duplicate-promoting-global-financial-stability-2025-fsb-annual-report/"
+          },
+          {
+            "text": "FSB kicks off new implementation phase to enhance cross-border payments through public-private partn",
+            "href": "https://www.fsb.org/2026/03/fsb-kicks-off-new-implementation-phase-to-enhance-cross-border-payments-through-public-private-partnership/"
+          },
+          {
+            "text": "Reforming Cross-border payments: keynote speech at the FSB Payments Summit",
+            "href": "https://www.fsb.org/2026/03/reforming-cross-border-payments-keynote-speech-at-the-fsb-payments-summit/"
+          },
+          {
+            "text": "FSB Regional Consultative Group for Sub-Saharan Africa meets in Zanzibar",
+            "href": "https://www.fsb.org/2026/02/fsb-regional-consultative-group-for-sub-saharan-africa-meets-in-zanzibar/"
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "policy_global_imf_whats_new_archive_html",
+      "category": "policy_global",
+      "source_name": "IMF — What’s New Archive / Latest Releases（HTML）",
+      "fetched_at": "2026-03-24T09:11:07.730Z",
+      "status": "ok",
+      "data": {
+        "title": "What's New Archive",
+        "excerpt": "Sign up to receive free e-mail notices when new series and/or country items are posted on the IMF website. © 2026 International Monetary Fund. All rights reserved.",
+        "links": [
+          {
+            "text": "Sign up to receive free e-mail notices when new series and/or country items are posted on the IMF we",
+            "href": "https://www.imf.org/en/email-subscription/index"
+          },
+          {
+            "text": "Modify your profile",
+            "href": "https://www.imf.org/en/email-subscription/login"
+          },
+          {
+            "text": "español",
+            "href": "https://www.imf.org/es/whats-new-archive"
+          },
+          {
+            "text": "français",
+            "href": "https://www.imf.org/fr/whats-new-archive"
+          },
+          {
+            "text": "العربية",
+            "href": "https://www.imf.org/ar/whats-new-archive"
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "policy_jp_boj_whatsnew_rss",
+      "category": "policy_jp",
+      "source_name": "BOJ — What's New（RSS）",
+      "fetched_at": "2026-03-24T09:11:13.133Z",
+      "status": "ok",
+      "data": {
+        "type": "rss",
+        "items": [
+          {
+            "title": "Japanese Government Bonds Held by the Bank of Japan",
+            "link": "http://www.boj.or.jp/en/statistics/boj/other/mei/release/2026/mei260319.xlsx",
+            "pubDate": "Tue, 24 Mar 2026 17:00:00 +0900",
+            "description": ""
+          },
+          {
+            "title": "Developments in Real Exports and Real Imports",
+            "link": "http://www.boj.or.jp/en/research/research_data/reri/index.htm",
+            "pubDate": "Tue, 24 Mar 2026 14:00:00 +0900",
+            "description": ""
+          },
+          {
+            "title": "Bank of Japan Accounts (March 20)",
+            "link": "http://www.boj.or.jp/en/statistics/boj/other/acmai/release/2026/ac260320.htm",
+            "pubDate": "Tue, 24 Mar 2026 10:00:00 +0900",
+            "description": ""
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "policy_jp_fsa_news_html",
+      "category": "policy_jp",
+      "source_name": "Japan FSA — News List（RSS）",
+      "fetched_at": "2026-03-24T09:11:13.341Z",
+      "status": "ok",
+      "data": {
+        "type": "rss",
+        "items": [
+          {
+            "title": "Publication,FSA Weekly Review No.680 March 23, 2026",
+            "link": "https://www.fsa.go.jp/en/newsletter/weekly2026/680.html",
+            "pubDate": "Mon, 23 Mar 2026 20:30:00 JST",
+            "description": ""
+          },
+          {
+            "title": "International,The fourth meeting of the Japan-UK Financial Regulatory Forum",
+            "link": "https://www.fsa.go.jp/en/news/2026/20260319/20260319.html",
+            "pubDate": "Thu, 19 Mar 2026 19:00:00 JST",
+            "description": ""
+          },
+          {
+            "title": "International,The Japan-Bermuda bilateral meeting on insurance",
+            "link": "https://www.fsa.go.jp/en/news/2026/20260225/20260225.html",
+            "pubDate": "Thu, 19 Mar 2026 10:00:00 JST",
+            "description": ""
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "policy_jp_mof_news_html",
+      "category": "policy_jp",
+      "source_name": "Japan MOF — What's New / Back Number（清單頁）",
+      "fetched_at": "2026-03-24T09:11:13.537Z",
+      "status": "ok",
+      "data": {
+        "title": "Back Number : Ministry of Finance",
+        "excerpt": "",
+        "links": [
+          {
+            "text": "tweet",
+            "href": "https://twitter.com/share"
+          },
+          {
+            "text": "Back to Index",
+            "href": "./index.htm"
+          },
+          {
+            "text": "Budget",
+            "href": "\n./2026budget.html"
+          },
+          {
+            "text": "Tax Policy",
+            "href": "\n./2026tax_policy.html"
+          },
+          {
+            "text": "Customs",
+            "href": "\n./2026customs_tariff.html"
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "policy_us_cftc_press_rss",
+      "category": "policy_us",
+      "source_name": "CFTC — Press Releases（RSS）",
+      "fetched_at": "2026-03-24T09:11:07.126Z",
+      "status": "ok",
+      "data": {
+        "type": "rss",
+        "items": [
+          {
+            "title": "CFTC Staff Issues FAQs Concerning Registrant and Registered Entity Activities Relating to Crypto Assets and Blockchain Technologies",
+            "link": "https://www.cftc.gov/PressRoom/PressReleases/9200-26",
+            "pubDate": "Fri, 20 Mar 2026 13:30:31 +0000",
+            "description": ""
+          },
+          {
+            "title": "CFTC and MLB Sign Groundbreaking MOU",
+            "link": "https://www.cftc.gov/PressRoom/PressReleases/9199-26",
+            "pubDate": "Thu, 19 Mar 2026 12:47:07 +0000",
+            "description": ""
+          },
+          {
+            "title": "CFTC Joins SEC to Clarify the Application of Federal Securities Laws to Crypto Assets",
+            "link": "https://www.cftc.gov/PressRoom/PressReleases/9198-26",
+            "pubDate": "Tue, 17 Mar 2026 17:35:18 +0000",
+            "description": ""
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "policy_us_fed_press_rss",
+      "category": "policy_us",
+      "source_name": "Federal Reserve — Press Releases（RSS）",
+      "fetched_at": "2026-03-24T09:11:07.082Z",
+      "status": "ok",
+      "data": {
+        "type": "rss",
+        "items": [
+          {
+            "title": "Federal Reserve Board issues enforcement actions with former employee of Ally Bank and former employee of Regions Bank",
+            "link": "https://www.federalreserve.gov/newsevents/pressreleases/enforcement20260320a.htm",
+            "pubDate": "Fri, 20 Mar 2026 15:00:00 GMT",
+            "description": "Federal Reserve Board issues enforcement actions with former employee of Ally Bank and former employee of Regions Bank"
+          },
+          {
+            "title": "Agencies request comment on proposals to modernize the regulatory capital framework and maintain the strength of the banking system",
+            "link": "https://www.federalreserve.gov/newsevents/pressreleases/bcreg20260319a.htm",
+            "pubDate": "Thu, 19 Mar 2026 16:30:00 GMT",
+            "description": "Agencies request comment on proposals to modernize the regulatory capital framework and maintain the strength of the banking system"
+          },
+          {
+            "title": "Federal Reserve issues FOMC statement",
+            "link": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20260318a.htm",
+            "pubDate": "Wed, 18 Mar 2026 18:00:00 GMT",
+            "description": "Federal Reserve issues FOMC statement"
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "policy_us_sec_press_rss",
+      "category": "policy_us",
+      "source_name": "SEC — Press Releases（RSS）",
+      "fetched_at": "2026-03-24T09:11:07.068Z",
+      "status": "ok",
+      "data": {
+        "type": "rss",
+        "items": [
+          {
+            "title": "SEC Clarifies the Application of Federal Securities Laws to Crypto Assets",
+            "link": "https://www.sec.gov/newsroom/press-releases/2026-30-sec-clarifies-application-federal-securities-laws-crypto-assets",
+            "pubDate": "Tue, 17 Mar 2026 15:45:25 -0400",
+            "description": "The Securities and Exchange Commission (SEC) today issued an interpretation clarifying how the federal securities laws apply to certain crypto assets and transactions involving crypto assets. This is a major step in the Commission’s efforts to provide…"
+          },
+          {
+            "title": "SEC Publishes Data on Public and Private Offerings, Municipal Advisors, Transfer Agents, and Securities-Based Swap Dealers",
+            "link": "https://www.sec.gov/newsroom/press-releases/2026-29-sec-publishes-data-public-private-offerings-municipal-advisors-transfer-agents-securities-based-swap",
+            "pubDate": "Tue, 17 Mar 2026 15:13:00 -0400",
+            "description": "The Securities and Exchange Commission’s Division of Economic and Risk Analysis (DERA) published a new report on security based swap dealers (SBSDs) and updated statistics and data visualizations on initial public offerings (IPOs), follow-on registered…"
+          },
+          {
+            "title": "SEC Proposes Amendments to Exchange Act Rule 15c2-11",
+            "link": "https://www.sec.gov/newsroom/press-releases/2026-28-sec-proposes-amendments-exchange-act-rule-15c2-11",
+            "pubDate": "Mon, 16 Mar 2026 15:15:00 -0400",
+            "description": "The Securities and Exchange Commission today proposed amendments to Exchange Act Rule 15c2-11, which sets out certain information gathering and review requirements for broker-dealers that publish quotations for, or maintain a continuous quoted market in…"
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "policy_us_treasury_press_html",
+      "category": "policy_us",
+      "source_name": "US Treasury — Press Releases（HTML；RSS 503 時的穩定 fallback）",
+      "fetched_at": "2026-03-24T09:11:07.189Z",
+      "status": "ok",
+      "data": {
+        "title": "Press Releases | U.S. Department of the Treasury",
+        "excerpt": "Official websites use .gov A .gov website belongs to an official government organization in the United States. Secure .gov websites use HTTPS A lock (LockA locked padlock) or https:// means you’ve safely connected to the .gov website. Share sensitive information only on official, secure websites. Treasury Launches the Artificial Intelligence (AI) Innovation Series Treasury Sanctions Global Network Diverting Funds to Benefit Hizballah U.S. Department of the Treasury and U.S. Department of Educati",
+        "links": [
+          {
+            "text": "Treasury Launches the Artificial Intelligence (AI) Innovation Series",
+            "href": "https://home.treasury.gov/news/press-releases/sb0421"
+          },
+          {
+            "text": "Treasury Sanctions Global Network Diverting Funds to Benefit Hizballah",
+            "href": "https://home.treasury.gov/news/press-releases/sb0420"
+          },
+          {
+            "text": "U.S. Department of the Treasury and U.S. Department of Education Announce Historic Federal Student A",
+            "href": "https://home.treasury.gov/news/press-releases/sb0419"
+          },
+          {
+            "text": "Treasury International Capital Data for January",
+            "href": "https://home.treasury.gov/news/press-releases/sb0418"
+          },
+          {
+            "text": "Treasury Sanctions Facilitators of DPRK IT Worker Fraud Targeting U.S. Businesses",
+            "href": "https://home.treasury.gov/news/press-releases/sb0416"
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "policy_us_whitehouse_news_rss",
+      "category": "policy_us",
+      "source_name": "White House — News（RSS）",
+      "fetched_at": "2026-03-24T09:11:07.012Z",
+      "status": "ok",
+      "data": {
+        "type": "rss",
+        "items": [
+          {
+            "title": "President Trump’s ‘Memphis Safe Task Force’ Delivers Crushing Blow to Crime",
+            "link": "https://www.whitehouse.gov/articles/2026/03/president-trumps-memphis-safe-task-force-delivers-crushing-blow-to-crime/",
+            "pubDate": "Mon, 23 Mar 2026 16:26:47 +0000",
+            "description": "Today, President Donald J. Trump travels to Memphis to highlight the remarkable progress in restoring safety to a city long ranked among the nation’s most dangerous. Under President Trump’s leadership, the Memphis Safe Task Force — a decisive, aggressive federal intervention involving the National G"
+          },
+          {
+            "title": "Congressional Bill S. 4138 Signed into Law",
+            "link": "https://www.whitehouse.gov/briefings-statements/2026/03/congressional-bill-s-4138-signed-into-law/",
+            "pubDate": "Fri, 20 Mar 2026 21:51:59 +0000",
+            "description": "On Friday, March 20, 2026, the President signed into law: S. 4138, which waives the 60-day notice requirement for the posthumous honorary promotion of Captain Cody Khork, United States Army. The post Congressional Bill S. 4138 Signed into Law appeared first on The White House."
+          },
+          {
+            "title": "Democrats’ DHS Shutdown Enters 35th Day as Airports Plunge into Chaos, Frontline Workers Suffer",
+            "link": "https://www.whitehouse.gov/articles/2026/03/democrats-dhs-shutdown-enters-35th-day-as-airports-plunge-into-chaos-frontline-workers-suffer/",
+            "pubDate": "Fri, 20 Mar 2026 20:11:27 +0000",
+            "description": "As Radical Left Democrats force the Department of Homeland Security shutdown into its 35th day, everyday Americans are bearing the cost. More than 100,000 DHS employees — including 50,000 TSA officers — are working without paychecks for the third time in six months, leading to skyrocketing resignati"
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "policy_us_whitehouse_presidential_actions_rss",
+      "category": "policy_us",
+      "source_name": "White House — Presidential Actions（RSS）",
+      "fetched_at": "2026-03-24T09:11:07.025Z",
+      "status": "ok",
+      "data": {
+        "type": "rss",
+        "items": [
+          {
+            "title": "Preserving America&#8217;s Game",
+            "link": "https://www.whitehouse.gov/presidential-actions/2026/03/preserving-americas-game/",
+            "pubDate": "Fri, 20 Mar 2026 15:51:24 +0000",
+            "description": "By the authority vested in me as President by the Constitution and the laws of the United States of America, it is hereby ordered: Section 1. Purpose. For over a century, the Army-Navy Game, known as &#8220;America&#8217;s Game,&#8221; has stood as a symbol of excellence and the American spirit. Now"
+          },
+          {
+            "title": "Establishing the Task Force to Eliminate Fraud",
+            "link": "https://www.whitehouse.gov/presidential-actions/2026/03/establishing-the-task-force-to-eliminate-fraud/",
+            "pubDate": "Mon, 16 Mar 2026 20:50:16 +0000",
+            "description": "By the authority vested in me as President by the Constitution and the laws of the United States of America, it is hereby ordered: Section 1. Purpose and Policy. American taxpayers fund a vast benefits system for citizens in need that includes housing, food, medical care, cash assistance, and more. "
+          },
+          {
+            "title": "Adjusting Certain Delegations Under the Defense Production Act",
+            "link": "https://www.whitehouse.gov/presidential-actions/2026/03/adjusting-certain-delegations-under-the-defense-production-act/",
+            "pubDate": "Fri, 13 Mar 2026 19:43:22 +0000",
+            "description": "By the authority vested in me as President by the Constitution and the laws of the United States of America, it is hereby ordered: Section 1. Purpose. This order amends Executive Order 13603 of March 16, 2012 (National Defense Resources Preparedness). Executive Order 13603 delegates certain authorit"
+          }
+        ]
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "rates_us_atlanta_fed_mpt_xlsx",
+      "category": "rates_yields_us",
+      "source_name": "Atlanta Fed — Market Probability Tracker（XLSX）",
+      "fetched_at": "2026-03-24T09:11:12.162Z",
+      "status": "skip",
+      "data": null,
+      "error_message": null
+    },
+    {
+      "source_id": "rates_us_fred_dgs10",
+      "category": "rates_yields_us",
+      "source_name": "FRED CSV — DGS10（10Y）",
+      "fetched_at": "2026-03-24T09:11:12.151Z",
+      "status": "ok",
+      "data": {
+        "latest_date": "2026-03-20",
+        "latest_value": 4.39,
+        "previous_date": "2026-03-19",
+        "previous_value": 4.25,
+        "change": 0.14,
+        "change_pct": 3.2941
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "rates_us_fred_dgs2",
+      "category": "rates_yields_us",
+      "source_name": "FRED CSV — DGS2（2Y）",
+      "fetched_at": "2026-03-24T09:11:12.179Z",
+      "status": "ok",
+      "data": {
+        "latest_date": "2026-03-20",
+        "latest_value": 3.88,
+        "previous_date": "2026-03-19",
+        "previous_value": 3.79,
+        "change": 0.09,
+        "change_pct": 2.3747
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "rates_us_fred_dgs3mo",
+      "category": "rates_yields_us",
+      "source_name": "FRED CSV — DGS3MO（3M）",
+      "fetched_at": "2026-03-24T09:11:12.320Z",
+      "status": "ok",
+      "data": {
+        "latest_date": "2026-03-20",
+        "latest_value": 3.74,
+        "previous_date": "2026-03-19",
+        "previous_value": 3.73,
+        "change": 0.01,
+        "change_pct": 0.2681
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "rates_us_fred_fedfunds",
+      "category": "rates_yields_us",
+      "source_name": "FRED CSV — FEDFUNDS（有效利率）",
+      "fetched_at": "2026-03-24T09:11:12.120Z",
+      "status": "ok",
+      "data": {
+        "latest_date": "2026-02-01",
+        "latest_value": 3.64,
+        "previous_date": "2026-01-01",
+        "previous_value": 3.64,
+        "change": 0,
+        "change_pct": 0
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "security_defillama_hacks_optional",
+      "category": "security_incidents",
+      "source_name": "DeFiLlama — Hacks（JSON；安全事件彙整，若端點可用）",
+      "fetched_at": "2026-03-24T09:11:12.509Z",
+      "status": "ok",
+      "data": [
+        {
+          "date": 1711065600,
+          "name": "Super Sushi Samurai",
+          "classification": "Protocol Logic",
+          "technique": "Infinite Mint and Dump",
+          "amount": 4800000,
+          "chain": [
+            "Blast"
+          ],
+          "bridgeHack": false,
+          "targetType": "Gaming",
+          "source": "https://rekt.news/sss-rekt/",
+          "returnedFunds": null,
+          "defillamaId": null,
+          "language": "Solidity"
+        },
+        {
+          "date": 1709856000,
+          "name": "Unizen",
+          "classification": "Protocol Logic",
+          "technique": "External Call Vulnerability",
+          "amount": 2100000,
+          "chain": [
+            "Ethereum"
+          ],
+          "bridgeHack": false,
+          "targetType": "DeFi Protocol",
+          "source": "https://twitter.com/peckshield/status/1766210445415727608",
+          "returnedFunds": 2100000,
+          "defillamaId": 1336,
+          "language": "Solidity"
+        },
+        {
+          "date": 1621814400,
+          "name": "AutoShark",
+          "classification": "Ecosystem",
+          "technique": "Flashloan Incentive Rewards Exploit",
+          "amount": 745000,
+          "chain": [
+            "BSC"
+          ],
+          "bridgeHack": false,
+          "targetType": "DeFi Protocol",
+          "source": "https://watchpug.medium.com/sharkfinance-performance-fee-minting-incident-analysis-4b2e3bd03923",
+          "returnedFunds": null,
+          "defillamaId": 1074,
+          "language": null
+        }
+      ],
+      "error_message": null
+    },
+    {
+      "source_id": "test_id",
+      "category": "test_cat",
+      "source_name": "Test Source",
+      "fetched_at": "2026-03-23T02:54:21.988Z",
+      "status": "ok",
+      "data": {
+        "foo": "bar"
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "tradfi_us_fred_dxy_proxy",
+      "category": "tradfi_equities_risk",
+      "source_name": "FRED CSV — DTWEXBGS（美元廣義指數；代理）",
+      "fetched_at": "2026-03-24T09:11:13.323Z",
+      "status": "ok",
+      "data": {
+        "latest_date": "2026-03-20",
+        "latest_value": 120.2757,
+        "previous_date": "2026-03-19",
+        "previous_value": 120.1802,
+        "change": 0.0955,
+        "change_pct": 0.0795
+      },
+      "error_message": null
+    },
+    {
+      "source_id": "tradfi_us_fred_vix",
+      "category": "tradfi_equities_risk",
+      "source_name": "FRED CSV — VIXCLS（VIX；風險偏好代理）",
+      "fetched_at": "2026-03-24T09:11:13.176Z",
+      "status": "ok",
+      "data": {
+        "latest_date": "2026-03-20",
+        "latest_value": 26.78,
+        "previous_date": "2026-03-19",
+        "previous_value": 24.06,
+        "change": 2.72,
+        "change_pct": 11.3051
+      },
+      "error_message": null
+    }
+  ]
+}
