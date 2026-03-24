@@ -17,6 +17,38 @@ const UPSTASH_KEY = "crypto_dashboard:latest";
 
 let dashboardData = null;
 let onlyHighImpact = false;
+let coinglassCache = null;
+
+// ── Coinglass data helpers ────────────────────────────────────────────────────
+const COINGLASS_UPSTASH_KEY = 'cryptopulse:database:coinglass:derivatives';
+
+function cgSeries(payload, streamKey, seriesKey) {
+  const s = payload?.streams?.[streamKey]?.series?.[seriesKey];
+  return Array.isArray(s) ? s : [];
+}
+function cgLatest(series) {
+  return Array.isArray(series) && series.length ? series[series.length - 1] : null;
+}
+function cgPrevious(series) {
+  return Array.isArray(series) && series.length > 1 ? series[series.length - 2] : null;
+}
+function cgPositions(payload) {
+  const s = payload?.streams?.hyperliquidWhalePosition?.series?.latest;
+  return Array.isArray(s) ? s : [];
+}
+
+async function fetchCoinglass() {
+  try {
+    const res = await fetch(`${UPSTASH_URL}/get/${encodeURIComponent(COINGLASS_UPSTASH_KEY)}`, {
+      headers: { Authorization: `Bearer ${UPSTASH_READ_TOKEN}` }
+    });
+    if (!res.ok) return;
+    const json = await res.json();
+    if (!json.result) return;
+    coinglassCache = typeof json.result === 'string' ? JSON.parse(json.result) : json.result;
+    if (dashboardData) renderGate(dashboardData);
+  } catch (_) {}
+}
 
 function badgeClass(level = "low") {
   if (level === "high") return "badge high";
@@ -1002,10 +1034,18 @@ function computeGateScores(data) {
   const ts = t => t === '偏漲' ? 1 : t === '偏跌' ? -1 : 0;
   const trend = clamp(ts(ov.shortTermTrend) + ts(ov.midTermTrend) + ts(ov.longTermTrend));
 
-  // 2. 市場情緒：Fear & Greed 0-100 → -3~+3
+  // 2. 市場情緒：Fear & Greed + 全市場多空比（Coinglass）
   const fng = Number(data.fearAndGreedIndex?.value ?? 50);
-  const sentiment = fng <= 20 ? -3 : fng <= 35 ? -2 : fng <= 45 ? -1 :
-                    fng <= 55 ?  0 : fng <= 65 ?  1 : fng <= 80 ?  2 : 3;
+  let sentiment = fng <= 20 ? -3 : fng <= 35 ? -2 : fng <= 45 ? -1 :
+                  fng <= 55 ?  0 : fng <= 65 ?  1 : fng <= 80 ?  2 : 3;
+  if (coinglassCache) {
+    const globalSeries = cgSeries(coinglassCache, 'globalLongShortAccountRatio', 'Binance:BTCUSDT');
+    const globalRatio = toNumber(cgLatest(globalSeries)?.longShortRatio);
+    if (globalRatio !== null) {
+      if (globalRatio > 1.3) sentiment = clamp(sentiment + 1);
+      else if (globalRatio < 0.77) sentiment = clamp(sentiment - 1);
+    }
+  }
 
   // 3. 宏觀變數：CPI + NFP + FOMC 利率方向
   let macro = 0;
@@ -1026,22 +1066,71 @@ function computeGateScores(data) {
     if (rateA < rateP) macro += 1; else if (rateA > rateP) macro -= 1;
   }
 
-  // 4. 資金流向：ETF 淨流 + 穩定幣供應
+  // 4. 資金流向：真實 ETF 流入（Coinglass）+ OI 變化 + 穩定幣供應
   let flow = 0;
-  const etf = Number(data.cryptoSignalMetrics7d?.etfNetFlowUsd ?? 0);
-  if (etf > 500e6) flow += 2; else if (etf > 200e6) flow += 1;
-  else if (etf < -500e6) flow -= 2; else if (etf < -200e6) flow -= 1;
+  if (coinglassCache) {
+    const btcEtfSeries = cgSeries(coinglassCache, 'etfFlowHistory', 'bitcoin');
+    const btcEtfFlow = toNumber(cgLatest(btcEtfSeries)?.flowUsd) ?? 0;
+    const ethEtfSeries = cgSeries(coinglassCache, 'etfFlowHistory', 'ethereum');
+    const ethEtfFlow = toNumber(cgLatest(ethEtfSeries)?.flowUsd) ?? 0;
+    const totalEtfFlow = btcEtfFlow + ethEtfFlow;
+    if (totalEtfFlow > 500e6) flow += 2; else if (totalEtfFlow > 200e6) flow += 1;
+    else if (totalEtfFlow < -500e6) flow -= 2; else if (totalEtfFlow < -200e6) flow -= 1;
+    const btcOiSeries = cgSeries(coinglassCache, 'openInterestAggregated', 'BTC');
+    const btcOiLatest = toNumber(cgLatest(btcOiSeries)?.closeUsd) ?? 0;
+    const btcOiPrev = toNumber(cgPrevious(btcOiSeries)?.closeUsd) ?? 0;
+    const oiChange = btcOiLatest - btcOiPrev;
+    if (oiChange > 1e9) flow += 1; else if (oiChange < -1e9) flow -= 1;
+  } else {
+    const etf = Number(data.cryptoSignalMetrics7d?.etfNetFlowUsd ?? 0);
+    if (etf > 500e6) flow += 2; else if (etf > 200e6) flow += 1;
+    else if (etf < -500e6) flow -= 2; else if (etf < -200e6) flow -= 1;
+  }
   const sc = Number(data.cryptoSignalMetrics7d?.stablecoinSupplyChangeUsd ?? 0);
   if (sc > 0) flow += 1; else if (sc < 0) flow -= 1;
 
-  // 5. 槓桿大戶風險：清算量越高風險越高（負分）
-  const liq = Number(data.cryptoSignalMetrics7d?.liquidationTotalUsd ?? 0);
-  const leverage = liq > 1000e6 ? -3 : liq > 500e6 ? -2 : liq > 200e6 ? -1 : liq > 80e6 ? 0 : 1;
+  // 5. 槓桿大戶風險：真實清算量 + Funding Rate（Coinglass）
+  let leverage = 0;
+  if (coinglassCache) {
+    const btcLiqSeries = cgSeries(coinglassCache, 'aggregatedLiquidation', 'BTC');
+    const ethLiqSeries = cgSeries(coinglassCache, 'aggregatedLiquidation', 'ETH');
+    const btcLiq = toNumber(cgLatest(btcLiqSeries)?.totalLiquidationUsd) ?? 0;
+    const ethLiq = toNumber(cgLatest(ethLiqSeries)?.totalLiquidationUsd) ?? 0;
+    const totalLiq = btcLiq + ethLiq;
+    leverage = totalLiq > 1000e6 ? -3 : totalLiq > 500e6 ? -2 : totalLiq > 200e6 ? -1 : totalLiq > 80e6 ? 0 : 1;
+    const fundingSeries = cgSeries(coinglassCache, 'fundingRate', 'Binance:BTCUSDT');
+    const fundingPct = (toNumber(cgLatest(fundingSeries)?.close) ?? 0) * 100;
+    if (fundingPct > 0.1) leverage = clamp(leverage - 2);
+    else if (fundingPct > 0.05) leverage = clamp(leverage - 1);
+    else if (fundingPct < -0.05) leverage = clamp(leverage + 1);
+  } else {
+    const liq = Number(data.cryptoSignalMetrics7d?.liquidationTotalUsd ?? 0);
+    leverage = liq > 1000e6 ? -3 : liq > 500e6 ? -2 : liq > 200e6 ? -1 : liq > 80e6 ? 0 : 1;
+  }
 
-  // 6. 巨鯨走向：bull vs bear count
-  const whale = data.whaleTrend || {};
-  const whaleDiff = Number(whale.bull ?? 0) - Number(whale.bear ?? 0);
-  const whaleScore = diff2score(whaleDiff);
+  // 6. 巨鯨走向：真實 Hyperliquid 大戶倉位（Coinglass）
+  let whaleScore = 0;
+  if (coinglassCache) {
+    const positions = cgPositions(coinglassCache);
+    if (positions.length > 0) {
+      let longVal = 0, shortVal = 0;
+      for (const pos of positions) {
+        const size = toNumber(pos?.positionSize) ?? 0;
+        const val = toNumber(pos?.positionValueUsd) ?? 0;
+        if (size > 0) longVal += val; else shortVal += val;
+      }
+      const total = longVal + shortVal;
+      if (total > 0) {
+        const longRatio = longVal / total;
+        whaleScore = longRatio > 0.65 ? 2 : longRatio > 0.55 ? 1 :
+                     longRatio < 0.35 ? -2 : longRatio < 0.45 ? -1 : 0;
+      }
+    }
+  } else {
+    const whale = data.whaleTrend || {};
+    const whaleDiff = Number(whale.bull ?? 0) - Number(whale.bear ?? 0);
+    whaleScore = diff2score(whaleDiff);
+  }
 
   // 7. 政策監管：policySignals 偏漲 vs 偏跌
   const pol = data.policySignals || [];
@@ -1383,4 +1472,6 @@ async function initPolymarket() {
 
 bootstrap();
 initPolymarket();
+fetchCoinglass();
 setInterval(autoRefresh, POLL_INTERVAL);
+setInterval(fetchCoinglass, POLL_INTERVAL);
