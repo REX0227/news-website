@@ -1178,6 +1178,12 @@ function computeGateScores(data) {
 }
 
 function renderGate(data) {
+  // 等 Coinglass 資料載入後才渲染，避免先用舊邏輯再跳變
+  if (!coinglassCache) {
+    const wrap = document.querySelector('.gate-summary-wrap');
+    if (wrap) wrap.innerHTML = '<p style="color:#94a3b8;padding:8px 0;">Coinglass 資料載入中...</p>';
+    return;
+  }
   const scores = computeGateScores(data);
   const dims   = ['市場情緒', '宏觀變數', '資金流向', '槓桿大戶風險', '巨鯨走向', '政策監管', '外部風險', 'ETH預測市場'];
   const values = [scores.sentiment, scores.macro, scores.flow, scores.leverage, scores.whale, scores.policy, scores.risk, scores.polymarket];
