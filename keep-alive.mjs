@@ -15,10 +15,10 @@ function timestamp() {
   return new Date().toLocaleString('zh-Hant', { timeZone: 'Asia/Taipei' });
 }
 
-function runScript(label, scriptPath) {
+function runScript(label, cmd, args) {
   return new Promise((resolve) => {
     console.log(`[${timestamp()}] [${label}] 開始更新...`);
-    const child = spawn('node', [scriptPath], {
+    const child = spawn(cmd, args, {
       cwd: __dirname,
       stdio: 'inherit',
       shell: true,
@@ -37,8 +37,9 @@ function runScript(label, scriptPath) {
 
 async function runUpdate() {
   console.log(`\n[${timestamp()}] ── 開始更新 ──`);
-  await runScript('V1', 'v1/scripts/update-data.mjs');
-  await runScript('V4', 'v4/scripts/collect-all.mjs');
+  await runScript('V1', 'node', ['v1/scripts/update-data.mjs']);
+  await runScript('V4', 'node', ['v4/scripts/collect-all.mjs']);
+  await runScript('V3', 'python', ['database-side/sync_coinglass_to_upstash.py']);
   console.log(`[${timestamp()}] ── 完成，下次更新：${INTERVAL_MS / 60000} 分鐘後 ──\n`);
 }
 
@@ -49,5 +50,5 @@ runUpdate();
 setInterval(runUpdate, INTERVAL_MS);
 
 console.log(`CryptoPulse Keep-Alive Server 已啟動`);
-console.log(`更新頻率：每 ${INTERVAL_MS / 60000} 分鐘（V1 + V4，前端每 1 分鐘自動拉）`);
+console.log(`更新頻率：每 ${INTERVAL_MS / 60000} 分鐘（V1 + V3 + V4，前端每 1 分鐘自動拉）`);
 console.log(`按 Ctrl+C 停止\n`);
