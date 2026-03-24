@@ -329,8 +329,8 @@ function renderHeroMeta(payload) {
 
   $("hero-meta").innerHTML = `
     <article class="meta-card">
-      <div class="meta-label">Upstash payload 更新時間</div>
-      <div class="meta-value">${escapeHtml(payload?.updatedAt || "—")}</div>
+      <div class="meta-label">最後更新</div>
+      <div class="meta-value">${escapeHtml(payload?.updatedAt ? formatDateTime(new Date(payload.updatedAt).getTime()) : "—")}</div>
     </article>
     <article class="meta-card">
       <div class="meta-label">最新資料點時間</div>
