@@ -13,11 +13,13 @@ import { collectRatesIntel } from "../src/collectors/ratesCollector.js";
 import { collectLiquidityIntel } from "../src/collectors/liquidityCollector.js";
 import { collectCoinalyzeLiquidationMetrics } from "../src/collectors/coinalyzeLiquidationCollector.js";
 import { collectMajorNoKeyLiquidationMetrics } from "../src/collectors/majorNoKeyLiquidationCollector.js";
-import { buildAiSummary, buildTraderOutlookFromPayload, setRawDataForEval } from "../src/lib/ai.js";
+import { buildAiSummary, buildTraderOutlookFromPayload } from "../src/lib/ai.js";
 import { enrichRecentMacroResults } from "../src/lib/macroResults.js";
 import { eventStatus } from "../src/lib/utils.js";
 import { upstashSetJson } from "../src/lib/upstash.js";
-import { saveToSQLite, logUpdateToSQLite } from "../src/lib/sqlite.js";
+import { saveToSQLite, logUpdateToSQLite, saveFactorsAndGates } from "../src/lib/sqlite.js";
+import { buildFactorVector } from "../src/lib/normalize.js";
+import { computeGates, gatesSummary } from "../src/lib/gates.js";
 import { fetchRateCutData } from "../src/lib/rateCutData.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -273,6 +275,9 @@ async function main() {
 
   const whaleTrend = buildWhaleTrend(cryptoSignalsPayload);
 
+  // FIX: 統一使用完整 rawDataToEvaluate，直接傳入 ai.js（移除全域 _cachedRawData）
+  // FIX: marketIntel 完整傳入（非 marketIntel?.macroIntel，該子 key 不存在）
+  // FIX: policySignals 加入，供 ai.js calcLongTerm 使用
   const rawDataToEvaluate = {
     macroEvents,
     whaleTrend,
@@ -281,23 +286,14 @@ async function main() {
     liquidationIntelNoKey: noKeyLiquidation,
     ratesIntel,
     liquidityIntel,
-    macroIntel: marketIntel?.macroIntel,
+    marketIntel,
     cryptoSignals: cryptoSignalsPayload,
-    globalRiskSignals
+    globalRiskSignals,
+    policySignals
   };
 
-  // 傳入 raw data，讓 ai.js 在沒有 copilot-evaluation.json 時自動呼叫 Claude API
-  setRawDataForEval(rawDataToEvaluate);
-
-  const trendOutlook = await buildTraderOutlookFromPayload({
-    macroEvents,
-    whaleTrend,
-    cryptoSignalMetrics7d,
-    ratesIntel,
-    liquidityIntel,
-    macroIntel: marketIntel?.macroIntel
-  });
-  const aiSummary = await buildAiSummary(macroEvents, cryptoSignalsPayload, globalRiskSignals, trendOutlook);
+  const trendOutlook = await buildTraderOutlookFromPayload(rawDataToEvaluate);
+  const aiSummary = await buildAiSummary(rawDataToEvaluate);
   const marketOverview = buildMarketOverview(macroEvents, cryptoSignalsPayload, globalRiskSignals, trendOutlook);
   const keyWindows = buildKeyWindows(macroEvents);
 
@@ -355,6 +351,15 @@ async function main() {
     aiSummary
   };
 
+  // ── Factor / Gate Pipeline（交易系統消息面來源）─────────────────
+  const factorVector = buildFactorVector(rawDataToEvaluate);
+  const gateConditions = computeGates(factorVector);
+  const gatesSummaryData = gatesSummary(gateConditions);
+
+  console.log(`[factors] Built ${Object.keys(factorVector).length} factors, ${Object.keys(gateConditions).length} gates`);
+  console.log(`[gates] Summary:`, JSON.stringify(gatesSummaryData, null, 2));
+
+  // ── Upstash 寫入（保留原始 dashboard + 新增 factors/gates）───────
   if (upstashUrl && writeToken) {
     console.log(`[upstash] Writing to ${upstashUrl}...`);
     await upstashSetJson({
@@ -369,21 +374,39 @@ async function main() {
       key: "crypto_dashboard:last_updated",
       value: { at: payload.generatedAt }
     });
+    // 新增：factors / gates 獨立 key（供交易程式直接讀取）
+    await upstashSetJson({
+      baseUrl: upstashUrl,
+      token: writeToken,
+      key: "crypto_factors:latest",
+      value: { computed_at: payload.generatedAt, factors: factorVector }
+    });
+    await upstashSetJson({
+      baseUrl: upstashUrl,
+      token: writeToken,
+      key: "crypto_gates:latest",
+      value: { computed_at: payload.generatedAt, gates: gateConditions, summary: gatesSummaryData }
+    });
     console.log(`[upstash] Write complete.`);
   } else {
     console.warn(`[upstash] SKIPPED — UPSTASH_REDIS_REST_URL=${upstashUrl ? "OK" : "MISSING"}, TOKEN_WRITE=${writeToken ? "OK" : "MISSING"}`);
   }
 
-  // Also persist the payload to the local SQLite database (backend/gecko.db).
-  // This keeps the local backend API in sync without requiring Upstash to be available.
+  // ── SQLite 寫入（保留 dashboard + 新增時序 factor/gate 歷史）─────
   const sqliteResult = await saveToSQLite(payload);
+  await saveFactorsAndGates(factorVector, gateConditions, {
+    startedAt: payload.generatedAt,
+    collectorsOk: ["usMacro", "jpMacro", "cryptoImpact", "globalRisk", "rateCut", "marketIntel", "policy", "rates", "liquidity", "coinalyze", "noKeyLiq"],
+    collectorsFailed: []
+  });
+
   if (sqliteResult.ok) {
     await logUpdateToSQLite("success", 11, null);
   } else {
     await logUpdateToSQLite("error", 11, sqliteResult.error || "unknown sqlite error");
   }
 
-  console.log(`Updated payload with ${payload.macroEvents.length} macro events and ${payload.cryptoSignals.length} crypto signals.`);
+  console.log(`Updated payload with ${payload.macroEvents.length} macro events, ${payload.cryptoSignals.length} signals, ${Object.keys(factorVector).length} factors.`);
 }
 
 main().catch((error) => {

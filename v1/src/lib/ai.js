@@ -60,11 +60,12 @@ function calcShortTerm(rawData) {
 }
 
 // ── 中線趨勢（ETF 資金流 + 宏觀事件方向 + 利率）─────────────────
+// FIX: ratesIntel 結構為 { latest: { y10y, y2y, y3m, spread10y2y } }
 function calcMidTerm(rawData) {
   const etf = Number(rawData.cryptoSignalMetrics7d?.etfNetFlowUsd || 0);
-  const ratesIntel = rawData.ratesIntel || {};
-  const tenY = Number(ratesIntel.tenYearYield || 0);
-  const twoY = Number(ratesIntel.twoYearYield || 0);
+  const ratesLatest = rawData.ratesIntel?.latest || {};
+  const tenY = Number(ratesLatest.y10y || 0);
+  const twoY = Number(ratesLatest.y2y || 0);
   const inverted = twoY > tenY && tenY > 0;
 
   const macroEvents = rawData.macroEvents || [];
@@ -97,10 +98,11 @@ function calcMidTerm(rawData) {
 }
 
 // ── 長線趨勢（流動性 + 監管 + 機構動向）─────────────────────────
+// FIX: liquidityIntel 結構為 { stablecoins: { totalMcapUsd }, defi: { totalTvlUsd } }
 function calcLongTerm(rawData) {
   const liq = rawData.liquidityIntel || {};
-  const tvl = Number(liq.totalTvlUsd || 0);
-  const stableMcap = Number(liq.stablecoinMarketCapUsd || 0);
+  const tvl = Number(liq.defi?.totalTvlUsd || 0);
+  const stableMcap = Number(liq.stablecoins?.totalMcapUsd || 0);
   const policySignals = rawData.policySignals || [];
   const regulatoryBull = policySignals.filter((s) => s.shortTermBias === "偏漲").length;
   const regulatoryBear = policySignals.filter((s) => s.shortTermBias === "偏跌").length;
@@ -128,15 +130,29 @@ function calcLongTerm(rawData) {
 }
 
 // ── 10 個段落標籤摘要 ────────────────────────────────────────────
+// FIX: 所有欄位路徑已對齊實際 collector 輸出結構
 function buildKeyInsights(rawData) {
   const macroEvents = rawData.macroEvents || [];
   const cryptoSignals = rawData.cryptoSignals || [];
   const globalRiskSignals = rawData.globalRiskSignals || [];
   const wt = rawData.whaleTrend || {};
   const metrics = rawData.cryptoSignalMetrics7d || {};
-  const ratesIntel = rawData.ratesIntel || {};
+
+  // FIX: ratesIntel.latest.{y10y, y2y, y3m}
+  const ratesLatest = rawData.ratesIntel?.latest || {};
+  const tenY = ratesLatest.y10y ?? null;
+  const twoY = ratesLatest.y2y ?? null;
+  const threeM = ratesLatest.y3m ?? null;
+
+  // FIX: liquidityIntel.{defi, stablecoins}
   const liq = rawData.liquidityIntel || {};
+  const tvl = liq.defi?.totalTvlUsd ?? null;
+  const stableMcap = liq.stablecoins?.totalMcapUsd ?? null;
+
   const policySignals = rawData.policySignals || [];
+
+  // FIX: fearGreed 從 marketIntel.sentiment 取，而非 macroIntel
+  const sentiment = rawData.marketIntel?.sentiment || null;
 
   // 1. 政治/政策
   const politicRisks = globalRiskSignals.filter((s) =>
@@ -147,16 +163,13 @@ function buildKeyInsights(rawData) {
     : "近期無明顯政治/政策突發訊號，宏觀政策面暫時穩定。";
 
   // 2. 央行/利率
-  const tenY = ratesIntel.tenYearYield;
-  const twoY = ratesIntel.twoYearYield;
-  const threeM = ratesIntel.threeMonthYield;
   const rateStr = [tenY && `10Y ${tenY}%`, twoY && `2Y ${twoY}%`, threeM && `3M ${threeM}%`].filter(Boolean).join("／");
   const p2 = rateStr
     ? `美債殖利率：${rateStr}${twoY && tenY && Number(twoY) > Number(tenY) ? "（倒掛延續，衰退觀察中）" : "（曲線正常化）"}。利率走向是風險資產定價關鍵。`
     : "利率數據暫無更新，持續關注 FRED 與 Fed 聲明。";
 
   // 3. 美/日政策
-  const upcomingFomc = macroEvents.find((e) => e.status === "upcoming" && /fomc|fed|boj|boj/i.test(e.eventType || e.title || ""));
+  const upcomingFomc = macroEvents.find((e) => e.status === "upcoming" && /fomc|fed|boj/i.test(e.eventType || e.title || ""));
   const recentFomc = macroEvents.filter((e) => e.status === "recent" && e.importance === "high" && /cpi|nfp|ppi|fomc|boj/i.test(e.eventType || "")).slice(0, 2);
   const p3 = recentFomc.length
     ? `近期美/日政策數據：${recentFomc.map((e) => `${e.title}（${e.result?.actual || "待公布"}，${e.result?.shortTermBias || "待評"}）`).join("；")}${upcomingFomc ? `；下次 ${upcomingFomc.title} 即將登場` : ""}。`
@@ -181,13 +194,11 @@ function buildKeyInsights(rawData) {
   // 6. 散戶/槓桿
   const liqUsd = metrics.liquidationTotalUsd;
   const liqStr = liqUsd > 0 ? `${(liqUsd / 1e6).toFixed(0)}M USD（來源：${metrics.liquidationSource || "估算"}）` : "無可靠清算數據";
-  const fearGreed = rawData.macroIntel?.fearGreedIndex;
-  const fgStr = fearGreed ? `，恐慌貪婪指數 ${fearGreed.value}（${fearGreed.label}）` : "";
+  // FIX: fearGreedValue / fearGreedClassification（非 value/label）
+  const fgStr = sentiment ? `，恐慌貪婪指數 ${sentiment.fearGreedValue}（${sentiment.fearGreedClassification}）` : "";
   const p6 = `近期清算規模 ${liqStr}${fgStr}。槓桿過高時需警惕多殺多/空殺空風險。`;
 
   // 7. 市場結構
-  const tvl = liq.totalTvlUsd;
-  const stableMcap = liq.stablecoinMarketCapUsd;
   const tvlStr = tvl ? `DeFi TVL ${(Number(tvl) / 1e9).toFixed(0)}B USD` : "";
   const stableStr = stableMcap ? `穩定幣市值 ${(Number(stableMcap) / 1e9).toFixed(0)}B USD` : "";
   const liquidityStr = [tvlStr, stableStr].filter(Boolean).join("，");
@@ -209,7 +220,7 @@ function buildKeyInsights(rawData) {
   if (tenY) watchList.push(`10年美債殖利率（現 ${tenY}%）`);
   if (etf !== undefined && etf !== 0) watchList.push("BTC ETF 每日淨流量");
   watchList.push("穩定幣鑄造量變化");
-  if (wt.bull + wt.bear > 0) watchList.push(`巨鯨持倉方向（現 ${wt.trend}）`);
+  if ((wt.bull || 0) + (wt.bear || 0) > 0) watchList.push(`巨鯨持倉方向（現 ${wt.trend}）`);
   watchList.push("恐慌貪婪指數");
   const p9 = `觀察指標：${watchList.join("、")}。`;
 
@@ -253,7 +264,7 @@ function generateEvaluationFromRules(rawData) {
       shortReason: short.reason,
       midReason: mid.reason,
       longReason: long.reason,
-      aiMeta: { mode: "rule_based", logicVersion: "v1_rules" }
+      aiMeta: { mode: "rule_based", logicVersion: "v2_rules" }
     },
     aiSummary: {
       keyInsights: insights
@@ -261,7 +272,7 @@ function generateEvaluationFromRules(rawData) {
   };
 }
 
-// ── 讀取或自動生成評估 ─────────────────────────────────────────────
+// ── 讀取或自動生成評估（rawData 直接傳入，不再使用全域快取）────────
 function loadOrGenerateEval(rawData) {
   if (fs.existsSync(EVAL_FILE)) {
     console.log("[AI] 使用現有的 copilot-evaluation.json（手動覆蓋模式）");
@@ -277,20 +288,18 @@ function loadOrGenerateEval(rawData) {
 }
 
 // ── 公開 API ────────────────────────────────────────────────────────
-let _cachedRawData = null;
-export function setRawDataForEval(rawData) {
-  _cachedRawData = rawData;
-}
-
-export async function buildTraderOutlookFromPayload(payload) {
-  const evalData = loadOrGenerateEval(_cachedRawData || payload);
+// rawData 結構（來自 update-data.mjs 的 rawDataToEvaluate）：
+// { macroEvents, whaleTrend, cryptoSignalMetrics7d, ratesIntel,
+//   liquidityIntel, marketIntel, cryptoSignals, globalRiskSignals, policySignals }
+export async function buildTraderOutlookFromPayload(rawData) {
+  const evalData = loadOrGenerateEval(rawData);
   return evalData.trendOutlook;
 }
 
-export async function buildAiSummary(macroEvents, cryptoSignals, globalRiskSignals, trendOutlook) {
-  const evalData = loadOrGenerateEval(_cachedRawData);
+export async function buildAiSummary(rawData) {
+  const evalData = loadOrGenerateEval(rawData);
   return {
     ...evalData.aiSummary,
-    aiMeta: { mode: "rule_based", logicVersion: "v1_rules" }
+    aiMeta: { mode: "rule_based", logicVersion: "v2_rules" }
   };
 }

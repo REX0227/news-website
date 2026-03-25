@@ -5,6 +5,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { initializeDatabase } from "./database.js";
 import apiRouter from "./routes/api.js";
+import v2Router from "./routes/v2.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,6 +29,7 @@ app.use(express.json({ limit: "50mb" }));
 
 // API routes
 app.use("/api", apiRouter);
+app.use("/api/v2", v2Router);
 
 // Serve frontend static files at /
 // The v1/docs/ directory contains the existing frontend
