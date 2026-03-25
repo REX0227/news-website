@@ -1215,6 +1215,41 @@ function renderGate(data) {
       <thead><tr><th>維度</th><th>強度</th><th>分數</th></tr></thead>
       <tbody>${scoreRows}</tbody>
     </table>
+    <div class="gate-legend">
+      <div class="gate-legend-title">閘門等級說明</div>
+      <div class="gate-legend-rows">
+        <div class="gate-legend-row ${avg >= 1.5 ? 'gate-legend-active' : ''}" style="border-left:3px solid #34d399">
+          <span class="gate-legend-dot" style="background:#34d399"></span>
+          <span class="gate-legend-name">全開</span>
+          <span class="gate-legend-range">≥ +1.5</span>
+          <span class="gate-legend-desc">多頭環境，積極做多</span>
+        </div>
+        <div class="gate-legend-row ${avg >= 0.5 && avg < 1.5 ? 'gate-legend-active' : ''}" style="border-left:3px solid #86efac">
+          <span class="gate-legend-dot" style="background:#86efac"></span>
+          <span class="gate-legend-name">偏開</span>
+          <span class="gate-legend-range">+0.5 ～ +1.5</span>
+          <span class="gate-legend-desc">偏多，謹慎做多</span>
+        </div>
+        <div class="gate-legend-row ${avg > -0.5 && avg < 0.5 ? 'gate-legend-active' : ''}" style="border-left:3px solid #fbbf24">
+          <span class="gate-legend-dot" style="background:#fbbf24"></span>
+          <span class="gate-legend-name">半開</span>
+          <span class="gate-legend-range">-0.5 ～ +0.5</span>
+          <span class="gate-legend-desc">震盪觀望，不宜重倉</span>
+        </div>
+        <div class="gate-legend-row ${avg <= -0.5 && avg > -1.5 ? 'gate-legend-active' : ''}" style="border-left:3px solid #f87171">
+          <span class="gate-legend-dot" style="background:#f87171"></span>
+          <span class="gate-legend-name">偏關</span>
+          <span class="gate-legend-range">-1.5 ～ -0.5</span>
+          <span class="gate-legend-desc">偏空，謹慎做空</span>
+        </div>
+        <div class="gate-legend-row ${avg <= -1.5 ? 'gate-legend-active' : ''}" style="border-left:3px solid #ef4444">
+          <span class="gate-legend-dot" style="background:#ef4444"></span>
+          <span class="gate-legend-name">全關</span>
+          <span class="gate-legend-range">≤ -1.5</span>
+          <span class="gate-legend-desc">空頭環境，避免進場</span>
+        </div>
+      </div>
+    </div>
   `;
 
   const fillColor   = avg > 0 ? 'rgba(52,211,153,0.2)' : avg < 0 ? 'rgba(248,113,113,0.2)' : 'rgba(251,191,36,0.15)';
@@ -1304,7 +1339,7 @@ async function autoRefresh() {
   }
 }
 
-const POLL_INTERVAL = 1 * 60 * 1000; // 1 分鐘
+const POLL_INTERVAL = 2 * 60 * 1000; // 2 分鐘
 
 function translatePolymarketQuestion(q) {
   const MONTHS = { January:"1月", February:"2月", March:"3月", April:"4月", May:"5月", June:"6月",

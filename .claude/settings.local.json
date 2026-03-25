@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/user/.claude/projects/c--projects-gecko-schedule-website-v0-1/**)",
+      "Read(//c/Users/user/.claude/projects/c--projects-gecko-schedule-website-v0-1/memory/**)",
+      "Bash(python scripts/polymarket_eth.py)",
+      "Bash(python -c \"import urllib.request; r = urllib.request.urlopen\\(''https://httpbin.org/get'', timeout=10\\); print\\(r.status\\)\")",
+      "Bash(echo \"exit: $?\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://gamma-api.polymarket.com/markets?active=true&closed=false&q=ethereum&limit=3\")",
+      "Bash(curl -s \"https://gamma-api.polymarket.com/markets?active=true&closed=false&q=ethereum&limit=3&order=volume24hr&ascending=false\")",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(len\\(d\\),''''items''''\\); [print\\(i.get\\(''''question'''',''''?''''\\)[:80]\\) for i in d[:3]]\")",
+      "Bash(python -c \"import subprocess; r = subprocess.run\\([''curl'',''-s'',''https://gamma-api.polymarket.com/markets?limit=2&q=ethereum''], capture_output=True, text=True\\); print\\(r.stdout[:200]\\)\")",
+      "Bash(npx serve:*)"
+    ]
+  }
+}
