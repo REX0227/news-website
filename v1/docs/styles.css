@@ -443,3 +443,78 @@ a { color: var(--accent); }
   font-size: 0.8em;
   color: var(--muted);
 }
+
+/* ── Hero header ─────────────────────────────────────────────────── */
+.hero-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+.hero-inner h1 { margin: 0 0 4px; }
+.top-nav {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-shrink: 0;
+  padding-top: 4px;
+}
+
+/* ── Section label (no margin-top) ──────────────────────────────── */
+.section-label { margin-top: 0; margin-bottom: 12px; }
+
+/* ── Overview layout: left + right columns ───────────────────────── */
+.overview-layout {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 24px;
+  align-items: start;
+}
+.overview-left { min-width: 0; }
+.overview-right {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+.overview-card-grid {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+@media (max-width: 1024px) {
+  .overview-layout { grid-template-columns: 1fr; }
+  .overview-right { order: -1; }
+}
+
+/* ── Tab bar ─────────────────────────────────────────────────────── */
+.tab-bar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+.tab-btn {
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--muted);
+  font-size: 0.9em;
+  font-family: inherit;
+  padding: 8px 14px 10px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  margin-bottom: -1px;
+}
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+.tab-icon { margin-right: 4px; }
+
+/* ── Tab panels ──────────────────────────────────────────────────── */
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }

@@ -13,6 +13,7 @@ import { collectRatesIntel } from "../src/collectors/ratesCollector.js";
 import { collectLiquidityIntel } from "../src/collectors/liquidityCollector.js";
 import { collectCoinalyzeLiquidationMetrics } from "../src/collectors/coinalyzeLiquidationCollector.js";
 import { collectMajorNoKeyLiquidationMetrics } from "../src/collectors/majorNoKeyLiquidationCollector.js";
+import { collectCoinglassDerivatives } from "../src/collectors/coinglassCollector.js";
 import { buildAiSummary, buildTraderOutlookFromPayload } from "../src/lib/ai.js";
 import { enrichRecentMacroResults } from "../src/lib/macroResults.js";
 import { eventStatus } from "../src/lib/utils.js";
@@ -218,7 +219,7 @@ async function main() {
   const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
   const writeToken = process.env.UPSTASH_REDIS_REST_TOKEN_WRITE;
 
-  const [usEvents, jpEvents, cryptoSignals, globalRiskSignals, rateCutData, marketIntel, policySignals, ratesIntel, liquidityIntel, coinalyzeLiquidation, noKeyLiquidation] = await Promise.all([
+  const [usEvents, jpEvents, cryptoSignals, globalRiskSignals, rateCutData, marketIntel, policySignals, ratesIntel, liquidityIntel, coinalyzeLiquidation, noKeyLiquidation, coinglassDerivatives] = await Promise.all([
     collectUsMacroEvents(),
     collectJapanMacroEvents(),
     collectCryptoImpactSignals(),
@@ -229,7 +230,8 @@ async function main() {
     collectRatesIntel(),
     collectLiquidityIntel(),
     collectCoinalyzeLiquidationMetrics(),
-    collectMajorNoKeyLiquidationMetrics()
+    collectMajorNoKeyLiquidationMetrics(),
+    collectCoinglassDerivatives()
   ]);
 
   const cryptoSignalsPayload = Array.isArray(cryptoSignals?.signals) ? cryptoSignals.signals : (Array.isArray(cryptoSignals) ? cryptoSignals : []);
@@ -287,6 +289,7 @@ async function main() {
     ratesIntel,
     liquidityIntel,
     marketIntel,
+    coinglassDerivatives,
     cryptoSignals: cryptoSignalsPayload,
     globalRiskSignals,
     policySignals
@@ -338,6 +341,7 @@ async function main() {
     cryptoSignalMetrics7d: validatedMetrics7d,
     liquidationIntel: coinalyzeLiquidation,
     liquidationIntelNoKey: noKeyLiquidation,
+    coinglassDerivatives,
     globalRiskSignals,
     keyWindows,
     keyWindowsNote: keyWindows.length === 0 ? "未來 7 天暫無高影響事件，建議改看外部風險與資金流向。" : "",
@@ -396,7 +400,7 @@ async function main() {
   const sqliteResult = await saveToSQLite(payload);
   await saveFactorsAndGates(factorVector, gateConditions, {
     startedAt: payload.generatedAt,
-    collectorsOk: ["usMacro", "jpMacro", "cryptoImpact", "globalRisk", "rateCut", "marketIntel", "policy", "rates", "liquidity", "coinalyze", "noKeyLiq"],
+    collectorsOk: ["usMacro", "jpMacro", "cryptoImpact", "globalRisk", "rateCut", "marketIntel", "policy", "rates", "liquidity", "coinalyze", "noKeyLiq", "coinglassDerivatives"],
     collectorsFailed: []
   });
 

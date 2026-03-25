@@ -141,7 +141,23 @@ export function normalizeRegulatoryBias(bullCount, bearCount) {
   return normalizeSignalBias(bullCount, bearCount);
 }
 
-// ── 7. 主函數：從 rawData 建立完整 factor vector ─────────────────
+// ── 7. 衍生品（Coinglass）───────────────────────────────────────
+
+/**
+ * BTC 資金費率（8h，decimal）
+ * 正費率 = 多頭付費給空頭 = 多頭過熱 = 看跌（負分）
+ * 負費率 = 空頭付費給多頭 = 空頭過熱 = 看漲（正分）
+ * 參考基準：±0.05% per 8h = 極端
+ *   0.01% = 0.0001 decimal
+ *   0.05% = 0.0005 decimal
+ */
+export function normalizeFundingRate(rate8hDecimal) {
+  if (!Number.isFinite(rate8hDecimal)) return null;
+  // 負 rate → 看漲（正分）；正 rate → 看跌（負分）
+  return clamp(-rate8hDecimal / 0.0005);
+}
+
+// ── 8. 主函數：從 rawData 建立完整 factor vector ─────────────────
 
 /**
  * buildFactorVector(rawData) → factorVector
@@ -329,6 +345,40 @@ export function buildFactorVector(rawData) {
       direction: polBull > polBear ? "bullish" : polBear > polBull ? "bearish" : "neutral",
       confidence: 0.65, source_tier: 3, computed_at: computedAt
     };
+  }
+
+  // ── 衍生品（Coinglass）────────────────────────────────────────
+  const cg = rawData.coinglassDerivatives;
+  if (cg?.available) {
+    const fr = cg.fundingRate;
+    if (fr?.rate8h !== undefined && fr?.rate8h !== null) {
+      const frScore = normalizeFundingRate(fr.rate8h);
+      factors["derivatives.btc_funding_rate"] = {
+        value: fr.rate8hPct,       // 百分比形式（0.01 = 0.01%）
+        unit: "pct_8h",
+        score: frScore,
+        annualized_pct: fr.annualizedPct,
+        direction: fr.direction,   // "bullish" | "bearish" | "neutral"
+        exchange: fr.exchange,
+        // 高正費率（多頭過熱）看跌；高負費率（空頭過熱）看漲
+        confidence: 0.95, source_tier: 2, computed_at: computedAt
+      };
+    }
+
+    const oi = cg.openInterest;
+    if (oi?.totalUsd) {
+      factors["derivatives.btc_open_interest"] = {
+        value: oi.totalUsd,
+        unit: "usd",
+        // OI 本身不直接代表方向，用 change 判斷
+        score: oi.change4hPct !== null
+          ? clamp(oi.change4hPct / 3.0)  // ±3% 4h 變化 = 強訊號
+          : 0,
+        change_4h_pct: oi.change4hPct,
+        direction: oi.direction,
+        confidence: 0.95, source_tier: 2, computed_at: computedAt
+      };
+    }
   }
 
   // ── 高衝擊事件窗口 ───────────────────────────────────────────

@@ -1185,8 +1185,8 @@ function renderGate(data) {
     return;
   }
   const scores = computeGateScores(data);
-  const dims   = ['市場情緒', '宏觀變數', '資金流向', '槓桿大戶風險', '巨鯨走向', '政策監管', '外部風險', 'ETH預測市場'];
-  const values = [scores.sentiment, scores.macro, scores.flow, scores.leverage, scores.whale, scores.policy, scores.risk, scores.polymarket];
+  const dims   = ['市場情緒', '宏觀變數', '資金流向', '槓桿大戶風險', '巨鯨走向', '政策監管', '外部風險'];
+  const values = [scores.sentiment, scores.macro, scores.flow, scores.leverage, scores.whale, scores.policy, scores.risk];
   const avg    = values.reduce((a, b) => a + b, 0) / values.length;
 
   let gateLabel, gateColor, gateEmoji;
@@ -1310,12 +1310,51 @@ function renderAll(data) {
   renderGlobalRisks(data);
 }
 
+// ── Tab 切換 ──────────────────────────────────────────────────────
+function initTabs() {
+  const tabBar = document.querySelector('.tab-bar');
+  if (!tabBar) return;
+
+  tabBar.addEventListener('click', (e) => {
+    const btn = e.target.closest('.tab-btn');
+    if (!btn) return;
+    const target = btn.dataset.tab;
+
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+
+    btn.classList.add('active');
+    const panel = document.getElementById('tab-' + target);
+    if (panel) panel.classList.add('active');
+  });
+
+  // overview card 點擊：若 href 指向訊號子 section，自動切換到對應 tab
+  const tabMap = {
+    'policy-section': 'policy',
+    'risk-section': 'risk',
+    'whale-section': 'whale',
+    'crypto-section': 'crypto'
+  };
+  document.addEventListener('click', (e) => {
+    const link = e.target.closest('a.overview-link');
+    if (!link) return;
+    const hash = (link.getAttribute('href') || '').replace('#', '');
+    const tabKey = tabMap[hash];
+    if (!tabKey) return;
+    const btn = document.querySelector(`.tab-btn[data-tab="${tabKey}"]`);
+    if (btn) btn.click();
+  });
+}
+
 function bindControls() {
   const checkbox = document.getElementById("only-high-impact");
-  checkbox.addEventListener("change", (event) => {
-    onlyHighImpact = Boolean(event.target.checked);
-    if (dashboardData) renderAll(dashboardData);
-  });
+  if (checkbox) {
+    checkbox.addEventListener("change", (event) => {
+      onlyHighImpact = Boolean(event.target.checked);
+      if (dashboardData) renderAll(dashboardData);
+    });
+  }
+  initTabs();
 }
 
 async function bootstrap() {
@@ -1512,7 +1551,6 @@ async function initPolymarket() {
 }
 
 bootstrap();
-initPolymarket();
 fetchCoinglass();
 setInterval(autoRefresh, POLL_INTERVAL);
 setInterval(fetchCoinglass, POLL_INTERVAL);
