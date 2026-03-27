@@ -1035,7 +1035,8 @@ function computeGateScores(data) {
   const trend = clamp(ts(ov.shortTermTrend) + ts(ov.midTermTrend) + ts(ov.longTermTrend));
 
   // 2. 市場情緒：Fear & Greed + 全市場多空比（Coinglass）
-  const fng = Number(data.fearAndGreedIndex?.value ?? 50);
+  // Bug fix: 正確路徑為 marketIntel.sentiment.fearGreedValue
+  const fng = Number(data.marketIntel?.sentiment?.fearGreedValue ?? 50);
   let sentiment = fng <= 20 ? -3 : fng <= 35 ? -2 : fng <= 45 ? -1 :
                   fng <= 55 ?  0 : fng <= 65 ?  1 : fng <= 80 ?  2 : 3;
   if (coinglassCache) {
@@ -1048,16 +1049,19 @@ function computeGateScores(data) {
   }
 
   // 3. 宏觀變數：CPI + NFP + FOMC 利率方向
+  // Bug fix: 只取 90 天內的近期事件，避免使用過期的 CPI/NFP 數據
   let macro = 0;
   const macroEvents = data.macroEvents || [];
-  const recentCpi  = macroEvents.filter(e => e.eventType === 'cpi' && e.status === 'recent')
+  const cutoffMs = Date.now() - 90 * 24 * 60 * 60 * 1000;
+  const recentCpi  = macroEvents.filter(e => e.eventType === 'cpi' && e.status === 'recent' && new Date(e.datetime).getTime() > cutoffMs)
     .sort((a, b) => new Date(b.datetime) - new Date(a.datetime))[0];
-  const recentNfp  = macroEvents.filter(e => e.eventType === 'nfp' && e.status === 'recent')
+  const recentNfp  = macroEvents.filter(e => e.eventType === 'nfp' && e.status === 'recent' && new Date(e.datetime).getTime() > cutoffMs)
     .sort((a, b) => new Date(b.datetime) - new Date(a.datetime))[0];
-  const recentFomc = macroEvents.filter(e => e.eventType === 'central-bank' && e.country === 'US' && e.status === 'recent')
+  const recentFomc = macroEvents.filter(e => e.eventType === 'central-bank' && e.country === 'US' && e.status === 'recent' && new Date(e.datetime).getTime() > cutoffMs)
     .sort((a, b) => new Date(b.datetime) - new Date(a.datetime))[0];
-  if (recentCpi?.result?.shortTermBias === '偏跌') macro += 1;
-  else if (recentCpi?.result?.shortTermBias === '偏漲') macro -= 1;
+  // Bug fix: CPI 偏跌（市場看跌）= macro 負面；CPI 偏漲（市場看漲）= macro 正面
+  if (recentCpi?.result?.shortTermBias === '偏漲') macro += 1;
+  else if (recentCpi?.result?.shortTermBias === '偏跌') macro -= 1;
   if (recentNfp?.result?.shortTermBias === '偏漲') macro += 1;
   else if (recentNfp?.result?.shortTermBias === '偏跌') macro -= 1;
   const rateA = toNumber(recentFomc?.result?.actual);
@@ -1066,67 +1070,77 @@ function computeGateScores(data) {
     if (rateA < rateP) macro += 1; else if (rateA > rateP) macro -= 1;
   }
 
-  // 4. 資金流向：真實 ETF 流入（Coinglass）+ OI 變化 + 穩定幣供應
+  // 4. 資金流向：7D ETF 淨流（Coinglass）+ OI 變化 + 穩定幣供應
+  // Bug fix: 優先用 7D 累計 ETF flow（不用 V3 單日快照）
   let flow = 0;
-  if (coinglassCache) {
-    const btcEtfSeries = cgSeries(coinglassCache, 'etfFlowHistory', 'bitcoin');
-    const btcEtfFlow = toNumber(cgLatest(btcEtfSeries)?.flowUsd) ?? 0;
-    const ethEtfSeries = cgSeries(coinglassCache, 'etfFlowHistory', 'ethereum');
-    const ethEtfFlow = toNumber(cgLatest(ethEtfSeries)?.flowUsd) ?? 0;
-    const totalEtfFlow = btcEtfFlow + ethEtfFlow;
-    if (totalEtfFlow > 500e6) flow += 2; else if (totalEtfFlow > 200e6) flow += 1;
-    else if (totalEtfFlow < -500e6) flow -= 2; else if (totalEtfFlow < -200e6) flow -= 1;
-    const btcOiSeries = cgSeries(coinglassCache, 'openInterestAggregated', 'BTC');
-    const btcOiLatest = toNumber(cgLatest(btcOiSeries)?.closeUsd) ?? 0;
-    const btcOiPrev = toNumber(cgPrevious(btcOiSeries)?.closeUsd) ?? 0;
-    const oiChange = btcOiLatest - btcOiPrev;
-    if (oiChange > 1e9) flow += 1; else if (oiChange < -1e9) flow -= 1;
+  const etf7d = toNumber(data.coinglassDerivatives?.etfFlow7d?.netUsd);
+  if (etf7d !== null) {
+    if (etf7d > 500e6) flow += 2; else if (etf7d > 200e6) flow += 1;
+    else if (etf7d < -500e6) flow -= 2; else if (etf7d < -200e6) flow -= 1;
+  } else if (coinglassCache) {
+    const btcEtfLatest = cgLatest(cgSeries(coinglassCache, 'etfFlowHistory', 'bitcoin'));
+    const btcEtfFlow = (btcEtfLatest?.etfFlows ?? []).reduce((s, f) => s + (toNumber(f.flowUsd) ?? 0), 0);
+    if (btcEtfFlow > 500e6) flow += 2; else if (btcEtfFlow > 200e6) flow += 1;
+    else if (btcEtfFlow < -500e6) flow -= 2; else if (btcEtfFlow < -200e6) flow -= 1;
   } else {
     const etf = Number(data.cryptoSignalMetrics7d?.etfNetFlowUsd ?? 0);
     if (etf > 500e6) flow += 2; else if (etf > 200e6) flow += 1;
     else if (etf < -500e6) flow -= 2; else if (etf < -200e6) flow -= 1;
   }
+  if (coinglassCache) {
+    const btcOiSeries = cgSeries(coinglassCache, 'openInterestAggregated', 'BTC');
+    const btcOiLatest = toNumber(cgLatest(btcOiSeries)?.closeUsd) ?? 0;
+    const btcOiPrev = toNumber(cgPrevious(btcOiSeries)?.closeUsd) ?? 0;
+    const oiChange = btcOiLatest - btcOiPrev;
+    if (oiChange > 1e9) flow += 1; else if (oiChange < -1e9) flow -= 1;
+  }
   const sc = Number(data.cryptoSignalMetrics7d?.stablecoinSupplyChangeUsd ?? 0);
   if (sc > 0) flow += 1; else if (sc < 0) flow -= 1;
 
-  // 5. 槓桿大戶風險：真實清算量 + Funding Rate（Coinglass）
+  // 5. 槓桿大戶風險：7D 清算量（Coinglass 聚合）+ Funding Rate
+  // Bug fix: 改用 7D 總清算量（不用 V3 單根 4H K 線，避免時間粒度不符）
   let leverage = 0;
-  if (coinglassCache) {
+  const liq7d = toNumber(data.coinglassDerivatives?.liquidation7d?.totalUsd);
+  if (liq7d !== null && liq7d > 0) {
+    leverage = liq7d > 2000e6 ? -3 : liq7d > 1000e6 ? -2 : liq7d > 400e6 ? -1 : liq7d > 150e6 ? 0 : 1;
+  } else if (coinglassCache) {
+    // fallback: V3 cache 加總 7 根 4H（約 28H）
     const btcLiqSeries = cgSeries(coinglassCache, 'aggregatedLiquidation', 'BTC');
     const ethLiqSeries = cgSeries(coinglassCache, 'aggregatedLiquidation', 'ETH');
-    const btcLiq = toNumber(cgLatest(btcLiqSeries)?.totalLiquidationUsd) ?? 0;
-    const ethLiq = toNumber(cgLatest(ethLiqSeries)?.totalLiquidationUsd) ?? 0;
-    const totalLiq = btcLiq + ethLiq;
-    leverage = totalLiq > 1000e6 ? -3 : totalLiq > 500e6 ? -2 : totalLiq > 200e6 ? -1 : totalLiq > 80e6 ? 0 : 1;
+    const sum7 = (s) => s.slice(-42).reduce((a, b) => a + (toNumber(b.totalLiquidationUsd) ?? 0), 0);
+    const totalLiq = sum7(btcLiqSeries) + sum7(ethLiqSeries);
+    leverage = totalLiq > 2000e6 ? -3 : totalLiq > 1000e6 ? -2 : totalLiq > 400e6 ? -1 : totalLiq > 150e6 ? 0 : 1;
+  } else {
+    const liq = Number(data.cryptoSignalMetrics7d?.liquidationTotalUsd ?? 0);
+    leverage = liq > 2000e6 ? -3 : liq > 1000e6 ? -2 : liq > 400e6 ? -1 : liq > 150e6 ? 0 : 1;
+  }
+  // Funding Rate 調整（從 V3 cache）
+  if (coinglassCache) {
     const fundingSeries = cgSeries(coinglassCache, 'fundingRate', 'Binance:BTCUSDT');
     const fundingPct = (toNumber(cgLatest(fundingSeries)?.close) ?? 0) * 100;
     if (fundingPct > 0.1) leverage = clamp(leverage - 2);
     else if (fundingPct > 0.05) leverage = clamp(leverage - 1);
     else if (fundingPct < -0.05) leverage = clamp(leverage + 1);
-  } else {
-    const liq = Number(data.cryptoSignalMetrics7d?.liquidationTotalUsd ?? 0);
-    leverage = liq > 1000e6 ? -3 : liq > 500e6 ? -2 : liq > 200e6 ? -1 : liq > 80e6 ? 0 : 1;
   }
 
-  // 6. 巨鯨走向：真實 Hyperliquid 大戶倉位（Coinglass）
+  // 6. 巨鯨走向：真實 Hyperliquid 大戶倉位（Coinglass），無資料時 fallback 到 whaleTrend
   let whaleScore = 0;
-  if (coinglassCache) {
-    const positions = cgPositions(coinglassCache);
-    if (positions.length > 0) {
-      let longVal = 0, shortVal = 0;
-      for (const pos of positions) {
-        const size = toNumber(pos?.positionSize) ?? 0;
-        const val = toNumber(pos?.positionValueUsd) ?? 0;
-        if (size > 0) longVal += val; else shortVal += val;
-      }
-      const total = longVal + shortVal;
-      if (total > 0) {
-        const longRatio = longVal / total;
-        whaleScore = longRatio > 0.65 ? 2 : longRatio > 0.55 ? 1 :
-                     longRatio < 0.35 ? -2 : longRatio < 0.45 ? -1 : 0;
-      }
+  const positions = coinglassCache ? cgPositions(coinglassCache) : [];
+  if (positions.length > 0) {
+    let longVal = 0, shortVal = 0;
+    for (const pos of positions) {
+      const size = toNumber(pos?.positionSize) ?? 0;
+      const val = toNumber(pos?.positionValueUsd) ?? 0;
+      if (size > 0) longVal += val; else shortVal += val;
+    }
+    const total = longVal + shortVal;
+    if (total > 0) {
+      const longRatio = longVal / total;
+      whaleScore = longRatio > 0.65 ? 2 : longRatio > 0.55 ? 1 :
+                   longRatio < 0.35 ? -2 : longRatio < 0.45 ? -1 : 0;
     }
   } else {
+    // fallback：用 whaleTrend（RSS 訊號分析）
     const whale = data.whaleTrend || {};
     const whaleDiff = Number(whale.bull ?? 0) - Number(whale.bear ?? 0);
     whaleScore = diff2score(whaleDiff);
@@ -1178,15 +1192,14 @@ function computeGateScores(data) {
 }
 
 function renderGate(data) {
-  // 等 Coinglass 資料載入後才渲染，避免先用舊邏輯再跳變
   if (!coinglassCache) {
-    const wrap = document.querySelector('.gate-summary-wrap');
-    if (wrap) wrap.innerHTML = '<p style="color:#94a3b8;padding:8px 0;">Coinglass 資料載入中...</p>';
+    const panel = document.getElementById('gate-summary');
+    if (panel) panel.innerHTML = '<p style="color:#94a3b8;padding:8px 0;">Coinglass 資料載入中...</p>';
     return;
   }
   const scores = computeGateScores(data);
-  const dims   = ['市場情緒', '宏觀變數', '資金流向', '槓桿大戶風險', '巨鯨走向', '政策監管', '外部風險', 'ETH預測市場'];
-  const values = [scores.sentiment, scores.macro, scores.flow, scores.leverage, scores.whale, scores.policy, scores.risk, scores.polymarket];
+  const dims   = ['市場情緒', '宏觀變數', '資金流向', '槓桿大戶風險', '巨鯨走向', '政策監管', '外部風險'];
+  const values = [scores.sentiment, scores.macro, scores.flow, scores.leverage, scores.whale, scores.policy, scores.risk];
   const avg    = values.reduce((a, b) => a + b, 0) / values.length;
 
   let gateLabel, gateColor, gateEmoji;
@@ -1194,27 +1207,12 @@ function renderGate(data) {
   else if (avg >= 0.5)  { gateLabel = '偏開 — 謹慎偏多'; gateColor = '#86efac'; gateEmoji = '🟢'; }
   else if (avg > -0.5)  { gateLabel = '半開 — 震盪觀望'; gateColor = '#fbbf24'; gateEmoji = '🟡'; }
   else if (avg > -1.5)  { gateLabel = '偏關 — 謹慎偏空'; gateColor = '#f87171'; gateEmoji = '🔴'; }
-  else                  { gateLabel = '關閉 — 空頭環境';  gateColor = '#ef4444'; gateEmoji = '🔴'; }
+  else                  { gateLabel = '全關 — 空頭環境';  gateColor = '#ef4444'; gateEmoji = '🔴'; }
 
-  const scoreRows = dims.map((d, i) => {
-    const v   = values[i];
-    const cls = v > 0 ? 'bias-up' : v < 0 ? 'bias-down' : 'bias-side';
-    const bar = '█'.repeat(Math.abs(v)) + '░'.repeat(3 - Math.abs(v));
-    const sign = v > 0 ? '+' : '';
-    return `<tr>
-      <td>${d}</td>
-      <td style="color:${v > 0 ? '#34d399' : v < 0 ? '#f87171' : '#94a3b8'};letter-spacing:2px;font-size:0.85em">${v < 0 ? bar.split('').reverse().join('') : bar}</td>
-      <td class="${cls}" style="text-align:right;font-weight:700;width:40px">${sign}${v}</td>
-    </tr>`;
-  }).join('');
-
+  // ── 左側面板：總評 + 等級說明 ─────────────────────────────
   document.getElementById('gate-summary').innerHTML = `
     <div class="gate-status" style="color:${gateColor}">${gateEmoji} ${gateLabel}</div>
     <div class="gate-avg">平均分：<strong style="color:${gateColor}">${avg >= 0 ? '+' : ''}${avg.toFixed(1)}</strong> / 3</div>
-    <table class="gate-table">
-      <thead><tr><th>維度</th><th>強度</th><th>分數</th></tr></thead>
-      <tbody>${scoreRows}</tbody>
-    </table>
     <div class="gate-legend">
       <div class="gate-legend-title">閘門等級說明</div>
       <div class="gate-legend-rows">
@@ -1252,47 +1250,100 @@ function renderGate(data) {
     </div>
   `;
 
-  const fillColor   = avg > 0 ? 'rgba(52,211,153,0.2)' : avg < 0 ? 'rgba(248,113,113,0.2)' : 'rgba(251,191,36,0.15)';
-  const borderColor = avg > 0 ? '#34d399' : avg < 0 ? '#f87171' : '#fbbf24';
+  // ── 右側：水平條形圖（+3 多 / -3 空）────────────────────────
+  const barColors = values.map(v =>
+    v > 0 ? 'rgba(52,211,153,0.72)' : v < 0 ? 'rgba(248,113,113,0.72)' : 'rgba(251,191,36,0.55)'
+  );
+  const borderColors = values.map(v =>
+    v > 0 ? '#34d399' : v < 0 ? '#f87171' : '#fbbf24'
+  );
 
-  const ctx = document.getElementById('gate-radar').getContext('2d');
+  const canvasEl = document.getElementById('gate-bar');
+  if (!canvasEl) return;
+  const ctx = canvasEl.getContext('2d');
   if (gateChart) gateChart.destroy();
+
+  // 內嵌 plugin：為每個 bar 畫出分數標籤（含 0 值，否則 bar 寬度=0 完全不可見）
+  const scoreLabelPlugin = {
+    id: 'scoreLabels',
+    afterDatasetsDraw(chart) {
+      const { ctx: c, scales } = chart;
+      const meta = chart.getDatasetMeta(0);
+      values.forEach((v, i) => {
+        const bar = meta.data[i];
+        if (!bar) return;
+        const xZero = scales.x.getPixelForValue(0);
+        const y = bar.y;
+        const sign = v > 0 ? '+' : '';
+        const color = v > 0 ? '#34d399' : v < 0 ? '#f87171' : '#94a3b8';
+        const label = `${sign}${v}`;
+        c.save();
+        c.fillStyle = color;
+        c.font = 'bold 12px "Segoe UI", system-ui, sans-serif';
+        // 正值標在零軸右側，負值標在零軸左側，0 標在中央稍右
+        c.textAlign = v < 0 ? 'right' : 'left';
+        const offsetX = v < 0 ? xZero - 6 : xZero + 6;
+        c.fillText(label, offsetX, y + 4);
+        c.restore();
+      });
+    }
+  };
+
   gateChart = new Chart(ctx, {
-    type: 'radar',
+    type: 'bar',
     data: {
       labels: dims,
       datasets: [{
         data: values,
-        backgroundColor: fillColor,
-        borderColor: borderColor,
-        borderWidth: 2,
-        pointBackgroundColor: borderColor,
-        pointBorderColor: borderColor,
-        pointRadius: 5,
+        backgroundColor: barColors,
+        borderColor: borderColors,
+        borderWidth: 1,
+        borderRadius: 4,
+        barThickness: 24,
       }]
     },
     options: {
+      indexAxis: 'y',
       responsive: true,
-      maintainAspectRatio: true,
+      maintainAspectRatio: false,
       scales: {
-        r: {
+        x: {
           min: -3, max: 3,
           ticks: {
             stepSize: 1,
             color: '#64748b',
-            backdropColor: 'transparent',
-            font: { size: 10 }
+            font: { size: 11 },
+            callback: v => v > 0 ? `+${v}` : String(v)
           },
-          grid:       { color: 'rgba(51,65,85,0.7)' },
-          angleLines: { color: 'rgba(51,65,85,0.7)' },
-          pointLabels: {
+          grid: {
+            color: ctx => ctx.tick.value === 0 ? 'rgba(100,116,139,0.6)' : 'rgba(51,65,85,0.35)'
+          },
+          border: { color: '#334155' }
+        },
+        y: {
+          ticks: {
             color: '#94a3b8',
-            font: { size: 12, family: "'Microsoft JhengHei', 'Segoe UI', system-ui, sans-serif" }
-          }
+            font: { size: 13, family: "'Microsoft JhengHei', 'Segoe UI', system-ui, sans-serif" }
+          },
+          grid: { display: false },
+          border: { display: false }
         }
       },
-      plugins: { legend: { display: false } }
-    }
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const v = ctx.raw;
+              const sign = v > 0 ? '+' : '';
+              const desc = v >= 2 ? '強多' : v === 1 ? '偏多' : v === 0 ? '中性' : v === -1 ? '偏空' : '強空';
+              return ` ${sign}${v}  (${desc})`;
+            }
+          }
+        }
+      }
+    },
+    plugins: [scoreLabelPlugin]
   });
 }
 
@@ -1310,12 +1361,51 @@ function renderAll(data) {
   renderGlobalRisks(data);
 }
 
+// ── Tab 切換 ──────────────────────────────────────────────────────
+function initTabs() {
+  const tabBar = document.querySelector('.tab-bar');
+  if (!tabBar) return;
+
+  tabBar.addEventListener('click', (e) => {
+    const btn = e.target.closest('.tab-btn');
+    if (!btn) return;
+    const target = btn.dataset.tab;
+
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+
+    btn.classList.add('active');
+    const panel = document.getElementById('tab-' + target);
+    if (panel) panel.classList.add('active');
+  });
+
+  // overview card 點擊：若 href 指向訊號子 section，自動切換到對應 tab
+  const tabMap = {
+    'policy-section': 'policy',
+    'risk-section': 'risk',
+    'whale-section': 'whale',
+    'crypto-section': 'crypto'
+  };
+  document.addEventListener('click', (e) => {
+    const link = e.target.closest('a.overview-link');
+    if (!link) return;
+    const hash = (link.getAttribute('href') || '').replace('#', '');
+    const tabKey = tabMap[hash];
+    if (!tabKey) return;
+    const btn = document.querySelector(`.tab-btn[data-tab="${tabKey}"]`);
+    if (btn) btn.click();
+  });
+}
+
 function bindControls() {
   const checkbox = document.getElementById("only-high-impact");
-  checkbox.addEventListener("change", (event) => {
-    onlyHighImpact = Boolean(event.target.checked);
-    if (dashboardData) renderAll(dashboardData);
-  });
+  if (checkbox) {
+    checkbox.addEventListener("change", (event) => {
+      onlyHighImpact = Boolean(event.target.checked);
+      if (dashboardData) renderAll(dashboardData);
+    });
+  }
+  initTabs();
 }
 
 async function bootstrap() {
@@ -1512,7 +1602,7 @@ async function initPolymarket() {
 }
 
 bootstrap();
-initPolymarket();
 fetchCoinglass();
+initPolymarket();
 setInterval(autoRefresh, POLL_INTERVAL);
 setInterval(fetchCoinglass, POLL_INTERVAL);
