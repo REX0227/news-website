@@ -1,9 +1,9 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Crypto 關鍵節點儀表板</title>
+    <title>CryptoPulse</title>
     <link rel="stylesheet" href="./styles.css" />
     <style>
       #auth-overlay {
@@ -26,8 +26,7 @@
         width: 100%; box-sizing: border-box;
         padding: 10px 14px; border-radius: 8px;
         border: 1px solid #334155; background: #0f172a;
-        color: #e2e8f0; font-size: 1em; margin-bottom: 12px;
-        outline: none;
+        color: #e2e8f0; font-size: 1em; margin-bottom: 12px; outline: none;
       }
       #auth-input:focus { border-color: #38bdf8; }
       #auth-btn {
@@ -40,7 +39,7 @@
     </style>
   </head>
   <body>
-    <!-- 密碼保護遮罩 -->
+    <!-- 密碼保護 -->
     <div id="auth-overlay">
       <div id="auth-box">
         <h2>CryptoPulse</h2>
@@ -51,9 +50,7 @@
       </div>
     </div>
     <script>
-      // ── 密碼設定區（修改此處更換密碼）──────────────────
       const SITE_PASSWORD = "TRAXXAS";
-      // ────────────────────────────────────────────────────
       (function () {
         const overlay = document.getElementById("auth-overlay");
         const input   = document.getElementById("auth-input");
@@ -74,51 +71,118 @@
         input.focus();
       })();
     </script>
+
     <main class="container">
+
+      <!-- ── Header ────────────────────────────────────────────── -->
       <header class="hero">
-        <nav class="top-nav">
-          <a class="badge medium" href="./v2/index.html">前往 V2</a>
-          <a class="badge medium" href="./v3/index.html">前往 V3</a>
-          <a class="badge medium" href="./v4/index.html">前往 V4</a>
-        </nav>
-        <h1>Crypto 關鍵節點儀表板</h1>
-        <p>追蹤美國、日本重要數據與政策時間點，搭配近期幣圈事件，定位交易高波動窗口。</p>
-        <div id="meta"></div>
+        <div class="hero-inner">
+          <div>
+            <h1>CryptoPulse</h1>
+            <div id="meta"></div>
+          </div>
+          <nav class="top-nav">
+            <a class="badge medium" href="/v2/">V2 來源</a>
+            <a class="badge medium" href="/v3/">V3 衍生品</a>
+            <a class="badge medium" href="/v4/">V4 工具</a>
+          </nav>
+        </div>
       </header>
 
+      <!-- ── Section 1: 市場 Gate 評分（最終綜合評估）────────── -->
       <section id="gate-section">
         <h2>市場 Gate 評分</h2>
-        <div class="gate-layout">
-          <div class="gate-chart-wrap">
-            <canvas id="gate-radar"></canvas>
+        <div class="gate-hero">
+          <div id="gate-summary" class="gate-status-panel">
+            <p style="color:#94a3b8">Coinglass 資料載入中…</p>
           </div>
-          <div class="gate-summary-wrap" id="gate-summary"></div>
+          <div class="gate-bar-wrap">
+            <canvas id="gate-bar"></canvas>
+          </div>
         </div>
       </section>
 
+      <!-- ── Section 2: 市場概覽（趨勢 + 概覽卡片）─────────── -->
       <section id="overview-section">
-        <h2>市場趨勢總覽</h2>
-        <div id="overview-cards" class="card-grid"></div>
+        <h2>市場概覽</h2>
+        <div id="overall-trend" class="trend-banner"></div>
+        <div id="overview-cards" class="card-grid overview-card-grid" style="margin-top:14px"></div>
       </section>
 
+      <!-- ── Section 3: 交易員摘要 ────────────────────────────── -->
       <section id="ai-section">
-          <h2>交易員重點摘要</h2>
+        <h2>交易員摘要</h2>
         <ul id="ai-insights" class="card-list"></ul>
       </section>
 
-      <section id="trend-section">
-        <h2>短/中/長線總趨勢（交易員評估）</h2>
-        <div id="overall-trend" class="trend-banner"></div>
-      </section>
-
+      <!-- ── Section 4: 未來 7 日關鍵窗口 ─────────────────────── -->
       <section id="windows-section">
         <h2>未來 7 日關鍵窗口</h2>
         <div id="key-windows-note" class="note"></div>
         <div id="key-windows" class="card-grid"></div>
       </section>
 
+      <!-- ── Section 4: 訊號中心（tab 切換）───────────────────── -->
+      <section id="signals-section">
+        <h2>訊號中心</h2>
+
+        <div class="tab-bar">
+          <button class="tab-btn active" data-tab="crypto">
+            <span class="tab-icon">📡</span> 加密訊號
+          </button>
+          <button class="tab-btn" data-tab="whale">
+            <span class="tab-icon">🐋</span> 巨鯨走向
+          </button>
+          <button class="tab-btn" data-tab="policy">
+            <span class="tab-icon">🏛</span> 政策/監管
+          </button>
+          <button class="tab-btn" data-tab="risk">
+            <span class="tab-icon">⚠️</span> 外部風險
+          </button>
+        </div>
+
+        <!-- 加密訊號 -->
+        <div class="tab-panel active" id="tab-crypto">
+          <div class="controls">
+            <label>
+              <input id="only-high-impact" type="checkbox" />
+              只看高影響（僅篩選本區）
+            </label>
+          </div>
+          <div id="crypto-signals" class="card-grid"></div>
+          <!-- 舊 ID 相容（scroll anchor） -->
+          <span id="crypto-section" style="display:none"></span>
+        </div>
+
+        <!-- 巨鯨走向 -->
+        <div class="tab-panel" id="tab-whale">
+          <div id="whale-trend" class="card"></div>
+          <span id="whale-section" style="display:none"></span>
+        </div>
+
+        <!-- 政策/監管 -->
+        <div class="tab-panel" id="tab-policy">
+          <div id="policy-signals" class="card-grid"></div>
+          <span id="policy-section" style="display:none"></span>
+        </div>
+
+        <!-- 外部風險 -->
+        <div class="tab-panel" id="tab-risk">
+          <div id="global-risks" class="card-grid"></div>
+          <span id="risk-section" style="display:none"></span>
+        </div>
+
+      </section>
+
+      <!-- ── Section 5: ETH 預測市場（Polymarket）──────────────── -->
+      <section id="polymarket-section">
+        <h2>ETH 預測市場（Polymarket）</h2>
+        <div id="polymarket-cards" class="card-grid"></div>
+      </section>
+
+      <!-- ── Section 6: 宏觀日程 ───────────────────────────────── -->
       <section id="macro-section">
-        <h2>最近與未來：美日專業數據日程</h2>
+        <h2>美日宏觀日程</h2>
         <div class="table-wrap">
           <table>
             <thead>
@@ -137,38 +201,10 @@
         </div>
       </section>
 
-      <section id="crypto-section">
-        <h2>近期影響虛擬幣操作 / 訊息</h2>
-        <div class="controls">
-          <label><input id="only-high-impact" type="checkbox" /> 只看高影響（僅篩選本區）</label>
-        </div>
-        <div id="crypto-signals" class="card-grid"></div>
-      </section>
-
-      <section id="whale-section">
-        <h2>巨鯨走向</h2>
-        <div id="whale-trend" class="card"></div>
-      </section>
-
-      <section id="policy-section">
-        <h2>政策 / 監管（官方 / 機構公告）</h2>
-        <div id="policy-signals" class="card-grid"></div>
-      </section>
-
-      <section id="risk-section">
-        <h2>外部風險（川普政策 / 戰爭 / 地緣政治）</h2>
-        <div id="global-risks" class="card-grid"></div>
-      </section>
-
-      <section id="polymarket-section">
-        <h2>以太坊預測市場（Polymarket）</h2>
-        <p style="color:var(--muted);font-size:14px;margin-top:0">預測市場概率（%）與成交量，非現貨幣價。來源：Polymarket Gamma API</p>
-        <div id="polymarket-cards" class="card-grid"></div>
-      </section>
     </main>
 
-    <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-    <script defer src="./app.js?v=20260323-gate"></script>
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <script defer src="./app.js?v=20260325-gate3"></script>
   </body>
 </html>

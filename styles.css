@@ -24,24 +24,24 @@ body {
   padding: 28px 32px 40px;
 }
 
-.hero h1 { margin-bottom: 6px; }
 .hero p { color: var(--muted); margin-top: 0; }
 
-.hero {
-  position: relative;
+section {
+  margin-top: 0;
+  padding: 28px 0 0;
+  border-top: 1px solid var(--border);
 }
 
-.top-nav {
-  position: absolute;
-  top: 0;
-  right: 0;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
+section:first-of-type { border-top: none; padding-top: 20px; }
 
-section { margin-top: 28px; }
-h2 { margin-bottom: 12px; }
+h2 {
+  margin: 0 0 16px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
 
 #meta { color: var(--muted); font-size: 14px; }
 
@@ -315,34 +315,28 @@ td.analysis {
 
 a { color: var(--accent); }
 
-/* ── Gate Score 雷達圖 ───────────────────────────────────────────── */
-#gate-section h2 { margin-bottom: 16px; }
-
-.gate-layout {
-  display: flex;
-  align-items: center;
-  gap: 36px;
+/* ── Gate Score 水平條形圖 ─────────────────────────────────────── */
+.gate-hero {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 24px;
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 24px 32px;
-  flex-wrap: wrap;
+  padding: 24px;
+  align-items: start;
 }
 
-.gate-chart-wrap {
-  flex: 0 0 380px;
-  width: 380px;
-  height: 380px;
+@media (max-width: 860px) {
+  .gate-hero { grid-template-columns: 1fr; }
 }
 
-.gate-chart-wrap canvas {
-  width: 100% !important;
-  height: 100% !important;
+.gate-status-panel {
+  min-width: 0;
 }
 
-.gate-summary-wrap {
-  flex: 1;
-  min-width: 220px;
+.gate-bar-wrap {
+  height: 290px;
 }
 
 .gate-status {
@@ -443,3 +437,63 @@ a { color: var(--accent); }
   font-size: 0.8em;
   color: var(--muted);
 }
+
+/* ── Hero header ─────────────────────────────────────────────────── */
+.hero {
+  padding-bottom: 20px;
+}
+.hero h1 { margin: 0 0 4px; font-size: 1.5rem; }
+.hero-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+.top-nav {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+  padding-top: 4px;
+  flex-wrap: wrap;
+}
+
+
+/* ── Overview card grid ───────────────────────────────────────────── */
+.overview-card-grid {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+/* ── Tab bar ─────────────────────────────────────────────────────── */
+.tab-bar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+.tab-btn {
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--muted);
+  font-size: 0.9em;
+  font-family: inherit;
+  padding: 8px 14px 10px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  margin-bottom: -1px;
+}
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+.tab-icon { margin-right: 4px; }
+
+/* ── Tab panels ──────────────────────────────────────────────────── */
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
