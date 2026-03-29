@@ -320,4 +320,61 @@ export function renderGate(data) {
     },
     plugins: [scoreLabelPlugin]
   });
+
+  // ── Composite Score 面板 ─────────────────────────────────────────
+  renderCompositePanel(data);
+}
+
+function renderCompositePanel(data) {
+  const el = document.getElementById('gate-composite');
+  if (!el) return;
+
+  const cs = data?.compositeScore;
+  const fd = data?.factorDelta;
+
+  // ── Composite Score 卡片 ─────────────────────────────────────
+  let csHtml = '';
+  if (cs) {
+    const score = Number(cs.score);
+    const color = score >= 0.4  ? '#34d399'
+                : score >= 0.15 ? '#86efac'
+                : score <= -0.4 ? '#ef4444'
+                : score <= -0.15 ? '#f87171'
+                : '#fbbf24';
+    const sign = score >= 0 ? '+' : '';
+    const coveragePct = cs.coverage_pct ?? ((cs.coverage / cs.total_factors) * 100).toFixed(1);
+    csHtml = `
+      <div class="composite-card">
+        <div class="composite-title">Factor Composite Score</div>
+        <div class="composite-score" style="color:${color}">${sign}${score.toFixed(3)}</div>
+        <div class="composite-label" style="color:${color}">${cs.label}</div>
+        <div class="composite-coverage">因子覆蓋率 ${cs.coverage}/${cs.total_factors}（${coveragePct}%）</div>
+      </div>`;
+  }
+
+  // ── Factor Delta 面板 ─────────────────────────────────────────
+  let fdHtml = '';
+  if (fd && fd.count > 0) {
+    const rows = fd.changed.slice(0, 6).map(c => {
+      const diff = c.score_diff !== null ? (c.score_diff >= 0 ? `+${c.score_diff.toFixed(3)}` : c.score_diff.toFixed(3)) : '—';
+      const diffColor = c.score_diff > 0 ? '#34d399' : c.score_diff < 0 ? '#f87171' : '#94a3b8';
+      const tag = c.direction_changed
+        ? `<span class="fd-tag fd-tag-dir">${c.prev_direction} → ${c.curr_direction}</span>`
+        : `<span class="fd-tag fd-tag-move">大幅跳變</span>`;
+      return `<div class="fd-row">
+        <span class="fd-key">${c.factor}</span>
+        <span class="fd-diff" style="color:${diffColor}">${diff}</span>
+        ${tag}
+      </div>`;
+    }).join('');
+    fdHtml = `
+      <div class="fd-card">
+        <div class="fd-title">Factor 變動 <span class="fd-count">${fd.count} 項</span></div>
+        ${rows}
+      </div>`;
+  } else if (fd && fd.count === 0) {
+    fdHtml = `<div class="fd-card"><div class="fd-title">Factor 變動</div><div class="fd-empty">本次無顯著因子變化</div></div>`;
+  }
+
+  el.innerHTML = csHtml + fdHtml;
 }
