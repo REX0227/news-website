@@ -395,10 +395,9 @@ function renderCompositeHistoryChart() {
 
   wrap.style.display = 'block';
 
-  // 整點才顯示標籤，其餘空字串
   const labels = history.map(h => {
     const d = new Date(h.t);
-    return d.getMinutes() === 0 ? `${d.getHours().toString().padStart(2,'0')}:00` : '';
+    return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
   });
   const scores = history.map(h => Number(h.s));
   const pointColors = scores.map(s =>
@@ -443,7 +442,7 @@ function renderCompositeHistoryChart() {
       }},
       scales: {
         x: {
-          ticks: { color: '#64748b', font: { size: 10 }, autoSkip: false, maxRotation: 0 },
+          ticks: { color: '#64748b', font: { size: 10 }, maxRotation: 0 },
           grid: { color: '#1e293b' }
         },
         y: {
