@@ -378,49 +378,7 @@ function renderCompositePanel(data) {
     fdHtml = `<div class="fd-card"><div class="fd-title">Factor 變動</div><div class="fd-empty">本次無顯著因子變化</div></div>`;
   }
 
-  // ── Collector 新鮮度指示 ─────────────────────────────────────
-  let freshHtml = '';
-  const ft = data?.collectorFetchTimes;
-  if (ft && typeof ft === 'object') {
-    const LABEL = {
-      vixDxy:               'VIX/DXY',
-      deribitOptions:       'Deribit P/C',
-      cryptoImpact:         '加密新聞',
-      globalRisk:           '地緣風險',
-      coinglassDerivatives: 'Coinglass',
-      coinalyzeLiquidation: 'Coinalyze',
-      noKeyLiquidation:     '清算備援',
-      liquidityIntel:       '流動性',
-      marketIntel:          'Fear&Greed',
-      policySignals:        '政策 RSS',
-      rateCutData:          '降息預期',
-      usMacro:              '美總經',
-      jpMacro:              '日總經',
-      ratesIntel:           'FRED 殖利率',
-    };
-    const TTL_MIN = {
-      vixDxy: 3, deribitOptions: 3,
-      cryptoImpact: 5, globalRisk: 5,
-      coinglassDerivatives: 20, coinalyzeLiquidation: 20, noKeyLiquidation: 20,
-      liquidityIntel: 30, policySignals: 30,
-      marketIntel: 60, rateCutData: 60,
-      usMacro: 120, jpMacro: 120, ratesIntel: 120,
-    };
-    const now = Date.now();
-    const rows = Object.entries(LABEL).map(([key, label]) => {
-      const iso = ft[key];
-      if (!iso) return `<div class="fresh-row"><span class="fresh-key">${label}</span><span class="fresh-age fresh-missing">—</span></div>`;
-      const ageMin = Math.floor((now - new Date(iso).getTime()) / 60000);
-      const ttl = TTL_MIN[key] || 60;
-      const pct = Math.min(100, Math.round((ageMin / ttl) * 100));
-      const cls = pct >= 90 ? 'fresh-age fresh-stale' : pct >= 60 ? 'fresh-age fresh-aging' : 'fresh-age fresh-ok';
-      const ageLabel = ageMin < 60 ? `${ageMin}m` : `${Math.floor(ageMin / 60)}h${ageMin % 60 > 0 ? (ageMin % 60) + 'm' : ''}`;
-      return `<div class="fresh-row"><span class="fresh-key">${label}</span><span class="${cls}">${ageLabel}</span></div>`;
-    }).join('');
-    freshHtml = `<div class="fresh-card"><div class="fresh-title">Collector 新鮮度</div>${rows}</div>`;
-  }
-
-  el.innerHTML = csHtml + fdHtml + freshHtml;
+  el.innerHTML = csHtml + fdHtml;
   renderCompositeHistoryChart();
 }
 

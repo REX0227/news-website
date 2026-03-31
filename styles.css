@@ -549,37 +549,6 @@ a { color: var(--accent); }
   margin-bottom: 10px;
 }
 
-/* ── Collector freshness indicator ───────────────────────────────── */
-.fresh-card {
-  background: #0d1b2e;
-  border: 1px solid #1e3a5f;
-  border-radius: 10px;
-  padding: 14px 20px;
-  flex: 1;
-  min-width: 240px;
-}
-.fresh-title {
-  font-size: 0.78em;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 8px;
-}
-.fresh-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 2px 0;
-  font-size: 0.8em;
-  border-bottom: 1px solid #1e293b;
-}
-.fresh-row:last-child { border-bottom: none; }
-.fresh-key { color: #94a3b8; }
-.fresh-age { font-weight: 600; font-family: monospace; font-size: 0.9em; }
-.fresh-ok      { color: #34d399; }
-.fresh-aging   { color: #fbbf24; }
-.fresh-stale   { color: #f87171; }
-.fresh-missing { color: #475569; }
 
 /* ── Stale data warning banner ───────────────────────────────────── */
 .stale-banner {
