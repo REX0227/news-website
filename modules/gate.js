@@ -437,12 +437,17 @@ function renderCompositeHistoryChart() {
         }
       }},
       scales: {
-        x: { ticks: { color: '#64748b', font: { size: 10 },
+        x: { ticks: { color: '#64748b', font: { size: 10 }, autoSkip: false,
           callback: function(val, idx) {
             const d = new Date(history[idx]?.t);
-            return d.getMinutes() === 0 ? `${d.getHours().toString().padStart(2,'0')}:00` : null;
+            return d.getMinutes() === 0 ? `${d.getHours().toString().padStart(2,'0')}:00` : '';
           }
-        }, grid: { color: '#1e293b' } },
+        }, grid: { color: '#1e293b', drawOnChartArea: true,
+          tickColor: ctx => {
+            const d = new Date(history[ctx.index]?.t);
+            return d?.getMinutes() === 0 ? '#1e3a5f' : 'transparent';
+          }
+        } },
         y: {
           min: -1, max: 1,
           ticks: { color: '#64748b', font: { size: 10 }, stepSize: 0.5 },
