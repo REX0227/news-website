@@ -440,7 +440,12 @@ function renderCompositeHistoryChart() {
         }
       }},
       scales: {
-        x: { ticks: { color: '#64748b', maxTicksLimit: 8, font: { size: 10 } }, grid: { color: '#1e293b' } },
+        x: { ticks: { color: '#64748b', font: { size: 10 },
+          callback: function(val, idx) {
+            const d = new Date(history[idx]?.t);
+            return d.getMinutes() === 0 ? `${d.getHours().toString().padStart(2,'0')}:00` : null;
+          }
+        }, grid: { color: '#1e293b' } },
         y: {
           min: -1, max: 1,
           ticks: { color: '#64748b', font: { size: 10 }, stepSize: 0.5 },
