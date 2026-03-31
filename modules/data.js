@@ -70,7 +70,12 @@ export async function fetchCompositeHistory() {
     const json = await res.json();
     if (!Array.isArray(json.result)) return [];
     return json.result.map(item => {
-      try { return typeof item === 'string' ? JSON.parse(item) : item; } catch { return null; }
+      try {
+        let v = typeof item === 'string' ? JSON.parse(item) : item;
+        if (Array.isArray(v)) v = v[0];
+        if (typeof v === 'string') v = JSON.parse(v);
+        return v;
+      } catch { return null; }
     }).filter(Boolean).reverse();  // 反轉：舊→新（方便 Chart.js 繪圖）
   } catch { return []; }
 }
