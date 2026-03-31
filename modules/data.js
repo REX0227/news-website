@@ -63,7 +63,7 @@ export async function loadData() {
 // ── composite_score 歷史走勢（Redis list，最新在前）─────────────────
 export async function fetchCompositeHistory() {
   try {
-    const res = await fetch(`${UPSTASH_URL}/lrange/${encodeURIComponent('crypto_composite:history')}/0/95`, {
+    const res = await fetch(`${UPSTASH_URL}/lrange/${encodeURIComponent('crypto_composite:history')}/0/287`, {
       headers: { Authorization: `Bearer ${UPSTASH_READ_TOKEN}` }
     });
     if (!res.ok) return [];
