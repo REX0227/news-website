@@ -395,9 +395,10 @@ function renderCompositeHistoryChart() {
 
   wrap.style.display = 'block';
 
+  // 整點才顯示標籤，其餘空字串
   const labels = history.map(h => {
     const d = new Date(h.t);
-    return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+    return d.getMinutes() === 0 ? `${d.getHours().toString().padStart(2,'0')}:00` : '';
   });
   const scores = history.map(h => Number(h.s));
   const pointColors = scores.map(s =>
@@ -433,21 +434,18 @@ function renderCompositeHistoryChart() {
             const h = history[ctx.dataIndex];
             const sign = ctx.parsed.y >= 0 ? '+' : '';
             return `${sign}${ctx.parsed.y.toFixed(3)}  ${h?.l || ''}`;
+          },
+          title: ctx => {
+            const h = history[ctx[0].dataIndex];
+            return h?.t ? new Date(h.t).toLocaleString('zh-Hant', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit' }) : '';
           }
         }
       }},
       scales: {
-        x: { ticks: { color: '#64748b', font: { size: 10 }, autoSkip: false,
-          callback: function(val, idx) {
-            const d = new Date(history[idx]?.t);
-            return d.getMinutes() === 0 ? `${d.getHours().toString().padStart(2,'0')}:00` : '';
-          }
-        }, grid: { color: '#1e293b', drawOnChartArea: true,
-          tickColor: ctx => {
-            const d = new Date(history[ctx.index]?.t);
-            return d?.getMinutes() === 0 ? '#1e3a5f' : 'transparent';
-          }
-        } },
+        x: {
+          ticks: { color: '#64748b', font: { size: 10 }, autoSkip: false, maxRotation: 0 },
+          grid: { color: '#1e293b' }
+        },
         y: {
           min: -1, max: 1,
           ticks: { color: '#64748b', font: { size: 10 }, stepSize: 0.5 },
