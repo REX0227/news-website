@@ -5,8 +5,8 @@
 
 import { state } from './state.js';
 
-const UPSTASH_URL = "https://guided-spider-19708.upstash.io";
-const UPSTASH_READ_TOKEN = "Akz8AAIgcDE18SAeYebRfjHOi1t_RtbOFNv2r3NHF0kLYfDIUMnEOw";
+const UPSTASH_URL = "https://sensible-grouper-89071.upstash.io";
+const UPSTASH_READ_TOKEN = "gQAAAAAAAVvvAAIncDE4ZjIwMzAwMmMxNTI0N2UxYjk1ZGJkNDc2MTE4YzA4ZXAxODkwNzE";
 const UPSTASH_KEY = "crypto_dashboard:latest";
 const COINGLASS_UPSTASH_KEY = 'cryptopulse:database:coinglass:derivatives';
 const LOCAL_API_URL = "http://localhost:3000/api/dashboard";
