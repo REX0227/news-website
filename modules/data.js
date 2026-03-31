@@ -60,6 +60,21 @@ export async function loadData() {
   }
 }
 
+// ── composite_score 歷史走勢（Redis list，最新在前）─────────────────
+export async function fetchCompositeHistory() {
+  try {
+    const res = await fetch(`${UPSTASH_URL}/lrange/${encodeURIComponent('crypto_composite:history')}/0/95`, {
+      headers: { Authorization: `Bearer ${UPSTASH_READ_TOKEN}` }
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    if (!Array.isArray(json.result)) return [];
+    return json.result.map(item => {
+      try { return typeof item === 'string' ? JSON.parse(item) : item; } catch { return null; }
+    }).filter(Boolean).reverse();  // 反轉：舊→新（方便 Chart.js 繪圖）
+  } catch { return []; }
+}
+
 // ── Coinglass V3 cache fetch（只更新 state，不觸發 render）─────────
 export async function fetchCoinglass() {
   try {

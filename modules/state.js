@@ -5,6 +5,7 @@
 export const state = {
   dashboardData: null,
   coinglassCache: null,
+  compositeHistory: [],
   polymarketMarketsCache: null,
   onlyHighImpact: false,
   _dataSource: "Upstash"

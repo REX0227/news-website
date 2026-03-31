@@ -100,6 +100,23 @@ export function renderMeta(data) {
   const sourceCls   = state._dataSource === "本地 API" ? "badge medium" : "badge low";
   const meta = document.getElementById("meta");
   meta.innerHTML = `最後更新：${fmt.format(new Date(data.generatedAt))}（UTC 來源整合）&nbsp;&nbsp;<span class="${sourceCls}" title="資料來源">${sourceLabel}</span>`;
+
+  // 資料新鮮度警告：超過 30 分鐘顯示橙色橫幅
+  const staleMs = Date.now() - new Date(data.generatedAt).getTime();
+  const STALE_THRESHOLD = 30 * 60 * 1000;
+  let banner = document.getElementById("stale-banner");
+  if (staleMs > STALE_THRESHOLD) {
+    const staleMin = Math.floor(staleMs / 60000);
+    if (!banner) {
+      banner = document.createElement("div");
+      banner.id = "stale-banner";
+      document.querySelector(".hero").insertAdjacentElement("afterend", banner);
+    }
+    banner.className = "stale-banner";
+    banner.textContent = `⚠ 資料已超過 ${staleMin} 分鐘未更新，請確認 keep-alive.mjs 是否正常運行`;
+  } else if (banner) {
+    banner.remove();
+  }
 }
 
 // ── renderOverallTrend ────────────────────────────────────────────

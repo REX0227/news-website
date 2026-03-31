@@ -5,6 +5,8 @@
  */
 
 import { state } from './state.js';
+
+let compositeHistoryChart = null;
 import { cgSeries, cgLatest, cgPrevious, cgPositions } from './data.js';
 import { toNumber } from './utils.js';
 
@@ -376,5 +378,117 @@ function renderCompositePanel(data) {
     fdHtml = `<div class="fd-card"><div class="fd-title">Factor 變動</div><div class="fd-empty">本次無顯著因子變化</div></div>`;
   }
 
-  el.innerHTML = csHtml + fdHtml;
+  // ── Collector 新鮮度指示 ─────────────────────────────────────
+  let freshHtml = '';
+  const ft = data?.collectorFetchTimes;
+  if (ft && typeof ft === 'object') {
+    const LABEL = {
+      vixDxy:               'VIX/DXY',
+      deribitOptions:       'Deribit P/C',
+      cryptoImpact:         '加密新聞',
+      globalRisk:           '地緣風險',
+      coinglassDerivatives: 'Coinglass',
+      coinalyzeLiquidation: 'Coinalyze',
+      noKeyLiquidation:     '清算備援',
+      liquidityIntel:       '流動性',
+      marketIntel:          'Fear&Greed',
+      policySignals:        '政策 RSS',
+      rateCutData:          '降息預期',
+      usMacro:              '美總經',
+      jpMacro:              '日總經',
+      ratesIntel:           'FRED 殖利率',
+    };
+    const TTL_MIN = {
+      vixDxy: 3, deribitOptions: 3,
+      cryptoImpact: 5, globalRisk: 5,
+      coinglassDerivatives: 20, coinalyzeLiquidation: 20, noKeyLiquidation: 20,
+      liquidityIntel: 30, policySignals: 30,
+      marketIntel: 60, rateCutData: 60,
+      usMacro: 120, jpMacro: 120, ratesIntel: 120,
+    };
+    const now = Date.now();
+    const rows = Object.entries(LABEL).map(([key, label]) => {
+      const iso = ft[key];
+      if (!iso) return `<div class="fresh-row"><span class="fresh-key">${label}</span><span class="fresh-age fresh-missing">—</span></div>`;
+      const ageMin = Math.floor((now - new Date(iso).getTime()) / 60000);
+      const ttl = TTL_MIN[key] || 60;
+      const pct = Math.min(100, Math.round((ageMin / ttl) * 100));
+      const cls = pct >= 90 ? 'fresh-age fresh-stale' : pct >= 60 ? 'fresh-age fresh-aging' : 'fresh-age fresh-ok';
+      const ageLabel = ageMin < 60 ? `${ageMin}m` : `${Math.floor(ageMin / 60)}h${ageMin % 60 > 0 ? (ageMin % 60) + 'm' : ''}`;
+      return `<div class="fresh-row"><span class="fresh-key">${label}</span><span class="${cls}">${ageLabel}</span></div>`;
+    }).join('');
+    freshHtml = `<div class="fresh-card"><div class="fresh-title">Collector 新鮮度</div>${rows}</div>`;
+  }
+
+  el.innerHTML = csHtml + fdHtml + freshHtml;
+  renderCompositeHistoryChart();
+}
+
+function renderCompositeHistoryChart() {
+  const history = state.compositeHistory;
+  const wrap = document.getElementById('gate-composite-history');
+  const canvas = document.getElementById('gate-composite-chart');
+  if (!wrap || !canvas) return;
+
+  if (!Array.isArray(history) || history.length < 2) {
+    wrap.style.display = 'none';
+    return;
+  }
+
+  wrap.style.display = 'block';
+
+  const labels = history.map(h => {
+    const d = new Date(h.t);
+    return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+  });
+  const scores = history.map(h => Number(h.s));
+  const pointColors = scores.map(s =>
+    s >= 0.4  ? '#34d399' : s >= 0.15 ? '#86efac'
+  : s <= -0.4 ? '#ef4444' : s <= -0.15 ? '#f87171'
+  : '#fbbf24'
+  );
+
+  if (compositeHistoryChart) {
+    compositeHistoryChart.data.labels = labels;
+    compositeHistoryChart.data.datasets[0].data = scores;
+    compositeHistoryChart.data.datasets[0].pointBackgroundColor = pointColors;
+    compositeHistoryChart.update('none');
+    return;
+  }
+
+  compositeHistoryChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: scores,
+        borderColor: '#38bdf8',
+        borderWidth: 1.5,
+        pointRadius: 2,
+        pointBackgroundColor: pointColors,
+        fill: false,
+        tension: 0.3
+      }]
+    },
+    options: {
+      animation: false,
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: {
+          label: ctx => {
+            const h = history[ctx.dataIndex];
+            const sign = ctx.parsed.y >= 0 ? '+' : '';
+            return `${sign}${ctx.parsed.y.toFixed(3)}  ${h?.l || ''}`;
+          }
+        }
+      }},
+      scales: {
+        x: { ticks: { color: '#64748b', maxTicksLimit: 8, font: { size: 10 } }, grid: { color: '#1e293b' } },
+        y: {
+          min: -1, max: 1,
+          ticks: { color: '#64748b', font: { size: 10 }, stepSize: 0.5 },
+          grid: { color: '#1e293b' }
+        }
+      }
+    }
+  });
 }

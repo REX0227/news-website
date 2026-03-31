@@ -5,7 +5,7 @@
  */
 
 import { state }                                              from './modules/state.js';
-import { loadData, fetchCoinglass }                           from './modules/data.js';
+import { loadData, fetchCoinglass, fetchCompositeHistory }    from './modules/data.js';
 import { renderGate }                                         from './modules/gate.js';
 import { renderMeta, renderOverallTrend, renderOverview }     from './modules/overview.js';
 import { renderPolicySignals, renderAi, renderWindows,
@@ -102,13 +102,22 @@ async function refreshCoinglass() {
   if (state.dashboardData) renderGate(state.dashboardData);
 }
 
+// ── Composite history refresh ─────────────────────────────────────
+async function refreshCompositeHistory() {
+  const history = await fetchCompositeHistory();
+  state.compositeHistory = history;
+  if (state.dashboardData) renderGate(state.dashboardData);
+}
+
 // ── Entry point ───────────────────────────────────────────────────
 const POLL_INTERVAL = 2 * 60 * 1000; // 2 分鐘
 
 bootstrap();
 refreshCoinglass();
+refreshCompositeHistory();
 initPolymarket().then(() => {
   if (state.dashboardData) renderGate(state.dashboardData);
 });
-setInterval(autoRefresh,       POLL_INTERVAL);
-setInterval(refreshCoinglass,  POLL_INTERVAL);
+setInterval(autoRefresh,             POLL_INTERVAL);
+setInterval(refreshCoinglass,        POLL_INTERVAL);
+setInterval(refreshCompositeHistory, POLL_INTERVAL);
