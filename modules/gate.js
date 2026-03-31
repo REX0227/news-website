@@ -407,11 +407,8 @@ function renderCompositeHistoryChart() {
   );
 
   if (compositeHistoryChart) {
-    compositeHistoryChart.data.labels = labels;
-    compositeHistoryChart.data.datasets[0].data = scores;
-    compositeHistoryChart.data.datasets[0].pointBackgroundColor = pointColors;
-    compositeHistoryChart.update('none');
-    return;
+    compositeHistoryChart.destroy();
+    compositeHistoryChart = null;
   }
 
   compositeHistoryChart = new Chart(canvas, {
