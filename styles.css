@@ -550,6 +550,73 @@ a { color: var(--accent); }
 }
 
 
+/* ── Synthesis Panel ─────────────────────────────────────────────── */
+.gate-synthesis-panel {
+  background: #0a1628;
+  border: 1px solid #1e3a5f;
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin-bottom: 16px;
+  display: none;
+}
+.gate-synthesis-panel.syn-ready { display: block; }
+.syn-header {
+  font-size: 0.75em;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 14px;
+}
+.syn-rows {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.syn-row {
+  flex: 1;
+  min-width: 140px;
+  background: #0f1f38;
+  border: 1px solid #1e3a5f;
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+.syn-dim {
+  font-size: 0.72em;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+.syn-source {
+  font-size: 0.7em;
+  color: #334155;
+  margin-bottom: 6px;
+}
+.syn-value {
+  font-size: 1.05em;
+  font-weight: 700;
+}
+.syn-verdict {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #1e3a5f;
+}
+.syn-badge {
+  font-size: 1em;
+  font-weight: 700;
+  padding: 6px 18px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.syn-note {
+  font-size: 0.82em;
+  color: var(--muted);
+}
+
 /* ── Stale data warning banner ───────────────────────────────────── */
 .stale-banner {
   background: #7a3d00;

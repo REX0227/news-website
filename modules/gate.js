@@ -170,6 +170,106 @@ export function computeGateScores(data) {
   };
 }
 
+function renderSynthesis(data, gateScores) {
+  const el = document.getElementById('gate-synthesis');
+  if (!el) return;
+
+  const cs = data?.compositeScore;
+  const history = state.compositeHistory;
+
+  // ── 方向（Composite Score）──────────────────────────────────────
+  let dirLabel, dirColor, dirScore = null;
+  if (cs) {
+    dirScore = Number(cs.score);
+    if      (dirScore >=  0.15) { dirLabel = '多頭';  dirColor = '#34d399'; }
+    else if (dirScore <= -0.15) { dirLabel = '空頭';  dirColor = '#f87171'; }
+    else                        { dirLabel = '中性';  dirColor = '#fbbf24'; }
+  } else {
+    dirLabel = '資料不足'; dirColor = '#64748b';
+  }
+
+  // ── 動能（History 後3 vs 前3）──────────────────────────────────
+  let momLabel, momColor;
+  if (Array.isArray(history) && history.length >= 4) {
+    const n = history.length;
+    const half = Math.max(2, Math.floor(n / 2));
+    const recent = history.slice(-half).reduce((s, h) => s + Number(h.s), 0) / half;
+    const early  = history.slice(0, half).reduce((s, h) => s + Number(h.s), 0) / half;
+    const diff = recent - early;
+    if      (diff >  0.04) { momLabel = '上升 ↑'; momColor = '#34d399'; }
+    else if (diff < -0.04) { momLabel = '下降 ↓'; momColor = '#f87171'; }
+    else                   { momLabel = '震盪 —';  momColor = '#fbbf24'; }
+  } else {
+    momLabel = '資料累積中'; momColor = '#64748b';
+  }
+
+  // ── 風險閘（Gate 平均）──────────────────────────────────────────
+  const gateValues = [gateScores.sentiment, gateScores.macro, gateScores.flow,
+                      gateScores.leverage,  gateScores.whale, gateScores.policy, gateScores.risk];
+  const gateAvg = gateValues.reduce((a, b) => a + b, 0) / gateValues.length;
+  let gateLabel, gateColor;
+  if      (gateAvg >=  0.5) { gateLabel = `開放 ${gateAvg >= 0 ? '+' : ''}${gateAvg.toFixed(1)}`; gateColor = '#34d399'; }
+  else if (gateAvg >  -0.5) { gateLabel = `觀望 ${gateAvg >= 0 ? '+' : ''}${gateAvg.toFixed(1)}`; gateColor = '#fbbf24'; }
+  else                      { gateLabel = `謹慎 ${gateAvg.toFixed(1)}`;                            gateColor = '#f87171'; }
+
+  // ── 綜合結論 ────────────────────────────────────────────────────
+  let verdict, verdictBg, verdictTextColor, note;
+  const momUp   = momLabel.startsWith('上升');
+  const momDown = momLabel.startsWith('下降');
+  const dirBull = dirLabel === '多頭';
+  const dirBear = dirLabel === '空頭';
+  const gateOpen   = gateAvg >=  0.5;
+  const gateWatch  = gateAvg >  -0.5 && gateAvg < 0.5;
+  const gateCaution = gateAvg <= -0.5;
+
+  if (dirBull && !momDown && gateOpen) {
+    verdict = '進場做多'; verdictBg = '#064e3b'; verdictTextColor = '#34d399';
+    note = '方向、動能、風險閘三維對齊';
+  } else if (dirBear && !momUp && gateCaution) {
+    verdict = '進場做空'; verdictBg = '#450a0a'; verdictTextColor = '#f87171';
+    note = '方向、動能、風險閘三維對齊';
+  } else if (dirBull && !momDown && gateWatch) {
+    verdict = '輕倉試多'; verdictBg = '#1a2e1a'; verdictTextColor = '#86efac';
+    note = '方向偏多，風險閘觀望，降低倉位';
+  } else if (dirBear && !momUp && gateWatch) {
+    verdict = '輕倉試空'; verdictBg = '#2e1a1a'; verdictTextColor = '#fca5a5';
+    note = '方向偏空，風險閘觀望，降低倉位';
+  } else if (dirLabel === '中性' || gateWatch) {
+    verdict = '觀望'; verdictBg = '#1e2d1e'; verdictTextColor = '#fbbf24';
+    note = '訊號不明確，等待方向確立';
+  } else {
+    verdict = '訊號衝突'; verdictBg = '#1e1e2d'; verdictTextColor = '#94a3b8';
+    note = '方向與動能或風險閘出現矛盾';
+  }
+
+  const scoreStr = cs ? `${dirScore >= 0 ? '+' : ''}${dirScore.toFixed(3)}` : '—';
+
+  el.innerHTML = `
+    <div class="syn-header">綜合進出場訊號</div>
+    <div class="syn-rows">
+      <div class="syn-row">
+        <div class="syn-dim">方向</div>
+        <div class="syn-source">Composite Score</div>
+        <div class="syn-value" style="color:${dirColor}">${dirLabel} <span style="font-size:0.82em;font-weight:400">${scoreStr}</span></div>
+      </div>
+      <div class="syn-row">
+        <div class="syn-dim">動能</div>
+        <div class="syn-source">走勢近 ${Array.isArray(history) ? history.length : 0} 筆</div>
+        <div class="syn-value" style="color:${momColor}">${momLabel}</div>
+      </div>
+      <div class="syn-row">
+        <div class="syn-dim">風險閘</div>
+        <div class="syn-source">Gate 平均分</div>
+        <div class="syn-value" style="color:${gateColor}">${gateLabel}</div>
+      </div>
+    </div>
+    <div class="syn-verdict">
+      <span class="syn-badge" style="background:${verdictBg};color:${verdictTextColor}">${verdict}</span>
+      <span class="syn-note">${note}</span>
+    </div>`;
+  el.classList.add('syn-ready');
+}
+
 export function renderGate(data) {
   if (!state.coinglassCache) {
     const panel = document.getElementById('gate-summary');
@@ -177,6 +277,7 @@ export function renderGate(data) {
     return;
   }
   const scores = computeGateScores(data);
+  renderSynthesis(data, scores);
   const dims   = ['市場情緒', '宏觀變數', '資金流向', '槓桿大戶風險', '巨鯨走向', '政策監管', '外部風險'];
   const values = [scores.sentiment, scores.macro, scores.flow, scores.leverage, scores.whale, scores.policy, scores.risk];
   const avg    = values.reduce((a, b) => a + b, 0) / values.length;
