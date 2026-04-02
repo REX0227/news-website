@@ -689,3 +689,150 @@ a { color: var(--accent); }
 /* ── Tab panels ──────────────────────────────────────────────────── */
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
+
+/* ── 金十數據快訊 ────────────────────────────────────────────────── */
+.jin10-wrap {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .jin10-wrap { grid-template-columns: 1fr; }
+}
+.jin10-col {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.jin10-col-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  padding: 10px 14px 6px;
+  border-bottom: 1px solid var(--border);
+}
+.jin10-col-live { border-top: 2px solid #38bdf8; }
+.jin10-col-hist  { border-top: 2px solid #818cf8; }
+
+/* 即時 header */
+.jin10-live-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 0.82rem;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+.jin10-live-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: jin10-blink 1.4s infinite;
+}
+@keyframes jin10-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+.jin10-fetch-time { margin-left: auto; font-size: 0.75rem; }
+
+/* 列表捲動 */
+.jin10-live-list, .jin10-hist-list {
+  max-height: 520px;
+  overflow-y: auto;
+}
+
+/* 歷史 tab 篩選 */
+.jin10-hist-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.jin10-tab {
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.jin10-tab.active, .jin10-tab:hover {
+  background: #1e3a5f;
+  color: var(--text);
+}
+
+/* 單筆快訊 */
+.jin10-item {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+.jin10-item:last-child { border-bottom: none; }
+.jin10-item:hover { background: rgba(255,255,255,0.03); }
+
+.jin10-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+.jin10-time {
+  font-size: 0.74rem;
+  color: var(--muted);
+  min-width: 70px;
+}
+
+/* 方向 badge */
+.jin10-dir {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 4px;
+}
+.jin10-dir.bull    { background: rgba(34,197,94,0.15);  color: #22c55e; }
+.jin10-dir.bear    { background: rgba(251,113,133,0.15); color: #fb7185; }
+.jin10-dir.neutral { background: rgba(148,163,184,0.12); color: var(--muted); }
+
+/* 信心指數 dots */
+.jin10-confidence { display: flex; gap: 3px; margin-left: auto; }
+.jin10-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--border);
+}
+.jin10-dot.on { background: #38bdf8; }
+
+.jin10-content {
+  margin: 0 0 4px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+.jin10-content a {
+  color: inherit;
+  text-decoration: none;
+}
+.jin10-content a:hover { color: var(--accent); }
+
+.jin10-commentary {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.jin10-empty {
+  padding: 20px 14px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-align: center;
+}

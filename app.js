@@ -12,6 +12,8 @@ import { renderPolicySignals, renderAi, renderWindows,
          renderMacro, renderSignals, renderWhale,
          renderGlobalRisks }                                  from './modules/signals.js';
 import { initPolymarket }                                     from './modules/polymarket.js';
+import { fetchJin10Live, fetchJin10History,
+         renderJin10Live, renderJin10History }                from './modules/jin10.js';
 
 // ── renderAll ────────────────────────────────────────────────────
 function renderAll(data) {
@@ -109,8 +111,22 @@ async function refreshCompositeHistory() {
   if (state.dashboardData) renderGate(state.dashboardData);
 }
 
+// ── Jin10 快訊 ────────────────────────────────────────────────────
+async function refreshJin10Live() {
+  const result = await fetchJin10Live();
+  renderJin10Live(result);
+}
+
+async function initJin10() {
+  // 頁面載入：先拉歷史，再拉即時
+  const [hist, live] = await Promise.all([fetchJin10History(100), fetchJin10Live()]);
+  renderJin10History(hist);
+  renderJin10Live(live);
+}
+
 // ── Entry point ───────────────────────────────────────────────────
-const POLL_INTERVAL = 2 * 60 * 1000; // 2 分鐘
+const POLL_INTERVAL     = 2 * 60 * 1000;  // 2 分鐘（主資料）
+const JIN10_POLL        = 60 * 1000;      // 1 分鐘（即時快訊）
 
 bootstrap();
 refreshCoinglass();
@@ -118,6 +134,9 @@ refreshCompositeHistory();
 initPolymarket().then(() => {
   if (state.dashboardData) renderGate(state.dashboardData);
 });
+initJin10();
+
 setInterval(autoRefresh,             POLL_INTERVAL);
 setInterval(refreshCoinglass,        POLL_INTERVAL);
 setInterval(refreshCompositeHistory, POLL_INTERVAL);
+setInterval(refreshJin10Live,        JIN10_POLL);
