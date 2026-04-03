@@ -13,21 +13,40 @@ const UPSTASH_URL         = "https://sensible-grouper-89071.upstash.io";
 const UPSTASH_READ_TOKEN  = "gQAAAAAAAVvvAAIncDE4ZjIwMzAwMmMxNTI0N2UxYjk1ZGJkNDc2MTE4YzA4ZXAxODkwNzE";
 const UPSTASH_JIN10_KEY   = "jin10:latest";
 
+// ── 即時快訊去重 Set（module-level，跨輪詢保留已見 id）─────────────
+const _seenIds = new Set();
+
 // ── fetch ────────────────────────────────────────────────────────────
 
 async function fetchJin10FromUpstash() {
   try {
-    const res = await fetch(`${UPSTASH_URL}/get/${encodeURIComponent(UPSTASH_JIN10_KEY)}`, {
-      headers: { Authorization: `Bearer ${UPSTASH_READ_TOKEN}` },
-      signal: AbortSignal.timeout(8000)
-    });
-    if (!res.ok) return { ok: false, items: [] };
+    // 先嘗試讀 jin10:history list（最近 50 筆）
+    const res = await fetch(
+      `${UPSTASH_URL}/lrange/${encodeURIComponent('jin10:history')}/0/49`,
+      { headers: { Authorization: `Bearer ${UPSTASH_READ_TOKEN}` }, signal: AbortSignal.timeout(8000) }
+    );
+    if (!res.ok) throw new Error();
     const json = await res.json();
-    const result = typeof json.result === "string" ? JSON.parse(json.result) : json.result;
-    if (!result?.items) return { ok: false, items: [] };
-    return { ok: true, fetchedAt: result.updatedAt, items: result.items, source: "upstash" };
+    if (!Array.isArray(json.result) || json.result.length === 0) throw new Error();
+    const items = json.result.map(item => {
+      try { return typeof item === 'string' ? JSON.parse(item) : item; } catch { return null; }
+    }).filter(Boolean);
+    // 去重（同 id 可能重複）
+    const seen = new Set();
+    const unique = items.filter(i => { if (seen.has(i.id)) return false; seen.add(i.id); return true; });
+    return { ok: true, fetchedAt: unique[0]?.published_at, items: unique, source: "upstash" };
   } catch {
-    return { ok: false, items: [] };
+    // fallback: 讀 jin10:latest（舊格式）
+    try {
+      const res2 = await fetch(`${UPSTASH_URL}/get/${encodeURIComponent('jin10:latest')}`, {
+        headers: { Authorization: `Bearer ${UPSTASH_READ_TOKEN}` }, signal: AbortSignal.timeout(8000)
+      });
+      if (!res2.ok) return { ok: false, items: [] };
+      const json2 = await res2.json();
+      const result = typeof json2.result === 'string' ? JSON.parse(json2.result) : json2.result;
+      if (!result?.items) return { ok: false, items: [] };
+      return { ok: true, fetchedAt: result.updatedAt, items: result.items, source: "upstash" };
+    } catch { return { ok: false, items: [] }; }
   }
 }
 
@@ -107,19 +126,42 @@ export function renderJin10Live(result) {
     return;
   }
 
-  const fetchedAt = result.fetchedAt
-    ? `更新：${fmt.format(new Date(result.fetchedAt))}`
-    : "";
+  // 去重：找出本批中有新 id 的 item
+  const newItems = result.items.filter(i => !_seenIds.has(i.id));
+
+  // 如果全部都是舊 id，只更新時間標示，不重繪列表
+  if (newItems.length === 0) {
+    const timeEl = root.querySelector(".jin10-fetch-time");
+    if (timeEl && result.fetchedAt) {
+      timeEl.textContent = _buildFetchedAtText(result);
+    }
+    return;
+  }
+
+  // 有新 id → 加入 _seenIds，重繪列表
+  newItems.forEach(i => _seenIds.add(i.id));
+
+  const sourceLabel = result.source === "upstash" ? "Upstash" : result.source === "local" ? "本機" : "";
+  const sourceBadge = sourceLabel ? `<span class="jin10-source-badge">${sourceLabel}</span>` : "";
 
   root.innerHTML = `
     <div class="jin10-live-header">
       <span class="jin10-live-dot"></span> 即時快訊
-      <span class="jin10-fetch-time">${fetchedAt}</span>
+      <span class="jin10-fetch-time">${_buildFetchedAtText(result)}</span>
+      ${sourceBadge}
     </div>
     <div class="jin10-live-list">
       ${result.items.map(renderItem).join("")}
     </div>
   `;
+}
+
+/** 格式化更新時間為台北時間 MM/DD HH:MM */
+function _buildFetchedAtText(result) {
+  if (!result.fetchedAt) return "";
+  try {
+    return `更新：${fmt.format(new Date(result.fetchedAt))}`;
+  } catch { return ""; }
 }
 
 // ── render 歷史記錄 ───────────────────────────────────────────────────
@@ -133,6 +175,19 @@ export function renderJin10History(result) {
     return;
   }
 
+  // 統計資訊：共 N 筆 + 最新時間
+  const latestItem = result.items.find(i => i.published_at);
+  const latestTimeStr = latestItem
+    ? (() => {
+        try {
+          const d = new Date(latestItem.published_at);
+          const pad = n => String(n).padStart(2, "0");
+          return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        } catch { return "—"; }
+      })()
+    : "—";
+  const histMeta = `<div class="jin10-hist-meta">共 ${result.items.length} 筆 | 最新：${latestTimeStr}</div>`;
+
   // tab 控制（多/空/中性/全部）
   root.innerHTML = `
     <div class="jin10-hist-tabs">
@@ -141,6 +196,7 @@ export function renderJin10History(result) {
       <button class="jin10-tab" data-filter="做空">做空</button>
       <button class="jin10-tab" data-filter="中性">中性</button>
     </div>
+    ${histMeta}
     <div id="jin10-hist-list" class="jin10-hist-list">
       ${result.items.map(renderItem).join("")}
     </div>
