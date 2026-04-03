@@ -188,13 +188,18 @@ export function renderJin10History(result) {
     : "—";
   const histMeta = `<div class="jin10-hist-meta">共 ${result.items.length} 筆 | 最新：${latestTimeStr}</div>`;
 
+  // 各方向筆數
+  const countBull    = result.items.filter(i => i.direction === "做多").length;
+  const countBear    = result.items.filter(i => i.direction === "做空").length;
+  const countNeutral = result.items.filter(i => i.direction === "中性").length;
+
   // tab 控制（多/空/中性/全部）
   root.innerHTML = `
     <div class="jin10-hist-tabs">
       <button class="jin10-tab active" data-filter="all">全部（${result.items.length}）</button>
-      <button class="jin10-tab" data-filter="做多">做多</button>
-      <button class="jin10-tab" data-filter="做空">做空</button>
-      <button class="jin10-tab" data-filter="中性">中性</button>
+      <button class="jin10-tab" data-filter="做多">做多（${countBull}）</button>
+      <button class="jin10-tab" data-filter="做空">做空（${countBear}）</button>
+      <button class="jin10-tab" data-filter="中性">中性（${countNeutral}）</button>
     </div>
     ${histMeta}
     <div id="jin10-hist-list" class="jin10-hist-list">
