@@ -8,5 +8,6 @@ export const state = {
   compositeHistory: [],
   polymarketMarketsCache: null,
   onlyHighImpact: false,
+  macroFilter: "all",
   _dataSource: "Upstash"
 };

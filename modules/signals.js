@@ -93,10 +93,16 @@ export function renderMacro(data) {
   const pastWindow   = 1000 * 60 * 60 * 24 * 90;
   const futureWindow = 1000 * 60 * 60 * 24 * 365;
 
-  const visibleEvents = (data.macroEvents || []).filter((event) => {
+  let visibleEvents = (data.macroEvents || []).filter((event) => {
     const t = new Date(event.datetime).getTime();
     return t >= now - pastWindow && t <= now + futureWindow;
   });
+
+  if (state.macroFilter === "recent") {
+    visibleEvents = visibleEvents
+      .filter((e) => e.status === "recent")
+      .sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
+  }
 
   visibleEvents.forEach((event) => {
     const hasPublished = Boolean(event.result && event.result.actual);

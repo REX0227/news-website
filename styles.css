@@ -836,3 +836,24 @@ a { color: var(--accent); }
   font-size: 0.85rem;
   text-align: center;
 }
+
+/* ── 宏觀日程篩選 tab ────────────────────────────────────────────── */
+.macro-filter-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.macro-tab {
+  padding: 4px 14px;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  background: #1f2937;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+.macro-tab.active {
+  background: var(--accent);
+  color: #0f172a;
+  border-color: var(--accent);
+}

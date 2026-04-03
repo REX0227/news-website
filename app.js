@@ -72,6 +72,17 @@ function bindControls() {
       if (state.dashboardData) renderAll(state.dashboardData);
     });
   }
+
+  // 宏觀日程篩選 tab
+  document.querySelector(".macro-filter-bar")?.addEventListener("click", (e) => {
+    const btn = e.target.closest(".macro-tab");
+    if (!btn) return;
+    document.querySelectorAll(".macro-tab").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    state.macroFilter = btn.dataset.filter;
+    if (state.dashboardData) renderMacro(state.dashboardData);
+  });
+
   initTabs();
 }
 
