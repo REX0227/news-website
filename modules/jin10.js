@@ -16,6 +16,15 @@ const UPSTASH_JIN10_KEY   = "jin10:latest";
 // ── 即時快訊去重 Set（module-level，跨輪詢保留已見 id）─────────────
 const _seenIds = new Set();
 
+// ── AbortSignal.timeout 相容（iOS 16.4 以前不支援）──────────────────
+function makeSignal(ms) {
+  try { return AbortSignal.timeout(ms); } catch {
+    const c = new AbortController();
+    setTimeout(() => c.abort(), ms);
+    return c.signal;
+  }
+}
+
 // ── fetch ────────────────────────────────────────────────────────────
 
 async function fetchJin10FromUpstash() {
@@ -23,7 +32,7 @@ async function fetchJin10FromUpstash() {
     // 先嘗試讀 jin10:history list（最近 50 筆）
     const res = await fetch(
       `${UPSTASH_URL}/lrange/${encodeURIComponent('jin10:history')}/0/49`,
-      { headers: { Authorization: `Bearer ${UPSTASH_READ_TOKEN}` }, signal: AbortSignal.timeout(8000) }
+      { headers: { Authorization: `Bearer ${UPSTASH_READ_TOKEN}` }, signal: makeSignal(8000) }
     );
     if (!res.ok) throw new Error();
     const json = await res.json();
@@ -39,7 +48,7 @@ async function fetchJin10FromUpstash() {
     // fallback: 讀 jin10:latest（舊格式）
     try {
       const res2 = await fetch(`${UPSTASH_URL}/get/${encodeURIComponent('jin10:latest')}`, {
-        headers: { Authorization: `Bearer ${UPSTASH_READ_TOKEN}` }, signal: AbortSignal.timeout(8000)
+        headers: { Authorization: `Bearer ${UPSTASH_READ_TOKEN}` }, signal: makeSignal(8000)
       });
       if (!res2.ok) return { ok: false, items: [] };
       const json2 = await res2.json();
@@ -52,7 +61,7 @@ async function fetchJin10FromUpstash() {
 
 export async function fetchJin10Live() {
   try {
-    const res = await fetch(LIVE_URL, { signal: AbortSignal.timeout(5000) });
+    const res = await fetch(LIVE_URL, { signal: makeSignal(5000) });
     if (!res.ok) throw new Error("local api error");
     const data = await res.json();
     if (data.ok) return { ...data, source: "local" };
@@ -65,7 +74,7 @@ export async function fetchJin10Live() {
 
 export async function fetchJin10History(limit = 100) {
   try {
-    const res = await fetch(`${HISTORY_URL}?limit=${limit}`, { signal: AbortSignal.timeout(5000) });
+    const res = await fetch(`${HISTORY_URL}?limit=${limit}`, { signal: makeSignal(5000) });
     if (!res.ok) throw new Error("local api error");
     const data = await res.json();
     if (data.ok) return data;
@@ -98,8 +107,11 @@ function confidenceDots(score) {
 }
 
 function renderItem(item) {
+  if (!item || typeof item !== "object") return "";
   const timeStr = item.published_at ? fmt.format(new Date(item.published_at)) : "—";
   const link = item.link || "#";
+  const content = item.content || "";
+  const commentary = item.commentary || "";
   return `
     <div class="jin10-item">
       <div class="jin10-item-header">
@@ -108,9 +120,9 @@ function renderItem(item) {
         <span class="jin10-confidence">${confidenceDots(item.confidence)}</span>
       </div>
       <p class="jin10-content">
-        <a href="${link}" target="_blank" rel="noreferrer">${item.content}</a>
+        <a href="${link}" target="_blank" rel="noreferrer">${content}</a>
       </p>
-      <p class="jin10-commentary">${item.commentary}</p>
+      ${commentary ? `<p class="jin10-commentary">${commentary}</p>` : ""}
     </div>
   `;
 }
