@@ -38,7 +38,13 @@ async function fetchJin10FromUpstash() {
     const json = await res.json();
     if (!Array.isArray(json.result) || json.result.length === 0) throw new Error();
     const items = json.result.map(item => {
-      try { return typeof item === 'string' ? JSON.parse(item) : item; } catch { return null; }
+      try {
+        let v = typeof item === 'string' ? JSON.parse(item) : item;
+        // 相容舊版雙層巢狀格式：["<json_string>"]
+        if (Array.isArray(v)) v = v[0];
+        if (typeof v === 'string') v = JSON.parse(v);
+        return (v && typeof v === 'object' && !Array.isArray(v)) ? v : null;
+      } catch { return null; }
     }).filter(Boolean);
     // 去重（同 id 可能重複）
     const seen = new Set();
