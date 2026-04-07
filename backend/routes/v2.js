@@ -380,7 +380,7 @@ router.get("/trade/signal", (_req, res) => {
 
     // ── Gate 風險歸因
     gates: {
-      risk_level,      // low | medium | high
+      risk_level: riskLevel,  // low | medium | high
       blocking,        // 觸發中的風險 gates（空陣列=全通過）
       all_clear: blocking.length === 0,
       detail: {
