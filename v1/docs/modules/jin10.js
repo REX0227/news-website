@@ -7,8 +7,9 @@
  * renderJin10History() → 渲染歷史記錄區
  */
 
-const LIVE_URL    = "http://localhost:3000/api/jin10";
-const HISTORY_URL = "http://localhost:3000/api/jin10/history";
+const _API_BASE   = window.location.origin;
+const LIVE_URL    = `${_API_BASE}/api/jin10`;
+const HISTORY_URL = `${_API_BASE}/api/jin10/history`;
 const UPSTASH_URL         = "https://sensible-grouper-89071.upstash.io";
 const UPSTASH_READ_TOKEN  = "gQAAAAAAAVvvAAIncDE4ZjIwMzAwMmMxNTI0N2UxYjk1ZGJkNDc2MTE4YzA4ZXAxODkwNzE";
 const UPSTASH_JIN10_KEY   = "jin10:latest";
