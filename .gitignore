@@ -19,3 +19,11 @@ tmp_*/
 tmp_*
 *.xlsx
 *.zip
+
+# Runtime / local-only files
+gecko.db
+gecko.db-shm
+gecko.db-wal
+keep-alive.lock
+logs/
+v1/data/collector-cache.json

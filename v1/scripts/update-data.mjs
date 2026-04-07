@@ -14,14 +14,38 @@ import { collectLiquidityIntel } from "../src/collectors/liquidityCollector.js";
 import { collectCoinalyzeLiquidationMetrics } from "../src/collectors/coinalyzeLiquidationCollector.js";
 import { collectMajorNoKeyLiquidationMetrics } from "../src/collectors/majorNoKeyLiquidationCollector.js";
 import { collectCoinglassDerivatives } from "../src/collectors/coinglassCollector.js";
+import { collectVixDxy } from "../src/collectors/vixDxyCollector.js";
+import { collectDeribitOptions } from "../src/collectors/deribitCollector.js";
+import { collectJin10News } from "../src/collectors/jin10Collector.js";
 import { buildAiSummary, buildTraderOutlookFromPayload } from "../src/lib/ai.js";
 import { enrichRecentMacroResults } from "../src/lib/macroResults.js";
 import { eventStatus } from "../src/lib/utils.js";
-import { upstashSetJson } from "../src/lib/upstash.js";
-import { saveToSQLite, logUpdateToSQLite, saveFactorsAndGates } from "../src/lib/sqlite.js";
+import { upstashSetJson, upstashListPrepend, upstashListTrim } from "../src/lib/upstash.js";
+import { saveToSQLite, logUpdateToSQLite, saveFactorsAndGates, getPreviousRunFactors, saveCompositeHistory, saveJin10News } from "../src/lib/sqlite.js";
+import { computeCompositeScore, computeFactorDelta } from "../src/lib/composite.js";
 import { buildFactorVector } from "../src/lib/normalize.js";
 import { computeGates, gatesSummary } from "../src/lib/gates.js";
 import { fetchRateCutData } from "../src/lib/rateCutData.js";
+import { withCache, getCacheMeta } from "../src/lib/collectorCache.js";
+
+// ── Collector 快取 TTL 設定 ────────────────────────────────────────
+const MIN = 60 * 1000;
+const CACHE_TTL = {
+  vixDxy:               3 * MIN,   // 即時市場：盤中隨時變動
+  deribitOptions:       3 * MIN,   // 即時選擇權：P/C 比即時
+  cryptoImpact:         5 * MIN,   // 突發新聞：加密 RSS 隨時爆出
+  globalRisk:           5 * MIN,   // 突發新聞：地緣事件突發性高
+  coinglassDerivatives: 20 * MIN,  // 市場結構：4-8h K線，20分足夠
+  coinalyzeLiquidation: 20 * MIN,  // 市場結構：清算同上
+  noKeyLiquidation:     20 * MIN,  // 市場結構：備援清算
+  liquidityIntel:       30 * MIN,  // 流動性：DeFiLlama 每小時更新
+  marketIntel:          60 * MIN,  // 情緒：Fear&Greed 每日，CoinGecko 每小時
+  policySignals:        30 * MIN,  // 重大政策：30 分鐘更新（白宮/Fed/SEC/CFTC）
+  rateCutData:          60 * MIN,  // 降息預期：變動緩慢
+  usMacro:             120 * MIN,  // 宏觀事件：CPI/NFP 每月
+  jpMacro:             120 * MIN,  // 宏觀事件：BOJ 每季
+  ratesIntel:          120 * MIN,  // FRED 殖利率：每日更新
+};
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, "..");
@@ -219,19 +243,21 @@ async function main() {
   const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
   const writeToken = process.env.UPSTASH_REDIS_REST_TOKEN_WRITE;
 
-  const [usEvents, jpEvents, cryptoSignals, globalRiskSignals, rateCutData, marketIntel, policySignals, ratesIntel, liquidityIntel, coinalyzeLiquidation, noKeyLiquidation, coinglassDerivatives] = await Promise.all([
-    collectUsMacroEvents(),
-    collectJapanMacroEvents(),
-    collectCryptoImpactSignals(),
-    collectGlobalRiskSignals(),
-    fetchRateCutData(),
-    collectMarketIntel(),
-    collectPolicySignals(),
-    collectRatesIntel(),
-    collectLiquidityIntel(),
-    collectCoinalyzeLiquidationMetrics(),
-    collectMajorNoKeyLiquidationMetrics(),
-    collectCoinglassDerivatives()
+  const [usEvents, jpEvents, cryptoSignals, globalRiskSignals, rateCutData, marketIntel, policySignals, ratesIntel, liquidityIntel, coinalyzeLiquidation, noKeyLiquidation, coinglassDerivatives, vixDxy, deribitOptions] = await Promise.all([
+    withCache('usMacro',              CACHE_TTL.usMacro,             () => collectUsMacroEvents()),
+    withCache('jpMacro',              CACHE_TTL.jpMacro,             () => collectJapanMacroEvents()),
+    withCache('cryptoImpact',         CACHE_TTL.cryptoImpact,        () => collectCryptoImpactSignals()),
+    withCache('globalRisk',           CACHE_TTL.globalRisk,          () => collectGlobalRiskSignals()),
+    withCache('rateCutData',          CACHE_TTL.rateCutData,         () => fetchRateCutData()),
+    withCache('marketIntel',          CACHE_TTL.marketIntel,         () => collectMarketIntel()),
+    withCache('policySignals',        CACHE_TTL.policySignals,       () => collectPolicySignals()),
+    withCache('ratesIntel',           CACHE_TTL.ratesIntel,          () => collectRatesIntel()),
+    withCache('liquidityIntel',       CACHE_TTL.liquidityIntel,      () => collectLiquidityIntel()),
+    withCache('coinalyzeLiquidation', CACHE_TTL.coinalyzeLiquidation,() => collectCoinalyzeLiquidationMetrics()),
+    withCache('noKeyLiquidation',     CACHE_TTL.noKeyLiquidation,    () => collectMajorNoKeyLiquidationMetrics()),
+    withCache('coinglassDerivatives', CACHE_TTL.coinglassDerivatives,() => collectCoinglassDerivatives()),
+    withCache('vixDxy',               CACHE_TTL.vixDxy,              () => collectVixDxy()),
+    withCache('deribitOptions',       CACHE_TTL.deribitOptions,      () => collectDeribitOptions()),
   ]);
 
   const cryptoSignalsPayload = Array.isArray(cryptoSignals?.signals) ? cryptoSignals.signals : (Array.isArray(cryptoSignals) ? cryptoSignals : []);
@@ -290,6 +316,8 @@ async function main() {
     liquidityIntel,
     marketIntel,
     coinglassDerivatives,
+    vixDxy,
+    deribitOptions,
     cryptoSignals: cryptoSignalsPayload,
     globalRiskSignals,
     policySignals
@@ -299,6 +327,21 @@ async function main() {
   const aiSummary = await buildAiSummary(rawDataToEvaluate);
   const marketOverview = buildMarketOverview(macroEvents, cryptoSignalsPayload, globalRiskSignals, trendOutlook);
   const keyWindows = buildKeyWindows(macroEvents);
+
+  // ── Factor / Gate Pipeline（交易系統消息面來源）─────────────────
+  const factorVector    = buildFactorVector(rawDataToEvaluate);
+  const gateConditions  = computeGates(factorVector);
+  const gatesSummaryData = gatesSummary(gateConditions);
+
+  // composite_score + factor_delta（寫入 payload 供前端直接讀取）
+  const compositeScore  = computeCompositeScore(factorVector);
+  const previousRows    = getPreviousRunFactors();  // 取上一次 run 資料（在 save 之前）
+  const factorDelta     = computeFactorDelta(factorVector, previousRows);
+
+  console.log(`[factors] Built ${Object.keys(factorVector).length} factors, ${Object.keys(gateConditions).length} gates`);
+  console.log(`[composite] score=${compositeScore?.score ?? "N/A"} (${compositeScore?.label ?? "N/A"}), coverage=${compositeScore?.coverage_pct ?? 0}%`);
+  console.log(`[delta] ${factorDelta.count} factors changed`);
+  console.log(`[gates] Summary:`, JSON.stringify(gatesSummaryData, null, 2));
 
   const payload = {
     generatedAt: new Date().toISOString(),
@@ -352,16 +395,13 @@ async function main() {
     policySignals,
     ratesIntel,
     liquidityIntel,
-    aiSummary
+    aiSummary,
+    compositeScore,         // Factor 綜合評分（-1~+1，含 label / coverage）
+    gateScore: compositeScore?.score ?? null,   // 平層別名，方便外部整合直接讀取
+    gateLabel: compositeScore?.label ?? null,   // 平層別名，方便外部整合直接讀取
+    factorDelta,            // 本次 run 相比上次的 factor 方向/分數變化
+    collectorFetchTimes: getCacheMeta()  // 各 collector 最後真正打 API 的時間
   };
-
-  // ── Factor / Gate Pipeline（交易系統消息面來源）─────────────────
-  const factorVector = buildFactorVector(rawDataToEvaluate);
-  const gateConditions = computeGates(factorVector);
-  const gatesSummaryData = gatesSummary(gateConditions);
-
-  console.log(`[factors] Built ${Object.keys(factorVector).length} factors, ${Object.keys(gateConditions).length} gates`);
-  console.log(`[gates] Summary:`, JSON.stringify(gatesSummaryData, null, 2));
 
   // ── Upstash 寫入（保留原始 dashboard + 新增 factors/gates）───────
   if (upstashUrl && writeToken) {
@@ -391,18 +431,54 @@ async function main() {
       key: "crypto_gates:latest",
       value: { computed_at: payload.generatedAt, gates: gateConditions, summary: gatesSummaryData }
     });
+    // composite_score 歷史走勢（Redis list，保留最近 24 筆 ≈ 2 小時@5min）
+    if (compositeScore) {
+      const histEntry = {
+        t: payload.generatedAt,
+        s: compositeScore.score,
+        l: compositeScore.label
+      };
+      await upstashListPrepend({ baseUrl: upstashUrl, token: writeToken, key: "crypto_composite:history", value: histEntry });
+      await upstashListTrim({ baseUrl: upstashUrl, token: writeToken, key: "crypto_composite:history", keepLast: 144 });
+    }
     console.log(`[upstash] Write complete.`);
   } else {
     console.warn(`[upstash] SKIPPED — UPSTASH_REDIS_REST_URL=${upstashUrl ? "OK" : "MISSING"}, TOKEN_WRITE=${writeToken ? "OK" : "MISSING"}`);
   }
 
+  // ── 金十快訊：寫入 SQLite + Upstash（非同步，不阻塞主流程）───────
+  collectJin10News({ onlyImportant: true, limit: 30 }).then(async jin10Result => {
+    if (!jin10Result.ok || jin10Result.items.length === 0) return;
+    // 1. 寫 SQLite（歷史累積）
+    saveJin10News(jin10Result.items);
+    // 2. 寫 Upstash（GitHub Pages fallback）
+    if (upstashUrl && writeToken) {
+      // 寫 jin10:latest（最新這批，供 GitHub Pages 即時顯示用）
+      await upstashSetJson({
+        baseUrl: upstashUrl,
+        token: writeToken,
+        key: "jin10:latest",
+        value: { updatedAt: new Date().toISOString(), items: jin10Result.items }
+      });
+      // 寫 jin10:history list（每筆個別 lpush，保留最近 200 筆）
+      for (const item of jin10Result.items) {
+        await upstashListPrepend({ baseUrl: upstashUrl, token: writeToken, key: "jin10:history", value: item });
+      }
+      await upstashListTrim({ baseUrl: upstashUrl, token: writeToken, key: "jin10:history", keepLast: 200 });
+    }
+  }).catch(() => {});
+
   // ── SQLite 寫入（保留 dashboard + 新增時序 factor/gate 歷史）─────
   const sqliteResult = await saveToSQLite(payload);
-  await saveFactorsAndGates(factorVector, gateConditions, {
+  const factorGateResult = await saveFactorsAndGates(factorVector, gateConditions, {
     startedAt: payload.generatedAt,
-    collectorsOk: ["usMacro", "jpMacro", "cryptoImpact", "globalRisk", "rateCut", "marketIntel", "policy", "rates", "liquidity", "coinalyze", "noKeyLiq", "coinglassDerivatives"],
+    collectorsOk: ["usMacro", "jpMacro", "cryptoImpact", "globalRisk", "rateCut", "marketIntel", "policy", "rates", "liquidity", "coinalyze", "noKeyLiq", "coinglassDerivatives", "vixDxy", "deribit"],
     collectorsFailed: []
   });
+
+  if (compositeScore) {
+    await saveCompositeHistory(compositeScore, factorGateResult.runId || null);
+  }
 
   if (sqliteResult.ok) {
     await logUpdateToSQLite("success", 11, null);

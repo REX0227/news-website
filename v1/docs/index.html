@@ -82,41 +82,67 @@
             <div id="meta"></div>
           </div>
           <nav class="top-nav">
-            <a class="badge medium" href="./v2/index.html">V2 來源</a>
-            <a class="badge medium" href="./v3/index.html">V3 衍生品</a>
+            <a class="badge medium" href="./v2/">V2 來源</a>
+            <a class="badge medium" href="./v3/">V3 衍生品</a>
+            <a class="badge medium" href="./v4/">V4 工具</a>
+            <a class="badge medium" href="./api_docs.html">API 文檔</a>
           </nav>
         </div>
       </header>
 
-      <!-- ── Section 1: 市場概覽（Gate + 趨勢 + 概覽卡片 合併）── -->
-      <section id="overview-section">
-        <div class="overview-layout">
-
-          <!-- 左欄：短/中/長線趨勢 + 概覽指標卡片 -->
-          <div class="overview-left">
-            <div id="overall-trend" class="trend-banner"></div>
-            <div id="overview-cards" class="card-grid overview-card-grid"></div>
+      <!-- ── Section 0: 金十數據快訊 ─────────────────────────────── -->
+      <section id="jin10-section">
+        <h2>金十數據快訊</h2>
+        <div class="jin10-wrap">
+          <!-- 左欄：即時快訊（60 秒更新）-->
+          <div class="jin10-col jin10-col-live">
+            <div class="jin10-col-label">即時快訊</div>
+            <div id="jin10-live"><div class="jin10-empty">載入中…</div></div>
           </div>
-
-          <!-- 右欄：Gate 雷達圖 + 評分表 -->
-          <div class="overview-right">
-            <h2 class="section-label">市場 Gate 評分</h2>
-            <div class="gate-chart-wrap">
-              <canvas id="gate-radar"></canvas>
-            </div>
-            <div id="gate-summary"></div>
+          <!-- 右欄：歷史資料庫 -->
+          <div class="jin10-col jin10-col-hist">
+            <div class="jin10-col-label">歷史資料庫</div>
+            <div id="jin10-history"><div class="jin10-empty">載入中…</div></div>
           </div>
-
         </div>
       </section>
 
-      <!-- ── Section 2: 交易員摘要 ────────────────────────────── -->
+      <!-- ── 綜合進出場訊號（三維合併）────────────────────────── -->
+      <div id="gate-synthesis" class="gate-synthesis-panel"></div>
+
+      <!-- ── Section 1: 市場 Gate 評分（最終綜合評估）────────── -->
+      <section id="gate-section">
+        <h2>市場 Gate 評分</h2>
+        <div class="gate-hero">
+          <div id="gate-summary" class="gate-status-panel">
+            <p style="color:#94a3b8">Coinglass 資料載入中…</p>
+          </div>
+          <div class="gate-bar-wrap">
+            <div class="composite-title" style="margin-bottom:10px">Gate 7 維度評分</div>
+            <canvas id="gate-bar"></canvas>
+          </div>
+        </div>
+        <div id="gate-composite" class="gate-composite-wrap"></div>
+        <div id="gate-composite-history" class="gate-composite-history-wrap" style="display:none">
+          <div class="composite-history-title">Composite Score 近期走勢</div>
+          <canvas id="gate-composite-chart" height="80"></canvas>
+        </div>
+      </section>
+
+      <!-- ── Section 2: 市場概覽（趨勢 + 概覽卡片）─────────── -->
+      <section id="overview-section">
+        <h2>市場概覽</h2>
+        <div id="overall-trend" class="trend-banner"></div>
+        <div id="overview-cards" class="card-grid overview-card-grid" style="margin-top:14px"></div>
+      </section>
+
+      <!-- ── Section 3: 交易員摘要 ────────────────────────────── -->
       <section id="ai-section">
         <h2>交易員摘要</h2>
         <ul id="ai-insights" class="card-list"></ul>
       </section>
 
-      <!-- ── Section 3: 未來 7 日關鍵窗口 ─────────────────────── -->
+      <!-- ── Section 4: 未來 7 日關鍵窗口 ─────────────────────── -->
       <section id="windows-section">
         <h2>未來 7 日關鍵窗口</h2>
         <div id="key-windows-note" class="note"></div>
@@ -175,9 +201,19 @@
 
       </section>
 
-      <!-- ── Section 5: 宏觀日程 ───────────────────────────────── -->
+      <!-- ── Section 6: ETH 預測市場（Polymarket）──────────────── -->
+      <section id="polymarket-section">
+        <h2>ETH 預測市場（Polymarket）</h2>
+        <div id="polymarket-cards" class="card-grid"></div>
+      </section>
+
+      <!-- ── Section 6: 宏觀日程 ───────────────────────────────── -->
       <section id="macro-section">
         <h2>美日宏觀日程</h2>
+        <div class="macro-filter-bar">
+          <button class="macro-tab active" data-filter="all">全部</button>
+          <button class="macro-tab" data-filter="recent">近期／已公布（最新優先）</button>
+        </div>
         <div class="table-wrap">
           <table>
             <thead>
@@ -199,6 +235,7 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-    <script defer src="./app.js?v=20260325-clean"></script>
+    <script src="https://unpkg.com/lightweight-charts@4.2.2/dist/lightweight-charts.standalone.production.js"></script>
+    <script type="module" src="./app.js?v=20260329-modular"></script>
   </body>
 </html>

@@ -49,6 +49,19 @@ export function initializeDatabase() {
       error_message TEXT,
       created_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS jin10_news (
+      id TEXT PRIMARY KEY,
+      published_at TEXT NOT NULL,
+      content TEXT NOT NULL,
+      link TEXT NOT NULL,
+      direction TEXT NOT NULL,
+      confidence INTEGER NOT NULL,
+      commentary TEXT NOT NULL,
+      is_important INTEGER DEFAULT 1,
+      saved_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_jin10_published ON jin10_news(published_at DESC);
   `);
 
   console.log(`[database] Initialized SQLite at ${DB_PATH}`);

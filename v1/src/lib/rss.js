@@ -3,7 +3,10 @@ import dayjs from "dayjs";
 import { cleanText } from "./utils.js";
 
 export async function fetchRssItems(url, limit = 20) {
-  const response = await fetch(url, { headers: { "User-Agent": "crypto-macro-schedule-bot/1.0" } });
+  const response = await fetch(url, {
+    headers: { "User-Agent": "crypto-macro-schedule-bot/1.0" },
+    signal: AbortSignal.timeout(20000)
+  });
   if (!response.ok) {
     throw new Error(`RSS fetch failed (${response.status}): ${url}`);
   }

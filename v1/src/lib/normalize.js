@@ -157,7 +157,57 @@ export function normalizeFundingRate(rate8hDecimal) {
   return clamp(-rate8hDecimal / 0.0005);
 }
 
-// ── 8. 主函數：從 rawData 建立完整 factor vector ─────────────────
+// ── 8. VIX / DXY ─────────────────────────────────────────────────
+
+/**
+ * CBOE VIX 恐慌指數
+ * 高 VIX = 市場恐慌 = 看跌（負分）
+ * VIX < 15 = 過度樂觀（complacent，輕微負分）
+ * 參考基準：18 = 中性；30 = 強烈看跌；40 = 極端
+ */
+export function normalizeVix(vixValue) {
+  if (!Number.isFinite(vixValue)) return null;
+  // 18 為中性，每上升 12 點 = 向下 1.0
+  return clamp(-(vixValue - 18) / 12);
+}
+
+/**
+ * 美元指數 DXY
+ * 強美元 = 風險資產承壓 = 對加密看跌（負分）
+ * 參考基準：100 = 中性，107 = 強（-1.0），93 = 弱（+1.0）
+ */
+export function normalizeDxy(dxyValue) {
+  if (!Number.isFinite(dxyValue)) return null;
+  // 以 100 為中性，±7 = ±1.0
+  return clamp(-(dxyValue - 100) / 7);
+}
+
+// ── 9. Coinglass 多空比 / CVD ─────────────────────────────────────
+
+/**
+ * 全球多空比反指標（Global Long/Short Account Ratio）
+ * longPct 範圍 0~1（0.5 = 50% 帳戶做多）
+ * 反指標：多頭比例越高 → 市場過熱 → 看跌（負分）
+ * 參考基準：0.5 = 中性；0.6 = 過多；0.4 = 過空
+ */
+export function normalizeLongShortRatio(longPct) {
+  if (!Number.isFinite(longPct)) return null;
+  // 以 0.5 為中性，偏離 0.1（10%）= 極端
+  return clamp(-(longPct - 0.5) / 0.1);
+}
+
+/**
+ * Taker 買賣量淨值（CVD proxy）
+ * netPct: 淨買量佔總量的比例（-100% ~ +100%）
+ * 正 = 主動買壓 = 看漲
+ * 參考基準：±5% = 明顯偏向；±15% = 強烈訊號
+ */
+export function normalizeTakerCvd(netPct) {
+  if (!Number.isFinite(netPct)) return null;
+  return clamp(netPct / 15);
+}
+
+// ── 9. 主函數：從 rawData 建立完整 factor vector ─────────────────
 
 /**
  * buildFactorVector(rawData) → factorVector
@@ -279,8 +329,22 @@ export function buildFactorVector(rawData) {
   }
 
   // ── 資金流向 ─────────────────────────────────────────────────
+  // 優先使用 Coinglass ETF flow（tier 2，confidence 0.92）
+  const cgEtf = rawData.coinglassDerivatives?.etfFlow7d;
   const metrics = rawData.cryptoSignalMetrics7d || {};
-  if (metrics.etfNetFlowUsd !== undefined && metrics.etfNetFlowUsd !== 0) {
+  if (cgEtf?.netUsd !== undefined && cgEtf.tradingDays > 0) {
+    const flow = cgEtf.netUsd;
+    factors["flows.etf_net_flow_7d"] = {
+      value: flow, unit: "usd",
+      score: normalizeEtfFlow7d(flow),
+      source_detail: cgEtf.source,
+      trading_days: cgEtf.tradingDays,
+      latest_date: cgEtf.latestDate,
+      direction: flow > 200e6 ? "bullish" : flow < -200e6 ? "bearish" : "neutral",
+      confidence: 0.92, source_tier: 2, computed_at: computedAt
+    };
+  } else if (metrics.etfNetFlowUsd !== undefined && metrics.etfNetFlowUsd !== 0) {
+    // fallback：新聞解析
     const flow = Number(metrics.etfNetFlowUsd);
     const etfConfidence = String(metrics.etfFlowSource || "").includes("news") ? 0.55 : 0.92;
     factors["flows.etf_net_flow_7d"] = {
@@ -293,7 +357,20 @@ export function buildFactorVector(rawData) {
   }
 
   // ── 衍生品 / 槓桿 ────────────────────────────────────────────
-  if (metrics.liquidationTotalUsd > 0) {
+  // 優先使用 Coinglass 聚合清算（tier 2，confidence 0.9）
+  const cgLiq = rawData.coinglassDerivatives?.liquidation7d;
+  if (cgLiq?.totalUsd > 0) {
+    const liq = cgLiq.totalUsd;
+    factors["derivatives.liquidation_7d"] = {
+      value: liq, unit: "usd",
+      score: normalizeLiquidation7d(liq),
+      source_detail: cgLiq.source,
+      exchanges: cgLiq.exchanges,
+      direction: liq > 700e6 ? "bearish" : liq < 200e6 ? "neutral" : "caution",
+      confidence: 0.9, source_tier: 2, computed_at: computedAt
+    };
+  } else if (metrics.liquidationTotalUsd > 0) {
+    // fallback：舊的 Coinalyze / 新聞解析
     const liq = Number(metrics.liquidationTotalUsd);
     const liqConfidence = metrics.liquidationSource === "coinalyze" ? 0.95
       : metrics.liquidationSource?.includes("exchange") ? 0.8 : 0.5;
@@ -358,7 +435,9 @@ export function buildFactorVector(rawData) {
         unit: "pct_8h",
         score: frScore,
         annualized_pct: fr.annualizedPct,
-        direction: fr.direction,   // "bullish" | "bearish" | "neutral"
+        direction: fr.direction,       // "bullish" | "bearish" | "neutral"（當前費率方向）
+        trend: fr.trend ?? "flat",            // "rising" | "falling" | "flat"
+        trend_direction: fr.trend_direction ?? "neutral", // 費率趨勢的多空含義
         exchange: fr.exchange,
         // 高正費率（多頭過熱）看跌；高負費率（空頭過熱）看漲
         confidence: 0.95, source_tier: 2, computed_at: computedAt
@@ -377,6 +456,108 @@ export function buildFactorVector(rawData) {
         change_4h_pct: oi.change4hPct,
         direction: oi.direction,
         confidence: 0.95, source_tier: 2, computed_at: computedAt
+      };
+    }
+
+    // ── 多空比 / CVD ──────────────────────────────────────────
+    const ls = cg.longShortRatio;
+    if (ls?.longPct !== undefined && ls?.longPct !== null) {
+      factors["derivatives.btc_long_short_ratio"] = {
+        value: ls.longPct,
+        unit: "ratio",           // 0~1，做多帳戶佔比
+        score: normalizeLongShortRatio(ls.longPct),
+        long_pct: Number((ls.longPct * 100).toFixed(2)),
+        short_pct: Number(((ls.shortPct ?? 1 - ls.longPct) * 100).toFixed(2)),
+        ls_ratio: ls.lsRatio,
+        direction: ls.direction,
+        // 反指標：多頭過多看跌，空頭過多看漲（tier 2 = 機構 API）
+        confidence: 0.88, source_tier: 2, computed_at: computedAt
+      };
+    }
+
+    const tv = cg.takerVolume;
+    if (tv?.netPct !== undefined && tv?.netPct !== null) {
+      factors["derivatives.btc_taker_cvd"] = {
+        value: tv.netUsd,
+        unit: "usd",
+        score: normalizeTakerCvd(tv.netPct),
+        net_pct: tv.netPct,
+        buy_volume_usd: tv.buyVolumeUsd,
+        sell_volume_usd: tv.sellVolumeUsd,
+        direction: tv.direction,
+        confidence: 0.88, source_tier: 2, computed_at: computedAt
+      };
+    }
+  }
+
+  // ── Deribit 選擇權 Put/Call Ratio ────────────────────────────
+  const deribit = rawData.deribitOptions;
+  if (deribit?.available && deribit.putCallOiRatio !== null && deribit.putCallOiRatio !== undefined) {
+    const pcr = Number(deribit.putCallOiRatio);
+    // Put/Call OI 比：低（多 call）= 看漲；高（多 put）= 下行對沖 = 看跌
+    // 注意：極低 PCR 也可能是過熱反轉信號，但以趨勢為主
+    const pcrScore = pcr <= 0.5  ?  0.8   // 大量看漲部位
+      : pcr <= 0.7  ?  0.5
+      : pcr <= 0.9  ?  0.2
+      : pcr <= 1.1  ?  0.0
+      : pcr <= 1.3  ? -0.4
+      : pcr <= 1.5  ? -0.7
+      :               -1.0;              // 恐慌性對沖
+    factors["derivatives.btc_put_call_ratio"] = {
+      value:          pcr,
+      unit:           "ratio",
+      score:          Number(pcrScore.toFixed(4)),
+      put_call_vol_ratio: deribit.putCallVolRatio,
+      direction:      deribit.direction,
+      total_put_oi:   deribit.totalPutOI,
+      total_call_oi:  deribit.totalCallOI,
+      instrument_count: deribit.instrumentCount,
+      confidence:     0.88, source_tier: 2, computed_at: computedAt
+    };
+
+    // ── 近月 ATM 隱含波動率（IV）────────────────────────────────
+    if (deribit.btc_iv !== null && deribit.btc_iv !== undefined) {
+      const iv = Number(deribit.btc_iv);
+      // IV 正常範圍約 30~150%。高 IV = 恐慌/大行情預期 = 偏看跌；低 IV = 平靜 = 偏看漲
+      // 閾值：< 40% 平靜 (+0.4)，40~60% 普通 (0)，60~80% 升溫 (-0.3)，> 80% 高恐慌 (-0.7)
+      const ivScore = iv < 40  ?  0.4
+        : iv < 55  ?  0.1
+        : iv < 70  ? -0.2
+        : iv < 90  ? -0.5
+        :            -0.8;
+      factors["derivatives.btc_iv"] = {
+        value:      iv,
+        unit:       "pct_annualized",  // 年化 IV%（如 60.5 = 60.5%）
+        score:      Number(ivScore.toFixed(4)),
+        // 高 IV 反映市場恐慌或強烈不確定性，通常 bearish；極端高 IV 後反彈概率上升但先跌
+        direction:  iv < 55 ? "low_vol" : iv < 75 ? "elevated" : "high_vol",
+        confidence: 0.80, source_tier: 2, computed_at: computedAt
+      };
+    }
+  }
+
+  // ── VIX / DXY ────────────────────────────────────────────────
+  const vd = rawData.vixDxy;
+  if (vd?.available) {
+    if (vd.vix?.value !== undefined && vd.vix?.value !== null) {
+      factors["macro.vix"] = {
+        value: vd.vix.value,
+        unit: "index",
+        score: normalizeVix(vd.vix.value),
+        level: vd.vix.level,
+        change_pct: vd.vix.changePct,
+        direction: vd.vix.direction,
+        confidence: 0.95, source_tier: 1, computed_at: computedAt
+      };
+    }
+    if (vd.dxy?.value !== undefined && vd.dxy?.value !== null) {
+      factors["macro.dxy"] = {
+        value: vd.dxy.value,
+        unit: "index",
+        score: normalizeDxy(vd.dxy.value),
+        change_pct: vd.dxy.changePct,
+        direction: vd.dxy.direction,
+        confidence: 0.95, source_tier: 1, computed_at: computedAt
       };
     }
   }

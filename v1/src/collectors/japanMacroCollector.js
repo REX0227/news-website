@@ -54,7 +54,8 @@ function parseBojMeetingCell(text, year) {
 
 export async function collectJapanMacroEvents() {
   const response = await fetch(BOJ_URL, {
-    headers: { "User-Agent": "crypto-macro-schedule-bot/1.0" }
+    headers: { "User-Agent": "crypto-macro-schedule-bot/1.0" },
+    signal: AbortSignal.timeout(20000)
   });
   if (!response.ok) return [];
 

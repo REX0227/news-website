@@ -36,23 +36,33 @@ export function computeGates(factors) {
   /**
    * macro.favorable
    * 宏觀環境是否支持風險資產多頭
-   * 條件：殖利率曲線未倒掛 AND 10Y 利率非極端高
+   * 條件：殖利率曲線未倒掛 AND 10Y 利率非極端高 AND VIX < 28（恐慌未過熱）
    */
   const spreadFactor = factors["macro.yield_spread_2s10s"];
   const yield10y = factors["macro.yield_10y"];
+  const vixFactor = factors["macro.vix"];
   const macroFavorable = (() => {
     const inverted = spreadFactor ? spreadFactor.direction === "inverted" : false;
     const highRate = yield10y ? Number(yield10y.value) > 5.0 : false;
-    return !inverted && !highRate;
+    const vixStressed = vixFactor ? Number(vixFactor.value) > 28 : false;
+    return !inverted && !highRate && !vixStressed;
   })();
-  const macroConfidence = [spreadFactor, yield10y].filter(Boolean).length >= 1 ? 0.8 : 0.4;
+  const macroFactorCount = [spreadFactor, yield10y, vixFactor].filter(Boolean).length;
+  const macroConfidence = macroFactorCount >= 2 ? 0.85 : macroFactorCount === 1 ? 0.6 : 0.35;
+
+  // 組合原因說明
+  const macroReasons = [];
+  if (spreadFactor) macroReasons.push(`利差 ${spreadFactor.value}%（${spreadFactor.direction === "inverted" ? "倒掛" : "正常"}）`);
+  if (yield10y) macroReasons.push(`10Y ${yield10y.value}%`);
+  if (vixFactor) macroReasons.push(`VIX ${vixFactor.value}（${Number(vixFactor.value) > 28 ? "恐慌過熱" : "正常"}）`);
+
   gates["macro.favorable"] = {
     value: macroFavorable,
     numeric: macroFavorable ? 1 : 0,
-    contributing_factors: ["macro.yield_spread_2s10s", "macro.yield_10y"].filter((k) => factors[k]),
-    reason: macroFavorable
-      ? `殖利率曲線${spreadFactor ? `利差 ${spreadFactor.value}%（正常）` : "數據不足"}，宏觀環境支持風險偏好。`
-      : `殖利率${spreadFactor?.direction === "inverted" ? "倒掛" : "高位"}，宏觀環境對風險資產不利。`,
+    contributing_factors: ["macro.yield_spread_2s10s", "macro.yield_10y", "macro.vix"].filter((k) => factors[k]),
+    reason: macroReasons.length
+      ? `${macroReasons.join("，")}。宏觀環境${macroFavorable ? "支持風險偏好" : "對風險資產不利"}。`
+      : "宏觀數據不足，無法評估。",
     confidence: macroConfidence,
     computed_at: computedAt
   };
@@ -103,19 +113,30 @@ export function computeGates(factors) {
   /**
    * direction.bullish_bias
    * 整體方向是否偏多
-   * 綜合：ETF 資金流、信號偏向、情緒、流動性變化
+   * 綜合（權重）：
+   *   ETF 資金流     35% (tier 2)
+   *   多空比反指標   25% (tier 2, Coinglass) ← 取代 RSS 新聞
+   *   Taker CVD     20% (tier 2, Coinglass) ← 取代 RSS 新聞
+   *   情緒 F&G      10% (tier 3)
+   *   穩定幣變化     10% (tier 3)
    */
-  const etfFlow = factors["flows.etf_net_flow_7d"];
-  const signalBias = factors["signals.crypto_bias"];
-  const fearGreed = factors["sentiment.fear_greed"];
+  const etfFlow     = factors["flows.etf_net_flow_7d"];
+  const lsRatio     = factors["derivatives.btc_long_short_ratio"];
+  const takerCvd    = factors["derivatives.btc_taker_cvd"];
+  const fearGreed   = factors["sentiment.fear_greed"];
   const stableChange = factors["liquidity.stablecoin_change_7d"];
+  const putCallRatio = factors["derivatives.btc_put_call_ratio"];  // Deribit P/C 比
+  const btcDomFactor = factors["sentiment.btc_dominance"];          // BTC 市佔率
 
   const bullishScore = (() => {
     const scores = [];
-    if (etfFlow?.score !== undefined) scores.push({ s: etfFlow.score, w: 0.35 });
-    if (signalBias?.score !== undefined) scores.push({ s: signalBias.score, w: 0.25 });
-    if (fearGreed?.score !== undefined) scores.push({ s: fearGreed.score, w: 0.2 });
-    if (stableChange?.score !== undefined) scores.push({ s: stableChange.score, w: 0.2 });
+    if (etfFlow?.score !== undefined)     scores.push({ s: etfFlow.score,      w: 0.30 });
+    if (lsRatio?.score !== undefined)     scores.push({ s: lsRatio.score,      w: 0.20 });
+    if (takerCvd?.score !== undefined)    scores.push({ s: takerCvd.score,     w: 0.15 });
+    if (fearGreed?.score !== undefined)   scores.push({ s: fearGreed.score,    w: 0.10 });
+    if (stableChange?.score !== undefined) scores.push({ s: stableChange.score, w: 0.10 });
+    if (putCallRatio?.score !== undefined) scores.push({ s: putCallRatio.score, w: 0.10 }); // 新增 Deribit P/C
+    if (btcDomFactor?.score !== undefined) scores.push({ s: btcDomFactor.score, w: 0.05 }); // 新增 BTC 市佔率
     if (scores.length === 0) return 0;
     const totalW = scores.reduce((a, { w }) => a + w, 0);
     return scores.reduce((a, { s, w }) => a + s * (w / totalW), 0);
@@ -127,13 +148,16 @@ export function computeGates(factors) {
     value: bullishBias,
     numeric: Number(bullishScore.toFixed(4)),
     contributing_factors: [
-      etfFlow && "flows.etf_net_flow_7d",
-      signalBias && "signals.crypto_bias",
-      fearGreed && "sentiment.fear_greed",
-      stableChange && "liquidity.stablecoin_change_7d"
+      etfFlow      && "flows.etf_net_flow_7d",
+      lsRatio      && "derivatives.btc_long_short_ratio",
+      takerCvd     && "derivatives.btc_taker_cvd",
+      fearGreed    && "sentiment.fear_greed",
+      stableChange && "liquidity.stablecoin_change_7d",
+      putCallRatio && "derivatives.btc_put_call_ratio",
+      btcDomFactor && "sentiment.btc_dominance"
     ].filter(Boolean),
     reason: `加權多空評分 ${bullishScore > 0 ? "+" : ""}${bullishScore.toFixed(2)}（閾值 ±0.15）`,
-    confidence: Math.min(0.75, 0.3 + [etfFlow, signalBias, fearGreed, stableChange].filter(Boolean).length * 0.12),
+    confidence: Math.min(0.90, 0.3 + [etfFlow, lsRatio, takerCvd, fearGreed, stableChange, putCallRatio, btcDomFactor].filter(Boolean).length * 0.09),
     computed_at: computedAt
   };
 

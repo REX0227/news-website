@@ -140,7 +140,8 @@ export async function collectUsMacroEvents() {
 
   try {
     const response = await fetch(BLS_ICS_URL, {
-      headers: { "User-Agent": "crypto-macro-schedule-bot/1.0" }
+      headers: { "User-Agent": "crypto-macro-schedule-bot/1.0" },
+      signal: AbortSignal.timeout(20000)
     });
     if (response.ok) {
       const ics = await response.text();
@@ -152,7 +153,8 @@ export async function collectUsMacroEvents() {
 
   try {
     const fomcResponse = await fetch("https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm", {
-      headers: { "User-Agent": "crypto-macro-schedule-bot/1.0" }
+      headers: { "User-Agent": "crypto-macro-schedule-bot/1.0" },
+      signal: AbortSignal.timeout(20000)
     });
     if (fomcResponse.ok) {
       const html = await fomcResponse.text();

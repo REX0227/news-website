@@ -84,6 +84,32 @@ function getDb() {
       computed_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_gate_key_time ON gate_conditions(gate_key, computed_at);
+
+    -- composite_score 長期時序（永久保留，供資料分析使用）
+    CREATE TABLE IF NOT EXISTS composite_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      recorded_at TEXT NOT NULL,
+      score REAL NOT NULL,
+      label TEXT NOT NULL,
+      coverage_pct REAL,
+      factor_count INTEGER,
+      run_id TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_composite_history_time ON composite_history(recorded_at);
+
+    -- 金十數據快訊（永久保留，每筆唯一）
+    CREATE TABLE IF NOT EXISTS jin10_news (
+      id TEXT PRIMARY KEY,
+      published_at TEXT NOT NULL,
+      content TEXT NOT NULL,
+      link TEXT NOT NULL,
+      direction TEXT NOT NULL,
+      confidence INTEGER NOT NULL,
+      commentary TEXT NOT NULL,
+      is_important INTEGER DEFAULT 1,
+      saved_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_jin10_published ON jin10_news(published_at DESC);
   `);
 
   return _db;
@@ -296,6 +322,132 @@ export function getLatestGates() {
     `).all(latestRun.run_id);
   } catch (err) {
     console.error("[sqlite] getLatestGates error:", err.message);
+    return [];
+  }
+}
+
+/**
+ * 取得倒數第二次 pipeline run 的所有 factors（用於計算 factor_delta）
+ * 若只有一次 run，回傳空陣列
+ */
+export function getPreviousRunFactors() {
+  try {
+    const db = getDb();
+    const runs = db.prepare(`
+      SELECT run_id FROM pipeline_runs ORDER BY completed_at DESC LIMIT 2
+    `).all();
+    if (runs.length < 2) return [];
+
+    return db.prepare(`
+      SELECT factor_key, normalized_score, direction
+      FROM factor_snapshots
+      WHERE run_id = ?
+    `).all(runs[1].run_id);
+  } catch (err) {
+    console.error("[sqlite] getPreviousRunFactors error:", err.message);
+    return [];
+  }
+}
+
+/**
+ * 取得最近 N 筆 composite_history（由新到舊）
+ * 用於動能計算
+ *
+ * @param {number} limit
+ */
+export function getCompositeHistory(limit = 12) {
+  try {
+    const db = getDb();
+    return db.prepare(`
+      SELECT recorded_at, score, label, coverage_pct, factor_count
+      FROM composite_history
+      ORDER BY recorded_at DESC
+      LIMIT ?
+    `).all(limit);
+  } catch (err) {
+    console.error("[sqlite] getCompositeHistory error:", err.message);
+    return [];
+  }
+}
+
+/**
+ * 儲存一筆 composite_score 到長期歷史資料表
+ *
+ * @param {object} compositeScore - computeCompositeScore() 的輸出 { score, label, coverage_pct, factor_count }
+ * @param {string} [runId] - 對應的 pipeline_runs.run_id（選填）
+ */
+export async function saveCompositeHistory(compositeScore, runId = null) {
+  try {
+    const db = getDb();
+    db.prepare(`
+      INSERT INTO composite_history (recorded_at, score, label, coverage_pct, factor_count, run_id)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(
+      new Date().toISOString(),
+      compositeScore.score,
+      compositeScore.label || "",
+      Number.isFinite(compositeScore.coverage_pct) ? compositeScore.coverage_pct : null,
+      Number.isFinite(compositeScore.factor_count) ? compositeScore.factor_count : null,
+      runId ?? null
+    );
+    console.log(`[sqlite] composite_history saved: score=${compositeScore.score} (${compositeScore.label})`);
+    return { ok: true };
+  } catch (err) {
+    console.error("[sqlite] Failed to save composite_history:", err.message);
+    return { ok: false, error: err.message };
+  }
+}
+
+// ── 金十快訊 ─────────────────────────────────────────────────────────
+
+/**
+ * 批次寫入金十快訊（INSERT OR IGNORE，自動跳過已存在 id）
+ * @param {Array} items - collectJin10News() 回傳的 items
+ * @returns {{ ok: boolean, inserted: number }}
+ */
+export function saveJin10News(items = []) {
+  if (!items.length) return { ok: true, inserted: 0 };
+  try {
+    const db = getDb();
+    const stmt = db.prepare(`
+      INSERT OR IGNORE INTO jin10_news
+        (id, published_at, content, link, direction, confidence, commentary, is_important, saved_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const savedAt = new Date().toISOString();
+    let inserted = 0;
+    for (const item of items) {
+      const result = stmt.run(
+        item.id, item.published_at, item.content, item.link,
+        item.direction, item.confidence, item.commentary,
+        item.is_important ?? 1, savedAt
+      );
+      if (result.changes > 0) inserted++;
+    }
+    if (inserted > 0) console.log(`[sqlite] jin10_news: 新增 ${inserted} 筆`);
+    return { ok: true, inserted };
+  } catch (err) {
+    console.error("[sqlite] saveJin10News error:", err.message);
+    return { ok: false, inserted: 0, error: err.message };
+  }
+}
+
+/**
+ * 讀取金十快訊歷史（由新到舊）
+ * @param {number} limit
+ * @param {number} offset
+ */
+export function getJin10News(limit = 50, offset = 0) {
+  try {
+    const db = getDb();
+    return db.prepare(`
+      SELECT id, published_at, content, link, direction, confidence, commentary, is_important, saved_at
+      FROM jin10_news
+      ORDER BY published_at DESC
+      LIMIT ? OFFSET ?
+    `).all(limit, offset);
+  } catch (err) {
+    console.error("[sqlite] getJin10News error:", err.message);
     return [];
   }
 }

@@ -1,0 +1,1222 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CryptoPulse API 文檔</title>
+  <style>
+    :root {
+      --bg: #0a0f1e; --surface: #111827; --border: #1e293b;
+      --accent: #38bdf8; --ok: #22c55e; --warn: #f59e0b; --danger: #fb7185;
+      --text: #e2e8f0; --muted: #94a3b8; --code-bg: #0f172a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 15px; line-height: 1.7; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Layout */
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar {
+      width: 260px; min-width: 260px; background: var(--surface);
+      border-right: 1px solid var(--border); padding: 24px 0;
+      position: sticky; top: 0; height: 100vh; overflow-y: auto;
+    }
+    .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .sidebar-logo h1 { font-size: 1.1em; color: var(--accent); }
+    .sidebar-logo p { font-size: 0.78em; color: var(--muted); margin-top: 4px; }
+    .sidebar nav a {
+      display: block; padding: 6px 20px; color: var(--muted); font-size: 0.88em;
+      border-left: 3px solid transparent;
+    }
+    .sidebar nav a:hover, .sidebar nav a.active {
+      color: var(--accent); border-left-color: var(--accent);
+      background: rgba(56,189,248,.06); text-decoration: none;
+    }
+    .sidebar nav .nav-group { padding: 12px 20px 4px; font-size: 0.72em; color: #475569; text-transform: uppercase; letter-spacing: .08em; }
+
+    .content { flex: 1; padding: 48px 56px; max-width: 900px; }
+    @media (max-width: 768px) {
+      .layout { flex-direction: column; }
+      .sidebar { width: 100%; height: auto; position: static; }
+      .content { padding: 24px 20px; }
+    }
+
+    /* Typography */
+    h1 { font-size: 2em; color: var(--accent); margin-bottom: 8px; }
+    h2 { font-size: 1.4em; color: var(--text); margin: 48px 0 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+    h3 { font-size: 1.05em; color: var(--accent); margin: 28px 0 10px; }
+    h4 { font-size: 0.95em; color: var(--muted); margin: 18px 0 8px; text-transform: uppercase; letter-spacing: .05em; }
+    p { margin-bottom: 12px; color: var(--muted); }
+    ul, ol { padding-left: 20px; color: var(--muted); margin-bottom: 12px; }
+    li { margin-bottom: 4px; }
+
+    /* Badges */
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 4px; font-size: 0.78em; font-weight: 600; margin-right: 6px; }
+    .badge.get { background: #064e3b; color: #34d399; }
+    .badge.post { background: #1e3a5f; color: #60a5fa; }
+    .badge.free { background: #1a2e1a; color: #4ade80; }
+    .badge.auth { background: #2d1b00; color: #fbbf24; }
+
+    /* Endpoint cards */
+    .endpoint {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 20px 24px; margin-bottom: 16px;
+    }
+    .endpoint-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+    .endpoint-path { font-family: monospace; font-size: 1em; color: var(--text); }
+    .endpoint-desc { color: var(--muted); font-size: 0.88em; }
+
+    /* Code blocks */
+    pre {
+      background: var(--code-bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px 20px; overflow-x: auto;
+      font-size: 0.83em; line-height: 1.6; margin: 10px 0 16px;
+    }
+    code { font-family: 'Cascadia Code', 'Fira Code', monospace; }
+    p code, li code {
+      background: var(--code-bg); border: 1px solid var(--border);
+      padding: 1px 6px; border-radius: 4px; font-size: 0.87em; color: #93c5fd;
+    }
+
+    /* Tables */
+    .table-wrap { overflow-x: auto; margin: 10px 0 20px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.87em; }
+    th { background: #1f2937; color: var(--muted); text-align: left; padding: 8px 12px; font-weight: 600; border-bottom: 1px solid var(--border); }
+    td { padding: 8px 12px; border-bottom: 1px solid #1a2234; vertical-align: top; }
+    td:first-child { font-family: monospace; color: #93c5fd; white-space: nowrap; }
+    tr:last-child td { border-bottom: none; }
+
+    /* Notice blocks */
+    .notice {
+      padding: 12px 16px; border-radius: 8px; margin: 12px 0 20px;
+      font-size: 0.88em; line-height: 1.6;
+    }
+    .notice.info { background: #0c2340; border-left: 3px solid var(--accent); color: #bae6fd; }
+    .notice.warn { background: #2d1f00; border-left: 3px solid var(--warn); color: #fde68a; }
+    .notice.tip  { background: #052e16; border-left: 3px solid var(--ok);   color: #bbf7d0; }
+
+    /* Hero */
+    .hero-meta { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 24px; }
+    .hero-tag { background: #1f2937; border: 1px solid var(--border); padding: 4px 12px; border-radius: 20px; font-size: 0.82em; color: var(--muted); }
+
+    /* Section anchors */
+    section { scroll-margin-top: 24px; }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <h1>CryptoPulse API</h1>
+      <p>v1.0 · 加密市場資訊儀表板</p>
+    </div>
+    <nav>
+      <div class="nav-group">概覽</div>
+      <a href="#overview">簡介</a>
+      <a href="#base-url">Base URL</a>
+      <a href="#auth">認證</a>
+      <a href="#rate-limit">Rate Limit</a>
+      <a href="#update-freq">更新頻率</a>
+      <a href="#data-quality">資料品質說明</a>
+      <a href="#error-handling">錯誤格式</a>
+      <a href="#freshness">資料新鮮度驗證</a>
+      <a href="#changelog">Changelog</a>
+
+      <div class="nav-group">端點</div>
+      <a href="#ep-dashboard">GET /dashboard</a>
+      <a href="#ep-macro">GET /macro-events</a>
+      <a href="#ep-signals">GET /signals</a>
+      <a href="#ep-jin10">GET /jin10</a>
+      <a href="#ep-jin10-history">GET /jin10/history</a>
+      <a href="#ep-health">GET /health</a>
+      <a href="#ep-update-log">GET /update-log</a>
+
+      <div class="nav-group">資料結構</div>
+      <a href="#schema-composite">compositeScore</a>
+      <a href="#schema-market">marketOverview</a>
+      <a href="#schema-rates">ratesIntel</a>
+      <a href="#schema-liquidity">liquidityIntel</a>
+      <a href="#schema-derivatives">coinglassDerivatives</a>
+      <a href="#schema-sentiment">marketIntel</a>
+      <a href="#schema-macro">macroEvents</a>
+      <a href="#schema-signals">cryptoSignals</a>
+      <a href="#schema-whale">whaleTrend</a>
+      <a href="#schema-policy">policySignals</a>
+      <a href="#schema-risk">globalRiskSignals</a>
+      <a href="#schema-jin10">jin10 Item</a>
+      <a href="#schema-ai">aiSummary</a>
+      <a href="#schema-metrics">cryptoSignalMetrics7d</a>
+
+      <div class="nav-group">整合</div>
+      <a href="#integration-example">整合範例（基本）</a>
+      <a href="#polling-example">輪詢範例（完整）</a>
+      <a href="#upstash-jin10">Upstash jin10 直讀</a>
+      <a href="#factor-mapping">Factor 對應表</a>
+    </nav>
+  </aside>
+
+  <!-- ── Main Content ── -->
+  <main class="content">
+
+    <!-- ── Overview ── -->
+    <section id="overview">
+      <h1>CryptoPulse API 文檔</h1>
+      <div class="hero-meta">
+        <span class="hero-tag">REST JSON</span>
+        <span class="hero-tag">無需 API Key</span>
+        <span class="hero-tag">更新週期 5 分鐘</span>
+        <span class="hero-tag">繁體中文輸出</span>
+      </div>
+      <p>
+        CryptoPulse 是一個加密市場資訊聚合儀表板，整合美日宏觀事件、即時新聞快訊、衍生品市場結構與鏈上流動性，
+        每 5 分鐘自動更新並以 REST API 對外提供結構化 JSON 資料。
+      </p>
+      <p>
+        所有數據均為<strong>非價格訊號</strong>（不含現貨幣價），適合作為程式交易系統的
+        <strong>factor / feature / gate</strong> 來源。
+      </p>
+
+      <div class="notice info">
+        本 API 目前為私有端點，供授權系統（如 GeckoQuant）直接對接使用。
+        所有回應欄位均為中文輸出，數值型欄位以 USD 或百分比為單位。
+      </div>
+    </section>
+
+    <!-- ── Base URL ── -->
+    <section id="base-url">
+      <h2>Base URL</h2>
+      <div class="notice warn">
+        本服務分為兩個存取層，請依部署環境選擇：
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>環境</th><th>Base URL</th><th>說明</th></tr></thead>
+          <tbody>
+            <tr><td>本機伺服器</td><td><code>http://localhost:3000/api</code></td><td>Express 後端，資料最即時（5 分鐘週期），需本機網路</td></tr>
+            <tr><td>Upstash Redis（公開讀取）</td><td><code>https://sensible-grouper-89071.upstash.io</code></td><td>靜態快照，最終一致性，適合跨網路存取（延遲 ≤ 5 分鐘）</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>Upstash 直讀範例（不需後端）</h4>
+      <pre><code>GET https://sensible-grouper-89071.upstash.io/get/crypto_dashboard:latest
+Authorization: Bearer gQAAAAAAAVvvAAIncDE4ZjIwMzAwMmMxNTI0N2UxYjk1ZGJkNDc2MTE4YzA4ZXAxODkwNzE</code></pre>
+      <p>回應的 <code>result</code> 欄位即為完整 dashboard JSON（需再 <code>JSON.parse</code>）。</p>
+    </section>
+
+    <!-- ── Auth ── -->
+    <section id="auth">
+      <h2>認證</h2>
+      <p>本機 API（<code>localhost:3000</code>）目前不需要任何 API Key，直接 GET 即可。</p>
+      <p>Upstash 直讀需帶 <code>Authorization</code> header：</p>
+      <pre><code>Authorization: Bearer gQAAAAAAAVvvAAIncDE4ZjIwMzAwMmMxNTI0N2UxYjk1ZGJkNDc2MTE4YzA4ZXAxODkwNzE</code></pre>
+      <div class="notice tip">此 token 為唯讀權限，無法寫入或修改任何資料。</div>
+    </section>
+
+    <!-- ── Rate Limit ── -->
+    <section id="rate-limit">
+      <h2>Rate Limit</h2>
+      <p>本機 API（<code>localhost:3000</code>）目前<strong>無速率限制</strong>，但建議遵守以下輪詢間隔，避免不必要的資源消耗：</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>端點</th><th>建議間隔</th><th>理由</th></tr></thead>
+          <tbody>
+            <tr><td>/api/dashboard</td><td>每 5 分鐘</td><td>主循環更新週期，更頻繁無意義</td></tr>
+            <tr><td>/api/jin10</td><td>每 60 秒</td><td>即時 proxy，上游 API 本身約每分鐘更新</td></tr>
+            <tr><td>/api/jin10/history</td><td>頁面載入時一次</td><td>SQLite 歷史，非即時資料</td></tr>
+            <tr><td>/api/health</td><td>每 30 秒</td><td>監控用途</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="notice info">Upstash 直讀同樣無硬性限制，但 Upstash Free Tier 每日有請求配額，建議以本機 API 為主，Upstash 為備援。</div>
+    </section>
+
+    <!-- ── Update Freq ── -->
+    <section id="update-freq">
+      <h2>更新頻率</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>資料類型</th><th>更新週期</th><th>來源</th></tr></thead>
+          <tbody>
+            <tr><td>主 Dashboard 快照</td><td>每 5 分鐘</td><td>update-data.mjs keep-alive</td></tr>
+            <tr><td>宏觀日程（macroEvents）</td><td>每 5 分鐘</td><td>BLS ICS + Fed HTML + BOJ</td></tr>
+            <tr><td>加密訊號（cryptoSignals）</td><td>每 5 分鐘</td><td>CoinDesk / CoinTelegraph RSS</td></tr>
+            <tr><td>政策訊號（policySignals）</td><td>每 5 分鐘</td><td>白宮 / Fed / SEC / CFTC RSS</td></tr>
+            <tr><td>外部風險（globalRiskSignals）</td><td>每 5 分鐘</td><td>Google News RSS</td></tr>
+            <tr><td>利率（ratesIntel）</td><td>每 5 分鐘</td><td>FRED CSV（DGS10 / DGS2 / DGS3MO）</td></tr>
+            <tr><td>流動性（liquidityIntel）</td><td>每 5 分鐘</td><td>DeFiLlama（穩定幣市值 / TVL）</td></tr>
+            <tr><td>衍生品（coinglassDerivatives）</td><td>每 30 分鐘</td><td>Coinglass Open API v4</td></tr>
+            <tr><td>恐慌貪婪指數（marketIntel）</td><td>每 5 分鐘</td><td>alternative.me / CoinGecko</td></tr>
+            <tr><td>金十快訊（jin10）</td><td>即時 proxy / 每次主循環寫入 DB</td><td>flash-api.jin10.com</td></tr>
+            <tr><td>Composite Score</td><td>每 5 分鐘</td><td>19 因子規則型計算</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Data Quality ── -->
+    <section id="data-quality">
+      <h2>資料品質說明</h2>
+      <div class="notice warn">
+        <strong>清算數據（liquidationTotalUsd）</strong>：目前以新聞標題反推，非交易所硬數據。
+        欄位 <code>liquidationSource</code> 會標示來源類型（<code>coinalyze</code> 為精確值，<code>news_latest_signal_validated</code> 為估算值）。
+      </div>
+      <div class="notice warn">
+        <strong>ETF 資金流（etfNetFlowUsd）</strong>：來自 Coinglass ETF 7D 彙總或新聞標題解析，
+        欄位 <code>etfCountWithAmount</code> = 0 代表當期無可量化資料。
+      </div>
+      <div class="notice info">
+        <strong>Composite Score</strong>：19 個因子加權平均，範圍 -1 到 +1。
+        負值偏空、正值偏多、絕對值 &lt; 0.15 視為中性。
+        所有因子均為規則型邏輯計算，非 LLM 輸出。
+      </div>
+    </section>
+
+    <!-- ── Error Handling ── -->
+    <section id="error-handling">
+      <h2>錯誤格式</h2>
+      <p>所有端點在失敗時均回傳標準 JSON 錯誤結構，搭配對應的 HTTP 狀態碼。</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>HTTP 狀態碼</th><th>發生情境</th><th>處理建議</th></tr></thead>
+          <tbody>
+            <tr><td>200 OK</td><td>正常回應</td><td>—</td></tr>
+            <tr><td>404 Not Found</td><td>尚無資料（update-data.mjs 從未執行過）</td><td>等待首次資料更新，或確認 keep-alive 是否運行</td></tr>
+            <tr><td>400 Bad Request</td><td>POST /dashboard 傳入非 JSON body</td><td>確認 Content-Type: application/json</td></tr>
+            <tr><td>500 Internal Server Error</td><td>SQLite 寫入失敗</td><td>查看 /api/update-log 確認最後一次更新狀態</td></tr>
+            <tr><td>502 Bad Gateway</td><td>/api/jin10 上游 API 無回應或超時</td><td>等待下次輪詢，此為暫時性錯誤</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>錯誤回應範例</h4>
+      <pre><code>// HTTP 404 — 無資料
+{
+  "error": "No dashboard data available. Run the update script first."
+}
+
+// HTTP 502 — jin10 上游失敗
+{
+  "ok": false,
+  "items": [],
+  "reason": "jin10 HTTP 503"
+}
+
+// HTTP 500 — 寫入失敗
+{
+  "error": "Failed to save dashboard data.",
+  "detail": "SQLITE_BUSY: database is locked"
+}</code></pre>
+
+      <h4>防禦性讀取建議（Python）</h4>
+      <pre><code>import requests, json
+from datetime import datetime, timezone, timedelta
+
+def fetch_dashboard():
+    try:
+        resp = requests.get("http://localhost:3000/api/dashboard", timeout=10)
+        resp.raise_for_status()         # 非 2xx 拋出例外
+        data = resp.json()
+        if "error" in data:
+            raise ValueError(data["error"])
+        return data
+    except requests.exceptions.Timeout:
+        print("API 超時，嘗試 Upstash fallback")
+        return fetch_from_upstash()
+    except Exception as e:
+        print(f"讀取失敗：{e}")
+        return None</code></pre>
+    </section>
+
+    <!-- ── Freshness ── -->
+    <section id="freshness">
+      <h2>資料新鮮度驗證</h2>
+      <p>每筆回應包含 <code>generatedAt</code>（ISO 8601 UTC），用於判斷資料是否過期。</p>
+
+      <div class="notice warn">
+        若 <code>generatedAt</code> 距今超過 <strong>15 分鐘</strong>，代表 keep-alive 主循環可能中斷，
+        資料已過期。建議發出警告或暫停使用該批資料作為交易 gate。
+      </div>
+
+      <h4>新鮮度驗證範例（Python）</h4>
+      <pre><code>from datetime import datetime, timezone, timedelta
+
+def is_fresh(data, max_age_minutes=15):
+    generated_at = data.get("generatedAt")
+    if not generated_at:
+        return False
+    ts = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
+    age = datetime.now(timezone.utc) - ts
+    return age < timedelta(minutes=max_age_minutes)
+
+data = fetch_dashboard()
+if data and not is_fresh(data):
+    print(f"⚠️ 資料已過期：generatedAt = {data['generatedAt']}")
+    # 暫停入場訊號，等待下次更新</code></pre>
+
+      <h4>各子資料的新鮮度欄位</h4>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>資料</th><th>新鮮度欄位</th><th>說明</th></tr></thead>
+          <tbody>
+            <tr><td>整體快照</td><td>generatedAt</td><td>主循環產出時間</td></tr>
+            <tr><td>coinglassDerivatives</td><td>coinglassDerivatives.updatedAt</td><td>Coinglass 最後成功抓取時間（可能落後主循環）</td></tr>
+            <tr><td>liquidityIntel</td><td>liquidityIntel.updatedAt</td><td>DeFiLlama 最後成功抓取時間</td></tr>
+            <tr><td>marketIntel</td><td>marketIntel.updatedAt</td><td>CoinGecko / Fear&Greed 最後成功時間</td></tr>
+            <tr><td>ratesIntel</td><td>ratesIntel.updatedAt</td><td>FRED 最後成功抓取時間（資料本身為交易日更新）</td></tr>
+            <tr><td>coinglassDerivatives.available</td><td>available = false</td><td>Coinglass 抓取失敗，所有子欄位可能為 null</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>coinglassDerivatives.available = false 的處理</h4>
+      <div class="notice warn">
+        當 <code>coinglassDerivatives.available = false</code> 時，以下欄位均為 <code>null</code>：<br>
+        <code>fundingRate</code>、<code>openInterest</code>、<code>longShortRatio</code>、<code>liquidation7d</code>、<code>etfFlow7d</code><br><br>
+        此時應 fallback 至 <code>cryptoSignalMetrics7d</code> 的新聞估算值：
+      </div>
+      <pre><code>cg = data.get("coinglassDerivatives", {})
+if cg.get("available"):
+    liq_7d = cg["liquidation7d"]["totalUsd"]     # 精確值
+    etf_7d = cg["etfFlow7d"]["netUsd"]           # 精確值
+else:
+    # fallback：新聞估算值
+    metrics = data.get("cryptoSignalMetrics7d", {})
+    liq_7d = metrics.get("liquidationTotalUsd")  # 估算值，可能偏低
+    etf_7d = metrics.get("etfNetFlowUsd")        # 可能為 0（無新聞量化）
+    source = metrics.get("liquidationSource")    # "news_latest_signal_validated"
+    print(f"Coinglass 不可用，使用估算值（{source}）")</code></pre>
+    </section>
+
+    <!-- ── Changelog ── -->
+    <section id="changelog">
+      <h2>Changelog</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>版本</th><th>日期</th><th>變更內容</th></tr></thead>
+          <tbody>
+            <tr><td>v1.1</td><td>2026-04-06</td><td>API 文檔上線；新增完整 Factor 對應表、錯誤格式說明、新鮮度驗證</td></tr>
+            <tr><td>v1.0</td><td>2026-04-03</td><td>jin10 快訊整合（/api/jin10、/api/jin10/history）；Composite Score 擴充至 19 因子</td></tr>
+            <tr><td>v0.9</td><td>2026-03-29</td><td>Coinglass Open API v4 接入（fundingRate、OI、longShortRatio、liquidation7d、etfFlow7d）</td></tr>
+            <tr><td>v0.8</td><td>2026-03-20</td><td>SQLite 持久化儲存；update-log 端點上線</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>欄位穩定性</h4>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>欄位</th><th>穩定性</th><th>說明</th></tr></thead>
+          <tbody>
+            <tr><td>compositeScore、marketOverview、ratesIntel、marketIntel</td><td>✅ 穩定</td><td>結構不會改變，安全用於建模</td></tr>
+            <tr><td>coinglassDerivatives（available=true 時）</td><td>✅ 穩定</td><td>Coinglass API 穩定，但 available 可能為 false</td></tr>
+            <tr><td>macroEvents、cryptoSignals、policySignals、globalRiskSignals</td><td>✅ 穩定</td><td>陣列結構固定，單筆欄位穩定</td></tr>
+            <tr><td>aiSummary.keyInsights</td><td>⚠️ 內容動態</td><td>結構固定（10筆陣列），但文字內容每次重新計算</td></tr>
+            <tr><td>cryptoSignalMetrics7d</td><td>⚠️ 精度有限</td><td>清算 / ETF 值為估算，僅作為備援</td></tr>
+            <tr><td>jin10 direction / confidence</td><td>⚠️ 規則型</td><td>規則型邏輯，準確率受限於關鍵字覆蓋</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════ ENDPOINTS ═══════ -->
+    <h2 style="margin-top:48px">API 端點</h2>
+
+    <!-- /dashboard -->
+    <section id="ep-dashboard">
+      <h3>GET /dashboard</h3>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="badge get">GET</span>
+          <span class="endpoint-path">/api/dashboard</span>
+          <span class="badge free">無需認證</span>
+        </div>
+        <p class="endpoint-desc">回傳完整 dashboard 快照，包含所有子欄位（macroEvents、cryptoSignals、ratesIntel 等）。這是最主要的整合端點。</p>
+      </div>
+
+      <h4>回應範例（節錄）</h4>
+      <pre><code>{
+  "generatedAt": "2026-04-06T03:23:46.954Z",
+  "compositeScore": {
+    "score": -0.13,
+    "label": "中性",
+    "coverage": 19,
+    "total_factors": 19,
+    "coverage_pct": 100
+  },
+  "marketOverview": {
+    "shortTermTrend": "偏跌",
+    "midTermTrend": "震盪",
+    "longTermTrend": "偏跌",
+    "overallSummary": "短線偏跌；中線震盪；長線偏跌；外部風險中性；近期請優先關注 美國 CPI 公布"
+  },
+  "macroEvents": [ ... ],
+  "cryptoSignals": [ ... ],
+  "ratesIntel": { ... },
+  "liquidityIntel": { ... },
+  "coinglassDerivatives": { ... },
+  "marketIntel": { ... },
+  "whaleTrend": { ... },
+  "policySignals": [ ... ],
+  "globalRiskSignals": [ ... ],
+  "aiSummary": { ... }
+}</code></pre>
+    </section>
+
+    <!-- /macro-events -->
+    <section id="ep-macro">
+      <h3>GET /macro-events</h3>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="badge get">GET</span>
+          <span class="endpoint-path">/api/macro-events</span>
+          <span class="badge free">無需認證</span>
+        </div>
+        <p class="endpoint-desc">回傳宏觀日程事件列表，支援篩選參數。</p>
+      </div>
+
+      <h4>Query 參數</h4>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>參數</th><th>類型</th><th>說明</th><th>範例</th></tr></thead>
+          <tbody>
+            <tr><td>country</td><td>string</td><td>篩選國家（US / JP）</td><td><code>?country=US</code></td></tr>
+            <tr><td>days</td><td>integer</td><td>前後 N 天範圍（以今天為中心）</td><td><code>?days=7</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>回應範例</h4>
+      <pre><code>{
+  "count": 12,
+  "events": [
+    {
+      "id": "us-cpi-20260410",
+      "country": "US",
+      "title": "美國 CPI 公布",
+      "eventType": "cpi",
+      "datetime": "2026-04-10T00:30:00.000Z",
+      "importance": "high",
+      "status": "upcoming",
+      "impactHint": "可能影響美元流動性與風險資產波動（含 BTC/ETH）。",
+      "result": null
+    }
+  ]
+}</code></pre>
+    </section>
+
+    <!-- /signals -->
+    <section id="ep-signals">
+      <h3>GET /signals</h3>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="badge get">GET</span>
+          <span class="endpoint-path">/api/signals</span>
+          <span class="badge free">無需認證</span>
+        </div>
+        <p class="endpoint-desc">回傳加密市場訊號列表（含清算、ETF、監管事件）。</p>
+      </div>
+
+      <h4>回應範例</h4>
+      <pre><code>{
+  "count": 12,
+  "signals": [
+    {
+      "id": "signal-2ff862165332bfd4",
+      "category": "risk",
+      "impact": "high",
+      "shortTermBias": "偏跌",
+      "keyChange": "市場出現大量清算（規模 $100 million）",
+      "zhTitle": "【槓桿/大戶風險】市場出現大量清算（規模 $100 million）",
+      "zhSummary": "...",
+      "cryptoImpact": "中短線風險升高：波動率可能擴大",
+      "cryptoAnalysis": "建議降低槓桿與倉位集中度...",
+      "time": "2026-04-06T00:22:56.000Z",
+      "source": "https://..."
+    }
+  ]
+}</code></pre>
+    </section>
+
+    <!-- /jin10 -->
+    <section id="ep-jin10">
+      <h3>GET /jin10</h3>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="badge get">GET</span>
+          <span class="endpoint-path">/api/jin10</span>
+          <span class="badge free">無需認證</span>
+        </div>
+        <p class="endpoint-desc">
+          即時 proxy 金十數據快訊，每次呼叫直接轉發上游 API。
+          篩選出加密/總經相關新聞，附帶方向評估與信心分數。
+          建議前端每 60 秒輪詢一次。
+        </p>
+      </div>
+
+      <h4>回應範例</h4>
+      <pre><code>{
+  "ok": true,
+  "fetchedAt": "2026-04-06T03:10:00.000Z",
+  "count": 8,
+  "items": [
+    {
+      "id": "3780450",
+      "published_at": "2026-04-06T02:41:26.000Z",
+      "content": "美联储洛根：支持美联储在最近的FOMC会议上维持利率不变。",
+      "link": "https://flash.jin10.com/detail/3780450",
+      "direction": "中性",
+      "confidence": 4,
+      "commentary": "消息面中性，等待更多數據確認方向。",
+      "is_important": 1
+    }
+  ]
+}</code></pre>
+    </section>
+
+    <!-- /jin10/history -->
+    <section id="ep-jin10-history">
+      <h3>GET /jin10/history</h3>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="badge get">GET</span>
+          <span class="endpoint-path">/api/jin10/history</span>
+          <span class="badge free">無需認證</span>
+        </div>
+        <p class="endpoint-desc">
+          從 SQLite 資料庫讀取金十快訊歷史記錄（永久留存，自 2026-04-02 起）。
+          每次主循環自動寫入，去重（by id）。
+        </p>
+      </div>
+
+      <h4>Query 參數</h4>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>參數</th><th>類型</th><th>預設</th><th>最大值</th></tr></thead>
+          <tbody>
+            <tr><td>limit</td><td>integer</td><td>100</td><td>500</td></tr>
+            <tr><td>offset</td><td>integer</td><td>0</td><td>—</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>回應範例</h4>
+      <pre><code>{
+  "ok": true,
+  "count": 100,
+  "items": [ /* 同 /jin10 item 結構，另含 saved_at 欄位 */ ]
+}</code></pre>
+    </section>
+
+    <!-- /health -->
+    <section id="ep-health">
+      <h3>GET /health</h3>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="badge get">GET</span>
+          <span class="endpoint-path">/api/health</span>
+          <span class="badge free">無需認證</span>
+        </div>
+        <p class="endpoint-desc">健康檢查端點，確認 server 是否在線。</p>
+      </div>
+      <pre><code>{ "status": "ok", "timestamp": "2026-04-06T03:10:00.000Z" }</code></pre>
+    </section>
+
+    <!-- /update-log -->
+    <section id="ep-update-log">
+      <h3>GET /update-log</h3>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="badge get">GET</span>
+          <span class="endpoint-path">/api/update-log</span>
+          <span class="badge free">無需認證</span>
+        </div>
+        <p class="endpoint-desc">最近 10 筆主循環執行記錄，可用來確認資料是否持續更新。</p>
+      </div>
+      <pre><code>{
+  "log": [
+    {
+      "id": 422,
+      "status": "success",
+      "collectors_ran": 11,
+      "error_message": null,
+      "created_at": "2026-04-06T03:23:47.000Z"
+    }
+  ]
+}</code></pre>
+    </section>
+
+    <!-- ═══════════════════════════════════ SCHEMAS ═══════ -->
+    <h2>資料結構詳解</h2>
+
+    <!-- compositeScore -->
+    <section id="schema-composite">
+      <h3>compositeScore — 綜合評分</h3>
+      <p>19 個因子加權計算，代表整體市場偏多/偏空程度。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>欄位</th><th>類型</th><th>說明</th></tr></thead>
+          <tbody>
+            <tr><td>score</td><td>float</td><td>-1.0 到 +1.0。正值偏多，負值偏空，|score| &lt; 0.15 為中性</td></tr>
+            <tr><td>label</td><td>string</td><td>"偏多" / "中性" / "偏空"</td></tr>
+            <tr><td>coverage</td><td>int</td><td>有效因子數量</td></tr>
+            <tr><td>total_factors</td><td>int</td><td>總因子數量（目前 19）</td></tr>
+            <tr><td>coverage_pct</td><td>float</td><td>資料覆蓋率 %（coverage / total_factors × 100）</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- marketOverview -->
+    <section id="schema-market">
+      <h3>marketOverview — 市場總覽</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>欄位</th><th>類型</th><th>說明</th></tr></thead>
+          <tbody>
+            <tr><td>shortTermTrend</td><td>string</td><td>"偏漲" / "震盪" / "偏跌"（未來 1-3 天）</td></tr>
+            <tr><td>midTermTrend</td><td>string</td><td>"偏漲" / "震盪" / "偏跌"（未來 1-4 週）</td></tr>
+            <tr><td>longTermTrend</td><td>string</td><td>"偏漲" / "震盪" / "偏跌"（月線以上）</td></tr>
+            <tr><td>shortTermCondition</td><td>string</td><td>短線趨勢成立的前提條件</td></tr>
+            <tr><td>upcomingHigh</td><td>int</td><td>未來 365 天高影響宏觀事件數</td></tr>
+            <tr><td>nextHighImpact</td><td>object</td><td>最近一個高影響事件（見 macroEvent 結構）</td></tr>
+            <tr><td>externalRiskBias</td><td>string</td><td>外部風險整體方向（中文說明）</td></tr>
+            <tr><td>overallSummary</td><td>string</td><td>一句話總結，可直接顯示或用於 prompt</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ratesIntel -->
+    <section id="schema-rates">
+      <h3>ratesIntel — 美債殖利率</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>欄位</th><th>類型</th><th>說明</th></tr></thead>
+          <tbody>
+            <tr><td>latest.date</td><td>string</td><td>資料日期（FRED 更新日，交易日）</td></tr>
+            <tr><td>latest.y3m</td><td>float</td><td>3 個月美債殖利率（%）</td></tr>
+            <tr><td>latest.y2y</td><td>float</td><td>2 年美債殖利率（%）</td></tr>
+            <tr><td>latest.y10y</td><td>float</td><td>10 年美債殖利率（%）</td></tr>
+            <tr><td>latest.spread10y2y</td><td>float</td><td>10Y - 2Y 利差（負值 = 殖利率倒掛，衰退訊號）</td></tr>
+            <tr><td>latest.spread10y3m</td><td>float</td><td>10Y - 3M 利差</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- liquidityIntel -->
+    <section id="schema-liquidity">
+      <h3>liquidityIntel — 鏈上流動性</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>欄位</th><th>類型</th><th>說明</th></tr></thead>
+          <tbody>
+            <tr><td>stablecoins.totalMcapUsd</td><td>float</td><td>全球穩定幣總市值（USD）</td></tr>
+            <tr><td>stablecoins.change7dPct</td><td>float | null</td><td>7 日變化 %</td></tr>
+            <tr><td>defi.totalTvlUsd</td><td>float</td><td>DeFi 全鏈 TVL（USD）</td></tr>
+            <tr><td>defi.change7dPct</td><td>float | null</td><td>7 日變化 %</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- coinglassDerivatives -->
+    <section id="schema-derivatives">
+      <h3>coinglassDerivatives — 衍生品市場結構</h3>
+      <p>來自 Coinglass Open API v4，每 30 分鐘更新。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>欄位</th><th>類型</th><th>說明</th></tr></thead>
+          <tbody>
+            <tr><td>available</td><td>bool</td><td>是否成功取得資料</td></tr>
+            <tr><td>fundingRate.rate8h</td><td>float</td><td>BTC 8 小時資金費率（%）</td></tr>
+            <tr><td>fundingRate.annualizedPct</td><td>float</td><td>年化資金費率（%）</td></tr>
+            <tr><td>fundingRate.direction</td><td>string</td><td>"bullish" / "bearish" / "neutral"</td></tr>
+            <tr><td>openInterest.totalUsd</td><td>float</td><td>全交易所 BTC 未平倉量（USD）</td></tr>
+            <tr><td>openInterest.change4hPct</td><td>float</td><td>4 小時變化 %</td></tr>
+            <tr><td>openInterest.direction</td><td>string</td><td>"expanding" / "stable" / "contracting"</td></tr>
+            <tr><td>longShortRatio.longPct</td><td>float</td><td>多頭佔比（0-1）</td></tr>
+            <tr><td>longShortRatio.shortPct</td><td>float</td><td>空頭佔比（0-1）</td></tr>
+            <tr><td>longShortRatio.lsRatio</td><td>float</td><td>多空比值（> 1 = 多頭主導）</td></tr>
+            <tr><td>liquidation7d.totalUsd</td><td>float</td><td>7 日總清算量（USD）</td></tr>
+            <tr><td>liquidation7d.longUsd</td><td>float</td><td>7 日多頭清算量（USD）</td></tr>
+            <tr><td>liquidation7d.shortUsd</td><td>float</td><td>7 日空頭清算量（USD）</td></tr>
+            <tr><td>etfFlow7d.netUsd</td><td>float</td><td>7 日 BTC ETF 淨資金流入（USD，負值 = 淨流出）</td></tr>
+            <tr><td>etfFlow7d.latestDate</td><td>string</td><td>最新一筆 ETF 資料日期（YYYY-MM-DD）</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- marketIntel -->
+    <section id="schema-sentiment">
+      <h3>marketIntel — 市場情緒</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>欄位</th><th>類型</th><th>說明</th></tr></thead>
+          <tbody>
+            <tr><td>sentiment.fearGreedValue</td><td>int</td><td>恐慌貪婪指數 0-100（0 = 極度恐慌，100 = 極度貪婪）</td></tr>
+            <tr><td>sentiment.fearGreedClassification</td><td>string</td><td>Extreme Fear / Fear / Neutral / Greed / Extreme Greed</td></tr>
+            <tr><td>sentiment.timestamp</td><td>string</td><td>ISO 8601</td></tr>
+            <tr><td>global.totalMarketCapUsd</td><td>float</td><td>加密市場總市值（USD，不含幣價卡片）</td></tr>
+            <tr><td>global.btcDominancePct</td><td>float</td><td>BTC 市佔率 %</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- macroEvents -->
+    <section id="schema-macro">
+      <h3>macroEvents — 宏觀事件</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>欄位</th><th>類型</th><th>說明</th></tr></thead>
+          <tbody>
+            <tr><td>id</td><td>string</td><td>唯一識別符（如 us-cpi-20260410）</td></tr>
+            <tr><td>title</td><td>string</td><td>事件名稱（如 "美國 CPI 公布"）</td></tr>
+            <tr><td>country</td><td>string</td><td>"US" / "JP"</td></tr>
+            <tr><td>eventType</td><td>string</td><td>cpi / nfp / ppi / central-bank</td></tr>
+            <tr><td>datetime</td><td>string</td><td>ISO 8601 UTC</td></tr>
+            <tr><td>importance</td><td>string</td><td>"high" / "medium" / "low"</td></tr>
+            <tr><td>status</td><td>string</td><td>"upcoming" / "recent"</td></tr>
+            <tr><td>impactHint</td><td>string</td><td>對 BTC/ETH 市場的潛在影響說明</td></tr>
+            <tr><td>result</td><td>object | null</td><td>已公布事件的結果（upcoming 時為 null）</td></tr>
+            <tr><td>result.actual</td><td>string</td><td>公布數值（含單位，如 "+200K"）</td></tr>
+            <tr><td>result.shortTermBias</td><td>string</td><td>"偏漲" / "震盪" / "偏跌"</td></tr>
+            <tr><td>result.cryptoImpact</td><td>string</td><td>對 BTC/ETH 影響的中文說明</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- cryptoSignals -->
+    <section id="schema-signals">
+      <h3>cryptoSignals — 加密市場訊號</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>欄位</th><th>類型</th><th>說明</th></tr></thead>
+          <tbody>
+            <tr><td>id</td><td>string</td><td>唯一識別符</td></tr>
+            <tr><td>category</td><td>string</td><td>etf / liquidation / whale / regulation / risk / macro</td></tr>
+            <tr><td>impact</td><td>string</td><td>"high" / "medium" / "low"</td></tr>
+            <tr><td>shortTermBias</td><td>string</td><td>"偏漲" / "震盪" / "偏跌"</td></tr>
+            <tr><td>keyChange</td><td>string</td><td>核心事件描述（中文）</td></tr>
+            <tr><td>zhTitle</td><td>string</td><td>中文標題（含分類標籤）</td></tr>
+            <tr><td>cryptoImpact</td><td>string</td><td>對幣市的直接影響</td></tr>
+            <tr><td>cryptoAnalysis</td><td>string</td><td>操作建議（中文）</td></tr>
+            <tr><td>time</td><td>string</td><td>ISO 8601 UTC</td></tr>
+            <tr><td>priorityScore</td><td>int</td><td>訊號重要性分數（0-100），越高越優先顯示</td></tr>
+            <tr><td>mergedCount</td><td>int</td><td>已合併的同類新聞數量（≥ 2 代表多來源佐證）</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- whaleTrend -->
+    <section id="schema-whale">
+      <h3>whaleTrend — 巨鯨走向</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>欄位</th><th>類型</th><th>說明</th></tr></thead>
+          <tbody>
+            <tr><td>trend</td><td>string</td><td>"偏多" / "中性" / "偏空"</td></tr>
+            <tr><td>bull</td><td>int</td><td>偏多訊號數量</td></tr>
+            <tr><td>bear</td><td>int</td><td>偏空訊號數量</td></tr>
+            <tr><td>neutral</td><td>int</td><td>中性訊號數量</td></tr>
+            <tr><td>details[].actor</td><td>string</td><td>行為主體（機構名稱 or "未知主體"）</td></tr>
+            <tr><td>details[].action</td><td>string</td><td>具體行為描述</td></tr>
+            <tr><td>details[].bias</td><td>string</td><td>"偏漲" / "震盪" / "偏跌"</td></tr>
+            <tr><td>details[].time</td><td>string</td><td>ISO 8601 UTC</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- policySignals -->
+    <section id="schema-policy">
+      <h3>policySignals — 政策/監管訊號</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>欄位</th><th>類型</th><th>說明</th></tr></thead>
+          <tbody>
+            <tr><td>id</td><td>string</td><td>唯一識別符</td></tr>
+            <tr><td>sourceName</td><td>string</td><td>來源機構（Federal Reserve / SEC / CFTC / White House / Treasury）</td></tr>
+            <tr><td>category</td><td>string</td><td>"macro" / "crypto" / "policy"</td></tr>
+            <tr><td>impact</td><td>string</td><td>"high" / "medium" / "low"</td></tr>
+            <tr><td>shortTermBias</td><td>string</td><td>"偏漲" / "震盪" / "偏跌"</td></tr>
+            <tr><td>keyChange</td><td>string</td><td>事件核心描述</td></tr>
+            <tr><td>cryptoImpact</td><td>string</td><td>對加密市場的傳導說明</td></tr>
+            <tr><td>time</td><td>string</td><td>ISO 8601 UTC</td></tr>
+            <tr><td>source</td><td>string</td><td>原始文章 URL</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- globalRiskSignals -->
+    <section id="schema-risk">
+      <h3>globalRiskSignals — 外部風險訊號</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>欄位</th><th>類型</th><th>說明</th></tr></thead>
+          <tbody>
+            <tr><td>id</td><td>string</td><td>唯一識別符</td></tr>
+            <tr><td>title</td><td>string</td><td>事件標題（含分類標籤）</td></tr>
+            <tr><td>keyChange</td><td>string</td><td>核心變化描述（中文）</td></tr>
+            <tr><td>shortTermBias</td><td>string</td><td>"偏漲" / "震盪" / "偏跌"</td></tr>
+            <tr><td>cryptoImpact</td><td>string</td><td>對加密市場影響</td></tr>
+            <tr><td>mergedCount</td><td>int</td><td>已合併同類來源數</td></tr>
+            <tr><td>priorityScore</td><td>int</td><td>0-100</td></tr>
+            <tr><td>latestTime</td><td>string</td><td>最新一筆來源時間（ISO 8601 UTC）</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- jin10 Item -->
+    <section id="schema-jin10">
+      <h3>jin10 Item — 金十快訊</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>欄位</th><th>類型</th><th>說明</th></tr></thead>
+          <tbody>
+            <tr><td>id</td><td>string</td><td>金十原始 ID（唯一）</td></tr>
+            <tr><td>published_at</td><td>string</td><td>ISO 8601 UTC（原為 CST UTC+8 自動轉換）</td></tr>
+            <tr><td>content</td><td>string</td><td>快訊內容（中文，簡繁混合）</td></tr>
+            <tr><td>link</td><td>string</td><td>金十原文連結</td></tr>
+            <tr><td>direction</td><td>string</td><td>"做多" / "做空" / "中性"</td></tr>
+            <tr><td>confidence</td><td>int</td><td>信心分數 1-5（5 = 最高，基於重要性 + 核心關鍵字）</td></tr>
+            <tr><td>commentary</td><td>string</td><td>規則型點評（中文，說明對加密市場的影響邏輯）</td></tr>
+            <tr><td>is_important</td><td>int</td><td>0 / 1（金十標記為重要快訊）</td></tr>
+            <tr><td>saved_at</td><td>string</td><td>寫入資料庫時間（僅 /jin10/history 回傳）</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>direction 判斷邏輯</h4>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>direction</th><th>觸發關鍵字（節錄）</th></tr></thead>
+          <tbody>
+            <tr><td>做多</td><td>rate cut、降息、easing、inflow、approval、批准、流入</td></tr>
+            <tr><td>做空</td><td>rate hike、加息、ban、裁定、liquidation、清算、outflow、tariff、戰爭、制裁</td></tr>
+            <tr><td>中性</td><td>上述均未命中，或多空關鍵字同時出現（保守偏空）</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- cryptoSignalMetrics7d -->
+    <section id="schema-metrics">
+      <h3>cryptoSignalMetrics7d — 新聞估算指標</h3>
+      <p>從新聞訊號中解析的量化估算值，作為 Coinglass 不可用時的備援。精度有限，使用前請確認 <code>liquidationSource</code>。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>欄位</th><th>類型</th><th>說明</th></tr></thead>
+          <tbody>
+            <tr><td>windowDays</td><td>int</td><td>統計窗口（固定 7 天）</td></tr>
+            <tr><td>etfNetFlowUsd</td><td>float</td><td>7 日 ETF 淨流量估算（USD）；0 代表無可解析新聞</td></tr>
+            <tr><td>etfCountWithAmount</td><td>int</td><td>包含金額的 ETF 新聞數量（= 0 時 etfNetFlowUsd 不可信）</td></tr>
+            <tr><td>liquidationTotalUsd</td><td>float</td><td>清算總量估算（USD）；來源見 liquidationSource</td></tr>
+            <tr><td>liquidationCountWithAmount</td><td>int</td><td>包含金額的清算新聞數量</td></tr>
+            <tr><td>liquidationSource</td><td>string</td><td><code>coinalyze</code>（精確）或 <code>news_latest_signal_validated</code>（估算）</td></tr>
+            <tr><td>liquidationWindowHours</td><td>int</td><td>清算估算的時間窗口（小時）</td></tr>
+            <tr><td>latestNewsLiquidation.usd</td><td>float</td><td>最新一筆清算新聞中解析出的金額</td></tr>
+            <tr><td>latestNewsLiquidation.time</td><td>string</td><td>該新聞的發布時間（ISO 8601 UTC）</td></tr>
+            <tr><td>latestNewsLiquidation.title</td><td>string</td><td>來源新聞標題（英文）</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="notice warn">
+        <strong>重要：</strong>當 <code>coinglassDerivatives.available = true</code> 時，
+        請優先使用 <code>coinglassDerivatives.liquidation7d</code>（交易所硬數據）。
+        <code>cryptoSignalMetrics7d</code> 僅為 fallback，單筆新聞估算誤差可能 ±50% 以上。
+      </div>
+    </section>
+
+    <!-- aiSummary -->
+    <section id="schema-ai">
+      <h3>aiSummary — 交易員摘要</h3>
+      <p>規則型邏輯自動生成（非 LLM），每次主循環更新。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>欄位</th><th>類型</th><th>說明</th></tr></thead>
+          <tbody>
+            <tr><td>keyInsights</td><td>string[]</td><td>10 個段落，固定標籤順序（見下表）</td></tr>
+            <tr><td>aiMeta.mode</td><td>string</td><td>"rule_based"（規則型）</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h4>10 段落固定標籤</h4>
+      <pre><code>keyInsights[0]  → 【政治/政策】
+keyInsights[1]  → 【央行/利率】
+keyInsights[2]  → 【美/日政策】
+keyInsights[3]  → 【機構資金流】
+keyInsights[4]  → 【巨鯨/鏈上】
+keyInsights[5]  → 【散戶/槓桿】
+keyInsights[6]  → 【市場結構】
+keyInsights[7]  → 【催化/節奏】
+keyInsights[8]  → 【觀察指標】
+keyInsights[9]  → 【失效條件】</code></pre>
+    </section>
+
+    <!-- ═══════════════════════════════════ INTEGRATION ═══════ -->
+    <h2>整合指南</h2>
+
+    <!-- Example -->
+    <section id="integration-example">
+      <h3>整合範例（Python）</h3>
+      <pre><code>import requests, json
+
+# 方法 A：本機 API（最即時）
+resp = requests.get("http://localhost:3000/api/dashboard", timeout=10)
+data = resp.json()
+
+# 方法 B：Upstash 直讀（跨網路，延遲 ≤ 5 分鐘）
+UPSTASH_URL = "https://sensible-grouper-89071.upstash.io"
+TOKEN = "gQAAAAAAAVvvAAIncDE4ZjIwMzAwMmMxNTI0N2UxYjk1ZGJkNDc2MTE4YzA4ZXAxODkwNzE"
+
+resp = requests.get(
+    f"{UPSTASH_URL}/get/crypto_dashboard:latest",
+    headers={"Authorization": f"Bearer {TOKEN}"},
+    timeout=10
+)
+raw = resp.json()
+data = json.loads(raw["result"])
+
+# 取出關鍵 factor
+composite   = data["compositeScore"]["score"]          # float, -1 to +1
+short_trend = data["marketOverview"]["shortTermTrend"]  # "偏漲"/"震盪"/"偏跌"
+fear_greed  = data["marketIntel"]["sentiment"]["fearGreedValue"]   # 0-100
+y10         = data["ratesIntel"]["latest"]["y10y"]      # float %
+tvl         = data["liquidityIntel"]["defi"]["totalTvlUsd"]        # float USD
+funding     = data["coinglassDerivatives"]["fundingRate"]["rate8h"] # float %
+liq_7d      = data["coinglassDerivatives"]["liquidation7d"]["totalUsd"]  # float USD
+etf_7d      = data["coinglassDerivatives"]["etfFlow7d"]["netUsd"]  # float USD
+
+print(f"Composite: {composite:.3f} ({data['compositeScore']['label']})")
+print(f"Short: {short_trend} | Fear&Greed: {fear_greed} | Funding: {funding:.4f}%")</code></pre>
+    </section>
+
+    <!-- Polling Example -->
+    <section id="polling-example">
+      <h3>完整輪詢範例（Python — 含新鮮度偵測）</h3>
+      <p>每 5 分鐘拉取一次，僅在資料實際更新（<code>generatedAt</code> 改變）時才處理，避免重複計算。</p>
+      <pre><code>import requests, json, time
+from datetime import datetime, timezone, timedelta
+
+UPSTASH_URL = "https://sensible-grouper-89071.upstash.io"
+TOKEN = "gQAAAAAAAVvvAAIncDE4ZjIwMzAwMmMxNTI0N2UxYjk1ZGJkNDc2MTE4YzA4ZXAxODkwNzE"
+LOCAL_API  = "http://localhost:3000/api"
+POLL_SEC   = 300   # 5 分鐘
+STALE_MIN  = 15    # 超過 15 分鐘視為過期
+
+last_generated_at = None
+
+def fetch_dashboard():
+    """嘗試本機 API，失敗 fallback Upstash"""
+    try:
+        r = requests.get(f"{LOCAL_API}/dashboard", timeout=8)
+        r.raise_for_status()
+        return r.json()
+    except Exception:
+        pass
+    try:
+        r = requests.get(
+            f"{UPSTASH_URL}/get/crypto_dashboard:latest",
+            headers={"Authorization": f"Bearer {TOKEN}"}, timeout=10
+        )
+        raw = r.json()
+        return json.loads(raw["result"])
+    except Exception as e:
+        print(f"[ERROR] 無法取得資料：{e}")
+        return None
+
+def is_fresh(data):
+    ts_str = data.get("generatedAt", "")
+    if not ts_str:
+        return False
+    ts = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+    return (datetime.now(timezone.utc) - ts) < timedelta(minutes=STALE_MIN)
+
+def extract_factors(data):
+    cg = data.get("coinglassDerivatives", {})
+    metrics = data.get("cryptoSignalMetrics7d", {})
+
+    # 衍生品：優先 Coinglass，fallback 新聞估算
+    if cg.get("available"):
+        liq_7d  = cg["liquidation7d"]["totalUsd"]
+        etf_7d  = cg["etfFlow7d"]["netUsd"]
+        funding = cg["fundingRate"]["rate8h"]
+        oi_usd  = cg["openInterest"]["totalUsd"]
+        ls_ratio= cg["longShortRatio"]["lsRatio"]
+    else:
+        liq_7d  = metrics.get("liquidationTotalUsd") or 0
+        etf_7d  = metrics.get("etfNetFlowUsd") or 0
+        funding = None   # 無備援
+        oi_usd  = None
+        ls_ratio= None
+
+    return {
+        "generated_at"     : data.get("generatedAt"),
+        "composite_score"  : data["compositeScore"]["score"],
+        "composite_label"  : data["compositeScore"]["label"],
+        "short_trend"      : data["marketOverview"]["shortTermTrend"],
+        "fear_greed"       : data["marketIntel"]["sentiment"]["fearGreedValue"],
+        "yield_10y"        : data["ratesIntel"]["latest"]["y10y"],
+        "yield_spread"     : data["ratesIntel"]["latest"]["spread10y2y"],
+        "stablecoin_mcap"  : data["liquidityIntel"]["stablecoins"]["totalMcapUsd"],
+        "defi_tvl"         : data["liquidityIntel"]["defi"]["totalTvlUsd"],
+        "whale_trend"      : data["whaleTrend"]["trend"],
+        "high_risk_signals": data["marketOverview"]["highRiskSignals"],
+        "funding_rate_8h"  : funding,
+        "open_interest_usd": oi_usd,
+        "long_short_ratio" : ls_ratio,
+        "liquidation_7d"   : liq_7d,
+        "etf_flow_7d"      : etf_7d,
+        "cg_available"     : cg.get("available", False),
+    }
+
+def on_new_data(factors):
+    """資料更新時的處理邏輯（接入 GeckoQuant 的地方）"""
+    print(f"[{factors['generated_at']}] "
+          f"composite={factors['composite_score']:.3f}({factors['composite_label']}) "
+          f"short={factors['short_trend']} "
+          f"F&G={factors['fear_greed']} "
+          f"funding={factors['funding_rate_8h']}")
+    # TODO: 傳入 GeckoQuant factor pipeline
+
+# ── 主輪詢迴圈 ──
+while True:
+    data = fetch_dashboard()
+    if data:
+        if not is_fresh(data):
+            print(f"⚠️ 資料過期（generatedAt={data.get('generatedAt')}），跳過本輪")
+        elif data.get("generatedAt") != last_generated_at:
+            last_generated_at = data["generatedAt"]
+            factors = extract_factors(data)
+            on_new_data(factors)
+        else:
+            print("資料未更新，跳過")
+    time.sleep(POLL_SEC)</code></pre>
+    </section>
+
+    <!-- Upstash jin10 直讀 -->
+    <section id="upstash-jin10">
+      <h3>Upstash jin10 直讀（Redis List）</h3>
+      <p>
+        jin10 歷史存放於 Upstash 的 <strong>Redis List</strong>（<code>jin10:history</code>），
+        讀法與 dashboard（Redis String）不同，需使用 <code>lrange</code> 指令。
+      </p>
+
+      <h4>讀取最新 50 筆快訊</h4>
+      <pre><code>GET https://sensible-grouper-89071.upstash.io/lrange/jin10%3Ahistory/0/49
+Authorization: Bearer gQAAAAAAAVvvAAIncDE4ZjIwMzAwMmMxNTI0N2UxYjk1ZGJkNDc2MTE4YzA4ZXAxODkwNzE</code></pre>
+
+      <h4>回應格式</h4>
+      <pre><code>{
+  "result": [
+    "{\"id\":\"3780450\",\"published_at\":\"2026-04-06T02:41:26.000Z\",\"content\":\"...\",\"direction\":\"中性\",\"confidence\":4,...}",
+    "{\"id\":\"3780389\", ...}",
+    ...
+  ]
+}</code></pre>
+      <div class="notice warn">
+        <code>result</code> 陣列中每個元素是 <strong>JSON 字串</strong>（需再次 <code>JSON.parse</code>）。
+        List 最多保留 200 筆，按加入時間由新到舊排列（index 0 = 最新）。
+      </div>
+
+      <h4>Python 範例</h4>
+      <pre><code>import requests, json
+
+UPSTASH_URL = "https://sensible-grouper-89071.upstash.io"
+TOKEN = "gQAAAAAAAVvvAAIncDE4ZjIwMzAwMmMxNTI0N2UxYjk1ZGJkNDc2MTE4YzA4ZXAxODkwNzE"
+
+r = requests.get(
+    f"{UPSTASH_URL}/lrange/jin10%3Ahistory/0/49",
+    headers={"Authorization": f"Bearer {TOKEN}"}, timeout=10
+)
+raw_list = r.json()["result"]
+items = [json.loads(x) for x in raw_list]
+
+# 計算最近 50 筆方向分布
+bull    = sum(1 for i in items if i["direction"] == "做多")
+bear    = sum(1 for i in items if i["direction"] == "做空")
+neutral = sum(1 for i in items if i["direction"] == "中性")
+bias    = (bull - bear) / max(len(items), 1)  # 正值偏多，負值偏空
+
+print(f"jin10 sentiment: 做多={bull} 做空={bear} 中性={neutral} bias={bias:.2f}")</code></pre>
+    </section>
+
+    <!-- Factor Mapping -->
+    <section id="factor-mapping">
+      <h3>Factor 對應表</h3>
+      <p>以下為推薦的程式交易 factor 欄位對應，涵蓋 gate / feature / signal 三種用途：</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Factor 名稱</th><th>JSON 路徑</th><th>類型</th><th>閾值 / 參考值</th><th>用途</th></tr></thead>
+          <tbody>
+            <tr><td>composite_score</td><td>compositeScore.score</td><td>float [-1,1]</td><td>&gt;0.2 偏多；&lt;-0.2 偏空；±0.15 以內中性</td><td>Gate：總體入場過濾</td></tr>
+            <tr><td>short_trend</td><td>marketOverview.shortTermTrend</td><td>enum</td><td>"偏漲" / "震盪" / "偏跌"</td><td>Gate：短線方向</td></tr>
+            <tr><td>fear_greed</td><td>marketIntel.sentiment.fearGreedValue</td><td>int [0,100]</td><td>≤20 極度恐慌（反轉機會）；≥80 極度貪婪（過熱風險）</td><td>Feature：情緒極值反轉</td></tr>
+            <tr><td>funding_rate_8h</td><td>coinglassDerivatives.fundingRate.rate8h</td><td>float %</td><td>&gt;0.01% 多頭過熱；&lt;-0.005% 空頭過熱；正常範圍 0.005%–0.01%</td><td>Feature：空頭/多頭成本</td></tr>
+            <tr><td>funding_direction</td><td>coinglassDerivatives.fundingRate.direction</td><td>enum</td><td>"bullish" / "bearish" / "neutral"</td><td>Feature：資金費率方向</td></tr>
+            <tr><td>open_interest_usd</td><td>coinglassDerivatives.openInterest.totalUsd</td><td>float USD</td><td>BTC 全市場 OI 通常 $30B–$70B；突破歷史高位需警惕清算風險</td><td>Feature：市場槓桿規模</td></tr>
+            <tr><td>oi_change_4h</td><td>coinglassDerivatives.openInterest.change4hPct</td><td>float %</td><td>&gt;+3% 快速加槓桿；&lt;-3% 大量去槓桿</td><td>Feature：OI 動能</td></tr>
+            <tr><td>long_short_ratio</td><td>coinglassDerivatives.longShortRatio.lsRatio</td><td>float</td><td>&gt;1.2 多頭主導；&lt;0.9 空頭主導；正常 0.95–1.1</td><td>Feature：多空比</td></tr>
+            <tr><td>liquidation_7d_usd</td><td>coinglassDerivatives.liquidation7d.totalUsd</td><td>float USD</td><td>&gt;$500M/7d 清算壓力高；&gt;$1B/7d 需高度警惕</td><td>Feature：清算壓力</td></tr>
+            <tr><td>liq_long_bias</td><td>liquidation7d.longUsd / totalUsd</td><td>float [0,1]</td><td>&gt;0.6 多頭被清算主導（短線偏空）；&lt;0.4 空頭被清算主導（短線偏多）</td><td>Feature：清算方向偏倚</td></tr>
+            <tr><td>etf_flow_7d</td><td>coinglassDerivatives.etfFlow7d.netUsd</td><td>float USD</td><td>&gt;+$200M/7d 機構淨流入；&lt;-$200M/7d 機構撤出</td><td>Feature：機構資金動向</td></tr>
+            <tr><td>yield_10y</td><td>ratesIntel.latest.y10y</td><td>float %</td><td>&gt;4.5% 高利率環境壓制風險資產；&lt;3.5% 寬鬆有利</td><td>Feature：無風險利率</td></tr>
+            <tr><td>yield_spread</td><td>ratesIntel.latest.spread10y2y</td><td>float %</td><td>&lt;0（倒掛）= 衰退訊號；&gt;0.5 曲線正常化</td><td>Feature：殖利率曲線形態</td></tr>
+            <tr><td>stablecoin_mcap</td><td>liquidityIntel.stablecoins.totalMcapUsd</td><td>float USD</td><td>&gt;$150B 流動性充裕；7D 增長 &gt;+2% 代表資金進場準備</td><td>Feature：鏈上乾火藥</td></tr>
+            <tr><td>defi_tvl</td><td>liquidityIntel.defi.totalTvlUsd</td><td>float USD</td><td>&gt;$80B 鏈上活躍；7D 下跌 &gt;5% 代表資金外流</td><td>Feature：DeFi 活躍度</td></tr>
+            <tr><td>whale_trend</td><td>whaleTrend.trend</td><td>enum</td><td>"偏多" / "中性" / "偏空"</td><td>Signal：大戶方向</td></tr>
+            <tr><td>whale_bear_ratio</td><td>whaleTrend.bear / whaleTrend.count</td><td>float [0,1]</td><td>&gt;0.6 大戶明顯偏空；&lt;0.3 大戶偏多</td><td>Signal：大戶偏空強度</td></tr>
+            <tr><td>high_risk_count</td><td>marketOverview.highRiskSignals</td><td>int</td><td>≥3 建議縮小倉位或暫停入場</td><td>Gate：外部風險過濾</td></tr>
+            <tr><td>upcoming_high_events</td><td>marketOverview.upcomingHigh</td><td>int</td><td>CPI/FOMC 前 24h 視為高風險窗口，建議降槓桿</td><td>Gate：事件風險窗口</td></tr>
+            <tr><td>jin10_direction_bias</td><td>/jin10/history → 統計最新 N 筆 direction</td><td>derived</td><td>(做多-做空)/N；&gt;+0.3 消息面偏多；&lt;-0.3 偏空</td><td>Signal：即時消息面偏向</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="notice tip">
+        <strong>推薦使用流程：</strong><br>
+        1. 每 5 分鐘拉取 <code>/api/dashboard</code><br>
+        2. 以 <code>compositeScore.score</code> 作為主 Gate（|score| &gt; 0.2 才考慮入場）<br>
+        3. 以 <code>coinglassDerivatives</code> 的 funding / OI / L/S ratio 作為 Feature<br>
+        4. 以 <code>marketOverview.shortTermTrend</code> + 近期高影響事件作為 Signal 過濾<br>
+        5. 以 <code>/api/jin10/history</code> 做消息面 sentiment 計分補充
+      </div>
+    </section>
+
+    <div style="margin-top:60px;padding-top:24px;border-top:1px solid var(--border);color:var(--muted);font-size:0.82em">
+      CryptoPulse API Docs v1.1 · 最後更新 2026-04-06 · 資料更新週期 5 分鐘
+    </div>
+
+  </main>
+</div>
+
+<script>
+  // Sidebar active link highlight on scroll
+  const sections = document.querySelectorAll("section[id]");
+  const navLinks = document.querySelectorAll(".sidebar nav a");
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        navLinks.forEach(a => a.classList.remove("active"));
+        const link = document.querySelector(`.sidebar nav a[href="#${e.target.id}"]`);
+        if (link) link.classList.add("active");
+      }
+    });
+  }, { rootMargin: "-30% 0px -60% 0px" });
+  sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>

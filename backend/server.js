@@ -17,6 +17,9 @@ if (dotenvResult.error) dotenv.config({ path: path.join(__dirname, "..", ".env")
 
 const PORT = process.env.PORT || 3000;
 const DOCS_PATH = path.resolve(__dirname, "..", "v1", "docs");
+const V2_PATH   = path.resolve(__dirname, "..", "v2");
+const V3_PATH   = path.resolve(__dirname, "..", "v3");
+const V4_PATH   = path.resolve(__dirname, "..", "v4", "docs");
 
 // Initialize database tables
 initializeDatabase();
@@ -31,9 +34,13 @@ app.use(express.json({ limit: "50mb" }));
 app.use("/api", apiRouter);
 app.use("/api/v2", v2Router);
 
-// Serve frontend static files at /
-// The v1/docs/ directory contains the existing frontend
+// V1 主前端
 app.use(express.static(DOCS_PATH));
+
+// V2 / V3 / V4 靜態頁面（各自從原本目錄提供）
+app.use("/v2", express.static(V2_PATH));
+app.use("/v3", express.static(V3_PATH));
+app.use("/v4", express.static(V4_PATH));
 
 // Catch-all: serve index.html for any unmatched route (SPA fallback)
 app.get("*", (_req, res) => {
