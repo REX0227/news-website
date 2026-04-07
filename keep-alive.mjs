@@ -97,7 +97,7 @@ async function runSlow() {
   const start = Date.now();
   console.log(`\n[${timestamp()}] ── 慢循環開始（V3 + V4 並行）──`);
   await Promise.all([
-    runScript('V3', 'python', ['database-side/sync_coinglass_to_upstash.py']),
+    runScript('V3', 'python3', ['database-side/sync_coinglass_to_upstash.py']),
     runScript('V4', 'node',   ['v4/scripts/collect-all.mjs']),
   ]);
   const elapsed = ((Date.now() - start) / 1000).toFixed(1);
