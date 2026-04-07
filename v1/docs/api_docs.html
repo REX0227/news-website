@@ -150,6 +150,15 @@
       <a href="#schema-ai">aiSummary</a>
       <a href="#schema-metrics">cryptoSignalMetrics7d</a>
 
+      <div class="nav-group">V2 交易系統 API</div>
+      <a href="#ep-v2-trade-signal">GET /v2/trade/signal</a>
+      <a href="#ep-v2-snapshot">GET /v2/snapshot</a>
+      <a href="#ep-v2-factors">GET /v2/factors</a>
+      <a href="#ep-v2-gates">GET /v2/gates</a>
+      <a href="#ep-v2-signals">GET /v2/signals</a>
+      <a href="#ep-v2-staleness">GET /v2/staleness</a>
+      <a href="#ep-v2-pipeline">GET /v2/pipeline/runs</a>
+
       <div class="nav-group">整合</div>
       <a href="#integration-example">整合範例（基本）</a>
       <a href="#polling-example">輪詢範例（完整）</a>
@@ -196,8 +205,9 @@
         <table>
           <thead><tr><th>環境</th><th>Base URL</th><th>說明</th></tr></thead>
           <tbody>
-            <tr><td>本機伺服器</td><td><code>http://localhost:3000/api</code></td><td>Express 後端，資料最即時（5 分鐘週期），需本機網路</td></tr>
-            <tr><td>Upstash Redis（公開讀取）</td><td><code>https://sensible-grouper-89071.upstash.io</code></td><td>靜態快照，最終一致性，適合跨網路存取（延遲 ≤ 5 分鐘）</td></tr>
+            <tr><td>GCP VM（正式環境）</td><td><code>http://34.70.39.177/api</code></td><td>Nginx 反向代理 → Express，推薦用於程式交易對接</td></tr>
+            <tr><td>本機伺服器（開發用）</td><td><code>http://localhost:3000/api</code></td><td>本地開發環境，需 VM SSH 或本機運行服務</td></tr>
+            <tr><td>Upstash Redis（備援）</td><td><code>https://sensible-grouper-89071.upstash.io</code></td><td>靜態快照，最終一致性，適合跨網路讀取（延遲 ≤ 5 分鐘）</td></tr>
           </tbody>
         </table>
       </div>
@@ -211,7 +221,7 @@ Authorization: Bearer gQAAAAAAAVvvAAIncDE4ZjIwMzAwMmMxNTI0N2UxYjk1ZGJkNDc2MTE4Yz
     <!-- ── Auth ── -->
     <section id="auth">
       <h2>認證</h2>
-      <p>本機 API（<code>localhost:3000</code>）目前不需要任何 API Key，直接 GET 即可。</p>
+      <p>GCP VM API（<code>http://34.70.39.177/api</code>）目前不需要任何 API Key，直接 GET 即可。</p>
       <p>Upstash 直讀需帶 <code>Authorization</code> header：</p>
       <pre><code>Authorization: Bearer gQAAAAAAAVvvAAIncDE4ZjIwMzAwMmMxNTI0N2UxYjk1ZGJkNDc2MTE4YzA4ZXAxODkwNzE</code></pre>
       <div class="notice tip">此 token 為唯讀權限，無法寫入或修改任何資料。</div>
@@ -232,7 +242,7 @@ Authorization: Bearer gQAAAAAAAVvvAAIncDE4ZjIwMzAwMmMxNTI0N2UxYjk1ZGJkNDc2MTE4Yz
           </tbody>
         </table>
       </div>
-      <div class="notice info">Upstash 直讀同樣無硬性限制，但 Upstash Free Tier 每日有請求配額，建議以本機 API 為主，Upstash 為備援。</div>
+      <div class="notice info">Upstash 直讀同樣無硬性限制，但 Upstash Free Tier 每日有請求配額，建議以 GCP VM API 為主，Upstash 為備援。</div>
     </section>
 
     <!-- ── Update Freq ── -->
@@ -252,7 +262,7 @@ Authorization: Bearer gQAAAAAAAVvvAAIncDE4ZjIwMzAwMmMxNTI0N2UxYjk1ZGJkNDc2MTE4Yz
             <tr><td>衍生品（coinglassDerivatives）</td><td>每 30 分鐘</td><td>Coinglass Open API v4</td></tr>
             <tr><td>恐慌貪婪指數（marketIntel）</td><td>每 5 分鐘</td><td>alternative.me / CoinGecko</td></tr>
             <tr><td>金十快訊（jin10）</td><td>即時 proxy / 每次主循環寫入 DB</td><td>flash-api.jin10.com</td></tr>
-            <tr><td>Composite Score</td><td>每 5 分鐘</td><td>19 因子規則型計算</td></tr>
+            <tr><td>Composite Score</td><td>每 5 分鐘</td><td>24 因子規則型計算</td></tr>
           </tbody>
         </table>
       </div>
@@ -270,7 +280,7 @@ Authorization: Bearer gQAAAAAAAVvvAAIncDE4ZjIwMzAwMmMxNTI0N2UxYjk1ZGJkNDc2MTE4Yz
         欄位 <code>etfCountWithAmount</code> = 0 代表當期無可量化資料。
       </div>
       <div class="notice info">
-        <strong>Composite Score</strong>：19 個因子加權平均，範圍 -1 到 +1。
+        <strong>Composite Score</strong>：24 個因子加權平均，範圍 -1 到 +1。
         負值偏空、正值偏多、絕對值 &lt; 0.15 視為中性。
         所有因子均為規則型邏輯計算，非 LLM 輸出。
       </div>
@@ -286,10 +296,11 @@ Authorization: Bearer gQAAAAAAAVvvAAIncDE4ZjIwMzAwMmMxNTI0N2UxYjk1ZGJkNDc2MTE4Yz
           <thead><tr><th>HTTP 狀態碼</th><th>發生情境</th><th>處理建議</th></tr></thead>
           <tbody>
             <tr><td>200 OK</td><td>正常回應</td><td>—</td></tr>
+            <tr><td>400 Bad Request</td><td>缺少必要 Query 參數或格式錯誤</td><td>確認 key / days 等參數正確</td></tr>
             <tr><td>404 Not Found</td><td>尚無資料（update-data.mjs 從未執行過）</td><td>等待首次資料更新，或確認 keep-alive 是否運行</td></tr>
-            <tr><td>400 Bad Request</td><td>POST /dashboard 傳入非 JSON body</td><td>確認 Content-Type: application/json</td></tr>
             <tr><td>500 Internal Server Error</td><td>SQLite 寫入失敗</td><td>查看 /api/update-log 確認最後一次更新狀態</td></tr>
             <tr><td>502 Bad Gateway</td><td>/api/jin10 上游 API 無回應或超時</td><td>等待下次輪詢，此為暫時性錯誤</td></tr>
+            <tr><td>503 Service Unavailable</td><td>V2 資料超過 8 小時未更新（stale）</td><td>回應 header 含 X-Data-Age-Hours，確認 keep-alive 是否運行</td></tr>
           </tbody>
         </table>
       </div>
@@ -400,6 +411,8 @@ else:
         <table>
           <thead><tr><th>版本</th><th>日期</th><th>變更內容</th></tr></thead>
           <tbody>
+            <tr><td>v1.3</td><td>2026-04-07</td><td>部署至 GCP VM（34.70.39.177）；新增完整 V2 交易系統 API 文檔（trade/signal、snapshot、factors、gates、staleness）；因子數更新為 24 個；503 錯誤碼說明</td></tr>
+            <tr><td>v1.2</td><td>2026-04-07</td><td>修正 trade/signal risk_level ReferenceError；修正 V3 python → python3；修正 V4 dotenv 缺失</td></tr>
             <tr><td>v1.1</td><td>2026-04-06</td><td>API 文檔上線；新增完整 Factor 對應表、錯誤格式說明、新鮮度驗證</td></tr>
             <tr><td>v1.0</td><td>2026-04-03</td><td>jin10 快訊整合（/api/jin10、/api/jin10/history）；Composite Score 擴充至 19 因子</td></tr>
             <tr><td>v0.9</td><td>2026-03-29</td><td>Coinglass Open API v4 接入（fundingRate、OI、longShortRatio、liquidation7d、etfFlow7d）</td></tr>
@@ -651,13 +664,315 @@ else:
 }</code></pre>
     </section>
 
+    <!-- ═══════════════════════════════════ V2 APIs ═══════ -->
+    <h2 style="margin-top:48px">V2 交易系統 API</h2>
+    <div class="notice info">
+      V2 API 專為程式交易系統設計，提供結構化的 factor vector、gate conditions 與統一進出場訊號。
+      所有 V2 端點均包含 <code>X-Data-Age-Hours</code> 回應 header，資料超過 8 小時自動回傳 503。
+    </div>
+
+    <!-- /v2/trade/signal -->
+    <section id="ep-v2-trade-signal">
+      <h3>GET /v2/trade/signal</h3>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="badge get">GET</span>
+          <span class="endpoint-path">/api/v2/trade/signal</span>
+          <span class="badge free">無需認證</span>
+        </div>
+        <p class="endpoint-desc">
+          整合 composite score、momentum、gate conditions，輸出統一進出場訊號。
+          <strong>這是程式交易系統最主要的對接端點。</strong>
+        </p>
+      </div>
+
+      <h4>回應欄位說明</h4>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>欄位</th><th>類型</th><th>說明</th></tr></thead>
+          <tbody>
+            <tr><td>signal.action</td><td>string</td><td><code>enter_long</code> / <code>enter_short</code> / <code>hold_long</code> / <code>hold_short</code> / <code>reduce</code> / <code>neutral</code> / <code>wait</code></td></tr>
+            <tr><td>signal.direction</td><td>string</td><td><code>long</code> / <code>long_weak</code> / <code>short</code> / <code>short_weak</code> / <code>neutral</code></td></tr>
+            <tr><td>signal.position_size_mult</td><td>float [0,1]</td><td>建議倉位乘數（0 = 不入場，1 = 滿倉）</td></tr>
+            <tr><td>composite.score</td><td>float [-1,1]</td><td>24 因子加權分數</td></tr>
+            <tr><td>composite.label</td><td>string</td><td>"偏多" / "中性" / "偏空"</td></tr>
+            <tr><td>composite.momentum</td><td>string</td><td>"rising" / "falling" / "flat"（最近 3 vs 前 3 筆均值比較）</td></tr>
+            <tr><td>composite.momentum_delta</td><td>float</td><td>動能數值（正=升溫，負=降溫）</td></tr>
+            <tr><td>composite.strength</td><td>float [0,1]</td><td>訊號強度（含覆蓋率加成）</td></tr>
+            <tr><td>gates.risk_level</td><td>string</td><td>"low" / "medium" / "high"（blocking 數量決定）</td></tr>
+            <tr><td>gates.blocking</td><td>string[]</td><td>當前封鎖入場的 gate 清單（空陣列 = 全通過）</td></tr>
+            <tr><td>gates.all_clear</td><td>bool</td><td>true = 無任何 gate 封鎖</td></tr>
+            <tr><td>gates.detail.*</td><td>mixed</td><td>各 gate 當前值（macro_favorable、liquidity_adequate、blackout_window 等）</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>action 決策邏輯</h4>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>action</th><th>觸發條件</th></tr></thead>
+          <tbody>
+            <tr><td>wait</td><td>event.blackout_window = true（高衝擊事件前），或 ≥3 個 gate 封鎖</td></tr>
+            <tr><td>reduce</td><td>risk.leverage_overextended = true（7D 清算 &gt; $700M）</td></tr>
+            <tr><td>enter_long</td><td>direction=long AND momentum ≠ falling</td></tr>
+            <tr><td>enter_short</td><td>direction=short AND momentum ≠ rising</td></tr>
+            <tr><td>hold_long</td><td>direction=long AND momentum=falling（不加碼）</td></tr>
+            <tr><td>hold_short</td><td>direction=short AND momentum=rising</td></tr>
+            <tr><td>neutral</td><td>composite score 在 ±0.15 以內</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>回應範例</h4>
+      <pre><code>{
+  "computed_at": "2026-04-07T04:07:40.082Z",
+  "age_hours": 0.01,
+  "signal": {
+    "action": "neutral",
+    "direction": "neutral",
+    "position_size_mult": 0.265
+  },
+  "composite": {
+    "score": -0.03,
+    "label": "中性",
+    "coverage_pct": 91.7,
+    "strength": 0.302,
+    "momentum": "flat",
+    "momentum_delta": -0.001
+  },
+  "gates": {
+    "risk_level": "medium",
+    "blocking": ["risk.regulatory_level:high"],
+    "all_clear": false,
+    "detail": {
+      "macro_favorable": true,
+      "liquidity_adequate": true,
+      "blackout_window": false,
+      "leverage_overextended": false,
+      "yield_curve_inverted": false,
+      "regulatory_level": "high"
+    }
+  }
+}</code></pre>
+
+      <h4>Python 快速對接範例</h4>
+      <pre><code>import requests
+
+resp = requests.get("http://34.70.39.177/api/v2/trade/signal", timeout=10)
+if resp.status_code == 503:
+    print("資料過期，跳過本輪")
+elif resp.status_code == 200:
+    d = resp.json()
+    action   = d["signal"]["action"]
+    size_mult= d["signal"]["position_size_mult"]
+    risk     = d["gates"]["risk_level"]
+    blocking = d["gates"]["blocking"]
+
+    print(f"action={action} size_mult={size_mult} risk={risk}")
+    if blocking:
+        print(f"封鎖中 gates: {blocking}")</code></pre>
+    </section>
+
+    <!-- /v2/snapshot -->
+    <section id="ep-v2-snapshot">
+      <h3>GET /v2/snapshot</h3>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="badge get">GET</span>
+          <span class="endpoint-path">/api/v2/snapshot</span>
+          <span class="badge free">無需認證</span>
+        </div>
+        <p class="endpoint-desc">一次取回完整 factor vector + gate conditions + staleness（詳細版，適合建模分析）。</p>
+      </div>
+      <h4>回應欄位（頂層）</h4>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>欄位</th><th>類型</th><th>說明</th></tr></thead>
+          <tbody>
+            <tr><td>computed_at</td><td>string</td><td>最新一次 pipeline 計算時間（ISO 8601 UTC）</td></tr>
+            <tr><td>age_hours</td><td>float</td><td>距今小時數（&gt; 8 會回傳 503）</td></tr>
+            <tr><td>composite_score</td><td>object</td><td>score / label / coverage_pct</td></tr>
+            <tr><td>factor_delta</td><td>object</td><td>各 factor 與上次執行相比的分數變化</td></tr>
+            <tr><td>factor_count</td><td>int</td><td>有效因子數量（目前 24）</td></tr>
+            <tr><td>gate_count</td><td>int</td><td>Gate 數量（目前 8）</td></tr>
+            <tr><td>factors</td><td>object</td><td>完整 factor map（key → {score, value, direction, confidence, ...}）</td></tr>
+            <tr><td>gates</td><td>object</td><td>完整 gate map（key → {value, reason, contributing_factors, ...}）</td></tr>
+            <tr><td>staleness</td><td>object</td><td>各 category 最後更新時間與是否過期（超過 6 小時標記 is_stale）</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- /v2/factors -->
+    <section id="ep-v2-factors">
+      <h3>GET /v2/factors &nbsp;·&nbsp; GET /v2/factors/history</h3>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="badge get">GET</span>
+          <span class="endpoint-path">/api/v2/factors</span>
+          <span class="badge free">無需認證</span>
+        </div>
+        <p class="endpoint-desc">最新一次 pipeline 的完整 24 個因子數值。</p>
+      </div>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="badge get">GET</span>
+          <span class="endpoint-path">/api/v2/factors/history?key=macro.yield_10y&amp;days=30</span>
+          <span class="badge free">無需認證</span>
+        </div>
+        <p class="endpoint-desc">指定單一 factor 的歷史時序（最多 365 天）。</p>
+      </div>
+      <h4>Factor Key 列表（24 個）</h4>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Factor Key</th><th>category</th><th>說明</th></tr></thead>
+          <tbody>
+            <tr><td>derivatives.btc_funding_rate</td><td>derivatives</td><td>BTC 資金費率</td></tr>
+            <tr><td>derivatives.btc_iv</td><td>derivatives</td><td>隱含波動率（Deribit ATM IV）</td></tr>
+            <tr><td>derivatives.btc_long_short_ratio</td><td>derivatives</td><td>多空比（Coinglass）</td></tr>
+            <tr><td>derivatives.btc_open_interest</td><td>derivatives</td><td>未平倉量</td></tr>
+            <tr><td>derivatives.btc_put_call_ratio</td><td>derivatives</td><td>Deribit Put/Call OI 比值</td></tr>
+            <tr><td>derivatives.btc_taker_cvd</td><td>derivatives</td><td>主動買賣方向（Coinglass Taker）</td></tr>
+            <tr><td>derivatives.liquidation_7d</td><td>derivatives</td><td>7D 清算量（USD）</td></tr>
+            <tr><td>event.high_impact_24h</td><td>event</td><td>未來 24h 高影響事件標誌</td></tr>
+            <tr><td>flows.etf_net_flow_7d</td><td>flows</td><td>BTC ETF 7D 淨資金流入</td></tr>
+            <tr><td>liquidity.defi_tvl</td><td>liquidity</td><td>DeFi TVL（USD）</td></tr>
+            <tr><td>liquidity.stablecoin_change_7d</td><td>liquidity</td><td>穩定幣市值 7D 變化</td></tr>
+            <tr><td>liquidity.stablecoin_mcap</td><td>liquidity</td><td>穩定幣總市值（USD）</td></tr>
+            <tr><td>macro.rate_cut_prob</td><td>macro</td><td>Fed 降息機率</td></tr>
+            <tr><td>macro.vix</td><td>macro</td><td>VIX 波動率指數</td></tr>
+            <tr><td>macro.dxy</td><td>macro</td><td>美元指數</td></tr>
+            <tr><td>macro.yield_10y</td><td>macro</td><td>10Y 美債殖利率</td></tr>
+            <tr><td>macro.yield_spread_2s10s</td><td>macro</td><td>2Y-10Y 利差</td></tr>
+            <tr><td>risk.geopolitical_bias</td><td>risk</td><td>地緣政治風險訊號</td></tr>
+            <tr><td>risk.regulatory_bias</td><td>risk</td><td>監管訊號偏向（bull_count / bear_count）</td></tr>
+            <tr><td>sentiment.btc_dominance</td><td>sentiment</td><td>BTC 市佔率</td></tr>
+            <tr><td>sentiment.fear_greed</td><td>sentiment</td><td>恐慌貪婪指數</td></tr>
+            <tr><td>signals.crypto_news_bias</td><td>signals</td><td>加密新聞 RSS 訊號方向</td></tr>
+            <tr><td>signals.policy_signal_bias</td><td>signals</td><td>政策 RSS 訊號方向</td></tr>
+            <tr><td>signals.whale_bias</td><td>signals</td><td>巨鯨/機構動向</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- /v2/gates -->
+    <section id="ep-v2-gates">
+      <h3>GET /v2/gates &nbsp;·&nbsp; GET /v2/gates/summary</h3>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="badge get">GET</span>
+          <span class="endpoint-path">/api/v2/gates</span>
+          <span class="badge free">無需認證</span>
+        </div>
+        <p class="endpoint-desc">完整 8 個 gate conditions，含觸發原因與貢獻因子。</p>
+      </div>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="badge get">GET</span>
+          <span class="endpoint-path">/api/v2/gates/summary</span>
+          <span class="badge free">無需認證</span>
+        </div>
+        <p class="endpoint-desc">精簡 key-value 格式，供程式交易直接做布林判斷。</p>
+      </div>
+      <h4>Gate 清單（8 個）</h4>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Gate Key</th><th>類型</th><th>說明</th><th>封鎖條件</th></tr></thead>
+          <tbody>
+            <tr><td>macro.favorable</td><td>bool</td><td>宏觀環境是否支持做多（殖利率未倒掛、VIX &lt; 28、10Y &lt; 5%）</td><td>false = 封鎖</td></tr>
+            <tr><td>liquidity.adequate</td><td>bool</td><td>市場流動性充裕（穩定幣 &gt; $120B 或 TVL &gt; $60B）</td><td>false = 封鎖</td></tr>
+            <tr><td>event.blackout_window</td><td>bool</td><td>未來 24h 是否有高衝擊宏觀事件</td><td>true = 封鎖（強制 wait）</td></tr>
+            <tr><td>direction.bullish_bias</td><td>bool</td><td>7 個 factor 加權得分 &gt; 0.15</td><td>—（方向性）</td></tr>
+            <tr><td>direction.bearish_bias</td><td>bool</td><td>7 個 factor 加權得分 &lt; -0.15</td><td>—（方向性）</td></tr>
+            <tr><td>risk.leverage_overextended</td><td>bool</td><td>7D 清算量 &gt; $700M</td><td>true = 觸發 reduce</td></tr>
+            <tr><td>risk.regulatory_level</td><td>enum</td><td>"low" / "elevated" / "high"（監管 RSS 訊號計分）</td><td>"high" = 封鎖</td></tr>
+            <tr><td>risk.yield_curve_inverted</td><td>bool</td><td>2Y-10Y 殖利率倒掛</td><td>true = 封鎖</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h4>gates/summary 回應範例</h4>
+      <pre><code>{
+  "computed_at": "2026-04-07T04:07:40.082Z",
+  "summary": {
+    "direction.bearish_bias": false,
+    "direction.bullish_bias": false,
+    "event.blackout_window": false,
+    "liquidity.adequate": true,
+    "macro.favorable": true,
+    "risk.leverage_overextended": false,
+    "risk.regulatory_level": "high",
+    "risk.yield_curve_inverted": false
+  }
+}</code></pre>
+    </section>
+
+    <!-- /v2/signals -->
+    <section id="ep-v2-signals">
+      <h3>GET /v2/signals</h3>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="badge get">GET</span>
+          <span class="endpoint-path">/api/v2/signals</span>
+          <span class="badge free">無需認證</span>
+        </div>
+        <p class="endpoint-desc">加密市場訊號，支援多維篩選（同 V1 /api/signals 但有更多過濾參數）。</p>
+      </div>
+      <h4>Query 參數</h4>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>參數</th><th>類型</th><th>說明</th><th>範例</th></tr></thead>
+          <tbody>
+            <tr><td>category</td><td>string</td><td>etf / liquidation / whale / regulation / risk / macro</td><td><code>?category=liquidation</code></td></tr>
+            <tr><td>impact</td><td>string</td><td>high / medium / low</td><td><code>?impact=high</code></td></tr>
+            <tr><td>since</td><td>ISO 8601</td><td>篩選此時間之後的訊號</td><td><code>?since=2026-04-07T00:00:00Z</code></td></tr>
+            <tr><td>bias</td><td>string</td><td>"偏漲" / "震盪" / "偏跌"</td><td><code>?bias=偏空</code></td></tr>
+            <tr><td>limit</td><td>int</td><td>最大返回數量（預設 50，最大 200）</td><td><code>?limit=20</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- /v2/staleness -->
+    <section id="ep-v2-staleness">
+      <h3>GET /v2/staleness</h3>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="badge get">GET</span>
+          <span class="endpoint-path">/api/v2/staleness</span>
+          <span class="badge free">無需認證</span>
+        </div>
+        <p class="endpoint-desc">各 factor category 的資料新鮮度狀態，可用於監控哪類資料來源異常。</p>
+      </div>
+      <pre><code>{
+  "staleness": {
+    "derivatives": { "latest_computed_at": "...", "age_hours": 0.01, "factor_count": 7, "is_stale": false },
+    "macro":       { "latest_computed_at": "...", "age_hours": 0.01, "factor_count": 5, "is_stale": false },
+    "risk":        { "latest_computed_at": "...", "age_hours": 0.01, "factor_count": 2, "is_stale": false }
+  }
+}</code></pre>
+    </section>
+
+    <!-- /v2/pipeline/runs -->
+    <section id="ep-v2-pipeline">
+      <h3>GET /v2/pipeline/runs</h3>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="badge get">GET</span>
+          <span class="endpoint-path">/api/v2/pipeline/runs?limit=10</span>
+          <span class="badge free">無需認證</span>
+        </div>
+        <p class="endpoint-desc">最近 N 次 pipeline 執行紀錄（最大 50 筆）。可用於確認資料是否持續自動更新。</p>
+      </div>
+    </section>
+
     <!-- ═══════════════════════════════════ SCHEMAS ═══════ -->
     <h2>資料結構詳解</h2>
 
     <!-- compositeScore -->
     <section id="schema-composite">
       <h3>compositeScore — 綜合評分</h3>
-      <p>19 個因子加權計算，代表整體市場偏多/偏空程度。</p>
+      <p>24 個因子加權計算，代表整體市場偏多/偏空程度。</p>
       <div class="table-wrap">
         <table>
           <thead><tr><th>欄位</th><th>類型</th><th>說明</th></tr></thead>
@@ -665,7 +980,7 @@ else:
             <tr><td>score</td><td>float</td><td>-1.0 到 +1.0。正值偏多，負值偏空，|score| &lt; 0.15 為中性</td></tr>
             <tr><td>label</td><td>string</td><td>"偏多" / "中性" / "偏空"</td></tr>
             <tr><td>coverage</td><td>int</td><td>有效因子數量</td></tr>
-            <tr><td>total_factors</td><td>int</td><td>總因子數量（目前 19）</td></tr>
+            <tr><td>total_factors</td><td>int</td><td>總因子數量（目前 24）</td></tr>
             <tr><td>coverage_pct</td><td>float</td><td>資料覆蓋率 %（coverage / total_factors × 100）</td></tr>
           </tbody>
         </table>
@@ -974,8 +1289,8 @@ keyInsights[9]  → 【失效條件】</code></pre>
       <h3>整合範例（Python）</h3>
       <pre><code>import requests, json
 
-# 方法 A：本機 API（最即時）
-resp = requests.get("http://localhost:3000/api/dashboard", timeout=10)
+# 方法 A：GCP VM API（正式環境，推薦）
+resp = requests.get("http://34.70.39.177/api/dashboard", timeout=10)
 data = resp.json()
 
 # 方法 B：Upstash 直讀（跨網路，延遲 ≤ 5 分鐘）
@@ -1013,7 +1328,7 @@ from datetime import datetime, timezone, timedelta
 
 UPSTASH_URL = "https://sensible-grouper-89071.upstash.io"
 TOKEN = "gQAAAAAAAVvvAAIncDE4ZjIwMzAwMmMxNTI0N2UxYjk1ZGJkNDc2MTE4YzA4ZXAxODkwNzE"
-LOCAL_API  = "http://localhost:3000/api"
+LOCAL_API  = "http://34.70.39.177/api"
 POLL_SEC   = 300   # 5 分鐘
 STALE_MIN  = 15    # 超過 15 分鐘視為過期
 
@@ -1197,7 +1512,7 @@ print(f"jin10 sentiment: 做多={bull} 做空={bear} 中性={neutral} bias={bias
     </section>
 
     <div style="margin-top:60px;padding-top:24px;border-top:1px solid var(--border);color:var(--muted);font-size:0.82em">
-      CryptoPulse API Docs v1.1 · 最後更新 2026-04-06 · 資料更新週期 5 分鐘
+      CryptoPulse API Docs v1.3 · 最後更新 2026-04-07 · 資料更新週期 5 分鐘 · GCP VM 34.70.39.177
     </div>
 
   </main>
