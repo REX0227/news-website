@@ -800,6 +800,7 @@ a { color: var(--accent); }
 }
 .jin10-dir.bull    { background: rgba(34,197,94,0.15);  color: #22c55e; }
 .jin10-dir.bear    { background: rgba(251,113,133,0.15); color: #fb7185; }
+.jin10-dir.ambig   { background: rgba(251,191,36,0.15);  color: #fbbf24; }
 .jin10-dir.neutral { background: rgba(148,163,184,0.12); color: var(--muted); }
 
 /* 信心指數 dots */

@@ -100,9 +100,11 @@ const fmt = new Intl.DateTimeFormat("zh-Hant", {
   hour: "2-digit", minute: "2-digit", hour12: false
 });
 
-function directionBadge(direction) {
-  if (direction === "做多") return `<span class="jin10-dir bull">▲ 做多</span>`;
-  if (direction === "做空") return `<span class="jin10-dir bear">▼ 做空</span>`;
+function directionBadge(item) {
+  const d = item.direction_en || item.direction;
+  if (d === "bullish" || d === "做多") return `<span class="jin10-dir bull">▲ 利多</span>`;
+  if (d === "bearish" || d === "做空") return `<span class="jin10-dir bear">▼ 利空</span>`;
+  if (d === "ambiguous")               return `<span class="jin10-dir ambig">◆ 分歧</span>`;
   return `<span class="jin10-dir neutral">— 中性</span>`;
 }
 
@@ -123,7 +125,7 @@ function renderItem(item) {
     <div class="jin10-item">
       <div class="jin10-item-header">
         <span class="jin10-time">${timeStr}</span>
-        ${directionBadge(item.direction)}
+        ${directionBadge(item)}
         <span class="jin10-confidence">${confidenceDots(item.confidence)}</span>
       </div>
       <p class="jin10-content">
@@ -207,18 +209,21 @@ export function renderJin10History(result) {
     : "—";
   const histMeta = `<div class="jin10-hist-meta">共 ${result.items.length} 筆 | 最新：${latestTimeStr}</div>`;
 
-  // 各方向筆數
-  const countBull    = result.items.filter(i => i.direction === "做多").length;
-  const countBear    = result.items.filter(i => i.direction === "做空").length;
-  const countNeutral = result.items.filter(i => i.direction === "中性").length;
+  // 各方向筆數（讀 direction_en，向下相容舊版 direction）
+  const getDir = i => i.direction_en || i.direction;
+  const countBull    = result.items.filter(i => getDir(i) === "bullish" || getDir(i) === "做多").length;
+  const countBear    = result.items.filter(i => getDir(i) === "bearish" || getDir(i) === "做空").length;
+  const countAmbig   = result.items.filter(i => getDir(i) === "ambiguous").length;
+  const countNeutral = result.items.filter(i => getDir(i) === "neutral"  || getDir(i) === "中性").length;
 
-  // tab 控制（多/空/中性/全部）
+  // tab 控制
   root.innerHTML = `
     <div class="jin10-hist-tabs">
       <button class="jin10-tab active" data-filter="all">全部（${result.items.length}）</button>
-      <button class="jin10-tab" data-filter="做多">做多（${countBull}）</button>
-      <button class="jin10-tab" data-filter="做空">做空（${countBear}）</button>
-      <button class="jin10-tab" data-filter="中性">中性（${countNeutral}）</button>
+      <button class="jin10-tab" data-filter="bullish">利多（${countBull}）</button>
+      <button class="jin10-tab" data-filter="bearish">利空（${countBear}）</button>
+      <button class="jin10-tab" data-filter="ambiguous">分歧（${countAmbig}）</button>
+      <button class="jin10-tab" data-filter="neutral">中性（${countNeutral}）</button>
     </div>
     ${histMeta}
     <div id="jin10-hist-list" class="jin10-hist-list">
@@ -234,7 +239,7 @@ export function renderJin10History(result) {
       const filter = btn.dataset.filter;
       const items = filter === "all"
         ? result.items
-        : result.items.filter(i => i.direction === filter);
+        : result.items.filter(i => getDir(i) === filter);
       document.getElementById("jin10-hist-list").innerHTML =
         items.length ? items.map(renderItem).join("") : `<div class="jin10-empty">無符合條件的記錄</div>`;
     });
