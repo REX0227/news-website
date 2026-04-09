@@ -9,7 +9,7 @@
 
 const _API_BASE   = window.location.origin;
 const LIVE_URL    = `${_API_BASE}/api/jin10`;
-const HISTORY_URL = `${_API_BASE}/api/jin10/history`;
+const HISTORY_URL = `${_API_BASE}/api/news/history`;
 const UPSTASH_URL         = "https://sensible-grouper-89071.upstash.io";
 const UPSTASH_READ_TOKEN  = "gQAAAAAAAVvvAAIncDE4ZjIwMzAwMmMxNTI0N2UxYjk1ZGJkNDc2MTE4YzA4ZXAxODkwNzE";
 const UPSTASH_JIN10_KEY   = "jin10:latest";
@@ -237,9 +237,10 @@ export function renderJin10History(result) {
       root.querySelectorAll(".jin10-tab").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       const filter = btn.dataset.filter;
+      const DIR_ALIAS = { bullish: ["bullish", "做多"], bearish: ["bearish", "做空"], neutral: ["neutral", "中性"], ambiguous: ["ambiguous"] };
       const items = filter === "all"
         ? result.items
-        : result.items.filter(i => getDir(i) === filter);
+        : result.items.filter(i => (DIR_ALIAS[filter] || [filter]).includes(getDir(i)));
       document.getElementById("jin10-hist-list").innerHTML =
         items.length ? items.map(renderItem).join("") : `<div class="jin10-empty">無符合條件的記錄</div>`;
     });
