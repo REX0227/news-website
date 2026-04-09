@@ -5,7 +5,7 @@ import { db, saveSnapshot, getSnapshot, logUpdate } from "../database.js";
 // 所有 computed field 從 content 計算，與 source 無關。
 // 未來接入 CoinDesk / Bloomberg / RSS 同樣走這套 pipeline。
 
-const CLASSIFIER_VERSION = "v2.2.0";
+const CLASSIFIER_VERSION = "v2.3.0";
 
 /**
  * relevance_crypto: 0-1 分數，衡量新聞與加密市場的相關性。
@@ -141,15 +141,14 @@ function isClickbait(content = "") {
 }
 
 /**
- * direction_en (v2.2): 加權詞庫多空分類器。
+ * direction_en (v2.3): 加權詞庫多空分類器。
  * 回傳: "bullish" | "bearish" | "neutral" | "ambiguous"
  *
- * 設計原則：
- *  - 三層加權詞庫（高/中/低，權重 3/2/1），取代純計數閾值
- *  - 任何方向的淨主導（bearScore > bullScore 或反之）即輸出方向
- *  - 雙方均有訊號且相近 → ambiguous；雙方均無 → neutral
- *  - 簡單否定句（不降息/not rate hike 等）做 -2 調整
- *  - 不呼叫 LLM，純規則型，零延遲
+ * v2.3 改進：
+ *  - 新增個別關鍵字：空袭、衰退/recession、军事行动/军事打击、威胁、惩罚、减半/halving
+ *  - 新增 12 條高精度複合語境模式（地緣水道封鎖、停火破裂、央行訊號、通膨、經濟衰退等）
+ *  - 擴展否定句：暂不/不打算/无意
+ *  - 分歧判斷：雙方分數均 ≥ 2 且差距 ≤ 1 → ambiguous（捕捉近平局混合訊號）
  */
 function classifyDirectionV2(content = "") {
   const t = content;
@@ -158,35 +157,38 @@ function classifyDirectionV2(content = "") {
   // ── 加權詞庫 [weight, keywords[]] ──────────────────────────────
   const BEAR_TERMS = [
     [3, [
-      // 繁體
-      "爆倉","清算","暴跌","崩盤","崩潰",
-      // 簡體
-      "崩盘","崩溃",
-      // 英文
+      // 極端市場事件（繁+簡+英）
+      "爆倉","清算","暴跌","崩盤","崩潰","崩盘","崩溃",
       "liquidat","crash","collapse","margin call","bank run",
     ]],
     [2, [
-      // 貨幣緊縮（繁+簡）
-      "加息","收緊","收紧","鷹派","鹰派","hawkish","tightening","rate hike","支持收緊","支持收紧","警告通脹","警告通膨","通脹威脅","通膨威脅",
-      // 制裁/禁令（繁+簡）
+      // 貨幣緊縮（繁+簡+英）
+      "加息","收緊","收紧","鷹派","鹰派","hawkish","tightening","rate hike",
+      "支持收緊","支持收紧","警告通脹","警告通膨","通脹威脅","通膨威脅",
+      // 制裁/禁令（繁+簡+英）
       "禁止","打壓","打压","制裁","ban","crackdown","sanction","seizure",
-      // 貿易衝突（繁+簡）
+      // 貿易衝突（繁+簡+英）
       "關稅","关税","貿易戰","贸易战","tariff","trade war",
-      // 地緣衝突（繁+簡）
+      // 地緣軍事衝突（繁+簡+英）
       "戰爭","战争","衝突","冲突","升溫","升温","war","conflict","missile","airstrike","escalat",
       "封锁","拦截","受阻","中断","袭击","轰炸",
-      // 資金外流（繁+簡，補 外流）
+      // v2.3 新增：軍事行動（簡體常用詞）
+      "空袭","军事行动","军事打击",
+      // v2.3 新增：經濟衰退
+      "衰退","recession",
+      // 資金外流（繁+簡）
       "流出","外流","拋售","抛售","outflow","大跌",
     ]],
     [1, [
-      // 價格下行（繁+簡）
+      // 價格下行（繁+簡+英）
       "下跌","下滑","走低","回落","失守","跌破","承壓","承压","decline","fell","drop","slump","tumble",
-      // 情緒/風險（繁+簡）
+      // 情緒/風險（繁+簡+英）
       "風險","风险","擔憂","担忧","警告","risk","concern","warning","bearish",
+      // v2.3 新增：威脅/懲罰（地緣語境）
+      "威胁","惩罚",
       // 市場負面（繁+簡）
       "利空","悲觀","悲观","下行","壓力","压力","訴訟","诉讼","halt","暫停","暂停","賣出","卖出","售出","減持","减持",
-      // 新增：常見簡體金融負面詞
-      "拒绝","受阻","中断","封禁","处罚","罚款","违规","暂停","冻结","查处",
+      "拒绝","封禁","处罚","罚款","违规","冻结","查处",
     ]],
   ];
 
@@ -194,30 +196,32 @@ function classifyDirectionV2(content = "") {
     [3, [
       // ETF 批准
       "etf approved","etf批准",
-      // 加密戰略儲備（限定加密幣語境，避免誤觸美國石油儲備 SPR）
+      // 加密戰略儲備（限定加密幣語境）
       "比特幣戰略儲備","比特币战略储备","加密戰略儲備","加密战略储备","crypto strategic reserve","bitcoin reserve",
       // 歷史新高
       "創新高","创新高","all-time high","ath",
       // 機構買入
       "institutional buy","機構買入","机构买入",
+      // v2.3 新增：比特幣減半（純加密利多）
+      "减半","halving",
     ]],
     [2, [
-      // 貨幣寬鬆（繁+簡）
-      "降息","寬鬆","宽松","鴿派","鸽派","dovish","easing","rate cut","支持降息","降息預期","降息预期","降息週期",
-      // 批准/流入（繁+簡）
+      // 貨幣寬鬆（繁+簡+英）
+      "降息","寬鬆","宽松","鴿派","鸽派","dovish","easing","rate cut",
+      "支持降息","降息預期","降息预期","降息週期",
+      // 批准/流入（繁+簡+英）
       "批准","approved","approval","流入","買入","买入","增持","inflow","buying","accumulate",
-      // 刺激/救市（繁+簡）
+      // 刺激/救市（繁+簡+英）
       "注資","注资","刺激","stimulus","pivot","bailout","救市",
-      // 價格突破（繁+簡）
+      // 價格突破（繁+簡+英）
       "暴漲","暴涨","突破","rally","surge","breakout",
-      // 新增：常見簡體金融正面詞
-      "走高","攀升","上升","飙升","飆升","大涨","提振","回暖","复苏",
+      // 常見簡體正面詞
+      "走高","攀升","飙升","飆升","大涨","提振","回暖","复苏",
     ]],
     [1, [
-      // 一般正面（繁+簡）
+      // 一般正面（繁+簡+英）
       "利好","積極","积极","樂觀","乐观","上漲","上涨","走強","走强","回升","反彈","反弹","支撐","支撑",
       "bullish","positive","optimist","recover","rebound","growth","增長","增长","買超","买超",
-      // 新增：常見正面詞
       "看涨","牛市","做多","多头","净买入","净流入",
     ]],
   ];
@@ -230,19 +234,51 @@ function classifyDirectionV2(content = "") {
     for (const kw of kws) if (tl.includes(kw)) bullScore += w;
   }
 
-  // ── 否定句調整（常見中英文否定 + 正/負面詞組合）──────────────
-  // 允許否定詞與目標詞之間有最多 6 個字（例：「不支持降息」「未考慮寬鬆」）
-  // 否定句（繁簡通用：不/未/沒有/没有 + 正/負面詞，允許中間隔最多6個字）
-  if (/(不|未|沒有|没有)\S{0,6}(降息|寬鬆|宽松|鴿派|鸽派|批准|流入|買入|买入)/.test(t)) bullScore = Math.max(0, bullScore - 2);
-  if (/(不|未|沒有|没有)\S{0,6}(加息|收緊|收紧|禁止|制裁|升溫|升温|戰爭|战争)/.test(t)) bearScore = Math.max(0, bearScore - 2);
+  // ── 複合語境模式（高精度短語，加分幅度高於單詞）────────────────
+  // 利空複合模式
+  // 戰略水道封鎖（全球石油供應衝擊）
+  if (/(霍尔木兹|苏伊士|巴拿马运河).{0,25}(关闭|封锁|中断|限制通行|停航|控制)/i.test(t)) bearScore += 4;
+  // 停火/談判破裂
+  if (/(停火|谈判|和谈).{0,20}(破裂|违反|退出|崩溃|终止|失败)/i.test(t)) bearScore += 3;
+  // 地緣局勢升溫
+  if (/(局势|紧张|冲突|战事|战争).{0,15}(升级|恶化|扩大|加剧)/i.test(t)) bearScore += 2;
+  // 央行鷹派複合訊號
+  if (/(美联储|联准会|联储|fed\b).{0,25}(加息|鹰派|收紧|维持高利率|不降息|暂不降息)/i.test(t)) bearScore += 2;
+  // 通膨意外走高（利率上行預期）
+  if (/(cpi|ppi|pce|通胀|通膨).{0,20}(超预期|高于预期|意外上升|大幅上涨|超出预期)/i.test(t)) bearScore += 2;
+  // 經濟數據衰退
+  if (/(gdp|经济|增长).{0,20}(萎缩|衰退|负增长|大幅下滑)/i.test(t)) bearScore += 2;
+  // 撤軍/懲罰盟國（地緣不穩）
+  if (/(撤出|撤军|惩罚).{0,25}(北约|盟国|盟友)/i.test(t)) bearScore += 2;
+
+  // 利多複合模式
+  // 央行鴿派複合訊號
+  if (/(美联储|联准会|联储|fed\b).{0,25}(降息|鸽派|宽松|转向|暂停加息|停止加息)/i.test(t)) bullScore += 2;
+  // 通膨降溫（降息空間打開）
+  if (/(cpi|ppi|pce|通胀|通膨).{0,20}(低于预期|放缓|回落|下降|符合预期|降温)/i.test(t)) bullScore += 2;
+  // 停火達成（地緣風險降溫）
+  if (/(停火|ceasefire).{0,20}(达成|签署|生效|宣布|成功)/i.test(t)) bullScore += 2;
+  // 比特幣減半複合確認
+  if (/(比特币|bitcoin|btc).{0,20}(减半|halving)/i.test(t)) bullScore += 3;
+  // 現貨 ETF 獲批複合確認
+  if (/(现货|spot).{0,10}(etf|ETF).{0,20}(批准|获批|通过|approved)/i.test(t)) bullScore += 3;
+
+  // ── 否定句調整 ─────────────────────────────────────────────────
+  // 中文否定（繁+簡）：不/未/沒有/没有/暂不/不打算/无意 + 正面詞
+  if (/(不|未|沒有|没有|暂不|不打算|无意)\S{0,6}(降息|寬鬆|宽松|鴿派|鸽派|批准|流入|買入|买入)/.test(t)) bullScore = Math.max(0, bullScore - 2);
+  // 中文否定 + 負面詞（否定利空）
+  if (/(不|未|沒有|没有|暂不|不打算|无意)\S{0,6}(加息|收緊|收紧|禁止|制裁|升溫|升温|戰爭|战争)/.test(t)) bearScore = Math.max(0, bearScore - 2);
+  // 英文否定
   if (/(no sign of|not |avoid |prevent )\S{0,20}(rate cut|easing|approved|inflow)/i.test(t)) bullScore = Math.max(0, bullScore - 2);
   if (/(no sign of|not |avoid |prevent )\S{0,20}(rate hike|war|sanction|ban)/i.test(t)) bearScore = Math.max(0, bearScore - 2);
 
   // ── 判斷邏輯 ─────────────────────────────────────────────────
   if (bearScore === 0 && bullScore === 0) return "neutral";
+  // 雙方均有明顯訊號且差距微小 → 分歧（捕捉多空混合新聞）
+  if (Math.min(bearScore, bullScore) >= 2 && Math.abs(bearScore - bullScore) <= 1) return "ambiguous";
   if (bearScore > bullScore) return "bearish";
   if (bullScore > bearScore) return "bullish";
-  return "ambiguous"; // 兩方訊號相當
+  return "ambiguous"; // 完全平局
 }
 
 /**
