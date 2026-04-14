@@ -138,25 +138,6 @@ export function computeGateScores(data) {
   const risk = clamp(riskDiff >= 2 ? 2 : riskDiff === 1 ? 1 :
                riskDiff <= -3 ? -3 : riskDiff === -2 ? -2 : riskDiff === -1 ? -1 : 0);
 
-  // 9. 以太坊預測市場（Polymarket）
-  let polyScore = 0;
-  if (state.polymarketMarketsCache?.length > 0) {
-    let bull = 0, bear = 0;
-    for (const m of state.polymarketMarketsCache) {
-      const yes = m.outcomes?.find(o => o.label?.toLowerCase() === 'yes');
-      const yp = yes?.probability ?? 50;
-      const isDown = /dip|drop|fall|below/i.test(m.question || '');
-      if (isDown) {
-        if (yp > 65) bear += 2; else if (yp > 55) bear += 1;
-        else if (yp < 35) bull += 1;
-      } else {
-        if (yp > 65) bull += 2; else if (yp > 55) bull += 1;
-        else if (yp < 35) bear += 1;
-      }
-    }
-    polyScore = clamp(diff2score(bull - bear, 3));
-  }
-
   return {
     trend:      clamp(trend),
     sentiment:  clamp(sentiment),
@@ -166,7 +147,6 @@ export function computeGateScores(data) {
     whale:      clamp(whaleScore),
     policy:     clamp(policy),
     risk:       clamp(risk),
-    polymarket: clamp(polyScore),
   };
 }
 
