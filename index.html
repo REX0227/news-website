@@ -36,10 +36,58 @@
       }
       #auth-btn:hover { background: #2563eb; }
       #auth-error { color: #f87171; font-size: 0.88em; margin-top: 10px; min-height: 1.2em; }
+
+      /* Regime / Comment section */
+      .regime-panel {
+        background: #0f172a;
+        border: 1px solid #1e3a5f;
+        border-radius: 10px;
+        padding: 18px 22px;
+        margin-bottom: 14px;
+      }
+      .regime-label {
+        font-size: 0.78em; color: #64748b; text-transform: uppercase;
+        letter-spacing: 0.08em; margin-bottom: 4px;
+      }
+      .regime-value {
+        font-size: 1.15em; font-weight: 600; color: #38bdf8;
+      }
+      .regime-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 12px;
+        margin-top: 14px;
+      }
+      .regime-narrative {
+        margin-top: 14px; color: #94a3b8; font-size: 0.92em;
+        line-height: 1.6; border-left: 3px solid #1e40af; padding-left: 12px;
+      }
+
+      /* Liquidation monitor section */
+      .liq-monitor-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+      }
+      .liq-card {
+        background: #0f172a;
+        border: 1px solid #1e3a5f;
+        border-radius: 8px;
+        padding: 14px 16px;
+      }
+      .liq-symbol { font-size: 1em; font-weight: 700; color: #e2e8f0; }
+      .liq-window-row { display: flex; justify-content: space-between; font-size: 0.82em; margin-top: 5px; }
+      .liq-window-label { color: #64748b; }
+      .liq-usd { color: #93c5fd; font-variant-numeric: tabular-nums; }
+      .liq-score-bullish { color: #4ade80; }
+      .liq-score-bearish { color: #f87171; }
+      .liq-score-neutral  { color: #94a3b8; }
+      .liq-empty { color: #475569; font-size: 0.88em; padding: 10px 0; }
     </style>
   </head>
   <body>
-    <!-- 密碼保護 -->
+    <!-- 密碼保護（hash 比對，不儲存明文） -->
     <div id="auth-overlay">
       <div id="auth-box">
         <h2>CryptoPulse</h2>
@@ -50,15 +98,19 @@
       </div>
     </div>
     <script>
-      const SITE_PASSWORD = "TRAXXAS";
+      // 密碼以 SHA-256 hash 比對，不在原始碼中儲存明文
+      const SITE_HASH = "0126849541af00c027b518c4dcecac99e4769465ee3fb763bb067277065c20fe";
       (function () {
         const overlay = document.getElementById("auth-overlay");
         const input   = document.getElementById("auth-input");
         const btn     = document.getElementById("auth-btn");
         const errMsg  = document.getElementById("auth-error");
         if (localStorage.getItem("cp_auth") === "1") { overlay.classList.add("hidden"); return; }
-        function tryLogin() {
-          if (input.value === SITE_PASSWORD) {
+        async function tryLogin() {
+          const enc = new TextEncoder().encode(input.value);
+          const buf = await crypto.subtle.digest("SHA-256", enc);
+          const hex = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+          if (hex === SITE_HASH) {
             localStorage.setItem("cp_auth", "1");
             overlay.classList.add("hidden");
           } else {
@@ -90,25 +142,13 @@
         </div>
       </header>
 
-      <!-- ── Section 0: 金十數據快訊 ─────────────────────────────── -->
-      <section id="jin10-section">
-        <h2>金十數據快訊</h2>
-        <div class="jin10-wrap">
-          <!-- 左欄：即時快訊（60 秒更新）-->
-          <div class="jin10-col jin10-col-live">
-            <div class="jin10-col-label">即時快訊</div>
-            <div id="jin10-live"><div class="jin10-empty">載入中…</div></div>
-          </div>
-          <!-- 右欄：歷史資料庫 -->
-          <div class="jin10-col jin10-col-hist">
-            <div class="jin10-col-label">歷史資料庫</div>
-            <div id="jin10-history"><div class="jin10-empty">載入中…</div></div>
-          </div>
+      <!-- ── Section 0: 宏觀 Regime / Comment ─────────────────── -->
+      <section id="regime-section">
+        <h2>宏觀 Regime</h2>
+        <div id="regime-panel" class="regime-panel">
+          <p style="color:#475569">載入中…</p>
         </div>
       </section>
-
-      <!-- ── 綜合進出場訊號（三維合併）────────────────────────── -->
-      <div id="gate-synthesis" class="gate-synthesis-panel"></div>
 
       <!-- ── Section 1: 市場 Gate 評分（最終綜合評估）────────── -->
       <section id="gate-section">
@@ -129,27 +169,35 @@
         </div>
       </section>
 
-      <!-- ── Section 2: 市場概覽（趨勢 + 概覽卡片）─────────── -->
+      <!-- ── Section 2: 清算監控 ───────────────────────────────── -->
+      <section id="liquidation-section">
+        <h2>清算監控</h2>
+        <div id="liq-monitor" class="liq-monitor-grid">
+          <p class="liq-empty">載入中…</p>
+        </div>
+      </section>
+
+      <!-- ── Section 3: 市場概覽（趨勢 + 概覽卡片）─────────── -->
       <section id="overview-section">
         <h2>市場概覽</h2>
         <div id="overall-trend" class="trend-banner"></div>
         <div id="overview-cards" class="card-grid overview-card-grid" style="margin-top:14px"></div>
       </section>
 
-      <!-- ── Section 3: 交易員摘要 ────────────────────────────── -->
+      <!-- ── Section 4: 交易員摘要 ────────────────────────────── -->
       <section id="ai-section">
         <h2>交易員摘要</h2>
         <ul id="ai-insights" class="card-list"></ul>
       </section>
 
-      <!-- ── Section 4: 未來 7 日關鍵窗口 ─────────────────────── -->
+      <!-- ── Section 5: 未來 7 日關鍵窗口 ─────────────────────── -->
       <section id="windows-section">
         <h2>未來 7 日關鍵窗口</h2>
         <div id="key-windows-note" class="note"></div>
         <div id="key-windows" class="card-grid"></div>
       </section>
 
-      <!-- ── Section 4: 訊號中心（tab 切換）───────────────────── -->
+      <!-- ── Section 6: 訊號中心（tab 切換）───────────────────── -->
       <section id="signals-section">
         <h2>訊號中心</h2>
 
@@ -177,7 +225,6 @@
             </label>
           </div>
           <div id="crypto-signals" class="card-grid"></div>
-          <!-- 舊 ID 相容（scroll anchor） -->
           <span id="crypto-section" style="display:none"></span>
         </div>
 
@@ -201,13 +248,7 @@
 
       </section>
 
-      <!-- ── Section 6: ETH 預測市場（Polymarket）──────────────── -->
-      <section id="polymarket-section">
-        <h2>ETH 預測市場（Polymarket）</h2>
-        <div id="polymarket-cards" class="card-grid"></div>
-      </section>
-
-      <!-- ── Section 6: 宏觀日程 ───────────────────────────────── -->
+      <!-- ── Section 7: 宏觀日程 ───────────────────────────────── -->
       <section id="macro-section">
         <h2>美日宏觀日程</h2>
         <div class="macro-filter-bar">
@@ -236,6 +277,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <script src="https://unpkg.com/lightweight-charts@4.2.2/dist/lightweight-charts.standalone.production.js"></script>
-    <script type="module" src="./app.js?v=20260329-modular"></script>
+    <script type="module" src="./app.js?v=20260414-regime"></script>
   </body>
 </html>

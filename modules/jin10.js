@@ -1,5 +1,5 @@
 /**
- * jin10.js — 金十數據快訊前端模組
+ * news.js — 金十數據快訊前端模組
  *
  * A. fetchJin10Live()  → GET /api/jin10（即時 proxy，每 60 秒）
  * B. fetchJin10Hist()  → GET /api/jin10/history（SQLite 歷史，頁面載入時）
@@ -7,8 +7,9 @@
  * renderJin10History() → 渲染歷史記錄區
  */
 
-const LIVE_URL    = "http://localhost:3000/api/jin10";
-const HISTORY_URL = "http://localhost:3000/api/jin10/history";
+const _API_BASE   = window.location.origin;
+const LIVE_URL    = `${_API_BASE}/api/jin10`;
+const HISTORY_URL = `${_API_BASE}/api/jin10/history`;
 const UPSTASH_URL         = "https://sensible-grouper-89071.upstash.io";
 const UPSTASH_READ_TOKEN  = "gQAAAAAAAVvvAAIncDE4ZjIwMzAwMmMxNTI0N2UxYjk1ZGJkNDc2MTE4YzA4ZXAxODkwNzE";
 const UPSTASH_JIN10_KEY   = "jin10:latest";
