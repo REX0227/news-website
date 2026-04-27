@@ -733,7 +733,7 @@ export function buildFactorVector(rawData) {
           direction:     tv.direction,
           confidence:    0.80,
           source_tier:   1,
-          computed_at:   computedAt,
+          computed_at:   fetchTime,
           exchange:      "Binance"
         };
       }
