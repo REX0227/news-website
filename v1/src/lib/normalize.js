@@ -221,13 +221,13 @@ export function normalizeTakerCvd(netPct) {
  *     direction: "normal", // "normal" | "inverted" | "bullish" | "bearish" | "neutral"
  *     confidence: 0.95,
  *     source_tier: 1,      // 1=官方 2=機構API 3=公開API 4=新聞估算
- *     computed_at: "ISO"
+ *     computed_at: "ISO"   // fetch time：normalize.js 執行當下的時間（非資料本身的時間）
  *   },
  *   ...
  * }
  */
 export function buildFactorVector(rawData) {
-  const computedAt = new Date().toISOString();
+  const fetchTime = new Date().toISOString(); // 抓取時間（非資料本身的時間）
   const factors = {};
 
   // ── 利率 ─────────────────────────────────────────────────────
@@ -235,6 +235,7 @@ export function buildFactorVector(rawData) {
   const y10y = ratesLatest.y10y ?? null;
   const y2y = ratesLatest.y2y ?? null;
   const y3m = ratesLatest.y3m ?? null;
+  const effr = ratesLatest.effr ?? null;
   const spread2s10s = ratesLatest.spread10y2y ?? null;
 
   if (y10y !== null) {
@@ -242,7 +243,7 @@ export function buildFactorVector(rawData) {
       value: y10y, unit: "pct",
       score: normalizeYield10y(y10y),
       direction: y10y > 4.5 ? "bearish" : y10y < 3.0 ? "bullish" : "neutral",
-      confidence: 0.98, source_tier: 1, computed_at: computedAt
+      confidence: 0.98, source_tier: 1, computed_at: fetchTime
     };
   }
   if (y2y !== null) {
@@ -250,7 +251,7 @@ export function buildFactorVector(rawData) {
       value: y2y, unit: "pct",
       score: normalizeYield10y(y2y),
       direction: "neutral",
-      confidence: 0.98, source_tier: 1, computed_at: computedAt
+      confidence: 0.98, source_tier: 1, computed_at: fetchTime
     };
   }
   if (y3m !== null) {
@@ -258,7 +259,15 @@ export function buildFactorVector(rawData) {
       value: y3m, unit: "pct",
       score: normalizeYield10y(y3m),
       direction: "neutral",
-      confidence: 0.98, source_tier: 1, computed_at: computedAt
+      confidence: 0.98, source_tier: 1, computed_at: fetchTime
+    };
+  }
+  if (effr !== null) {
+    factors["macro.fed_funds_rate"] = {
+      value: effr, unit: "pct",
+      score: 0,   // 中性（EFFR 本身不直接計分，由 comment.js 用於推算降息概率）
+      direction: "neutral",
+      confidence: 0.99, source_tier: 1, computed_at: fetchTime
     };
   }
   if (spread2s10s !== null) {
@@ -267,7 +276,7 @@ export function buildFactorVector(rawData) {
       value: spread2s10s, unit: "pct",
       score: spreadScore,
       direction: spread2s10s < 0 ? "inverted" : "normal",
-      confidence: 0.98, source_tier: 1, computed_at: computedAt
+      confidence: 0.98, source_tier: 1, computed_at: fetchTime
     };
   }
 
@@ -280,7 +289,7 @@ export function buildFactorVector(rawData) {
       score: normalizeFearGreed(fgVal),
       direction: fgVal >= 60 ? "bullish" : fgVal <= 40 ? "bearish" : "neutral",
       label: sentiment.fearGreedClassification || "",
-      confidence: 0.9, source_tier: 3, computed_at: computedAt
+      confidence: 0.9, source_tier: 3, computed_at: fetchTime
     };
   }
 
@@ -291,7 +300,7 @@ export function buildFactorVector(rawData) {
       value: dom, unit: "pct",
       score: normalizeBtcDominance(dom),
       direction: dom > 55 ? "defensive" : dom < 45 ? "altseason" : "neutral",
-      confidence: 0.9, source_tier: 3, computed_at: computedAt
+      confidence: 0.9, source_tier: 3, computed_at: fetchTime
     };
   }
 
@@ -304,7 +313,7 @@ export function buildFactorVector(rawData) {
       score: normalizeStablecoinMcap(mcap),
       change_7d_pct: stablecoins.change7dPct ?? null,
       direction: mcap > 180e9 ? "bullish" : mcap < 100e9 ? "bearish" : "neutral",
-      confidence: 0.85, source_tier: 3, computed_at: computedAt
+      confidence: 0.85, source_tier: 3, computed_at: fetchTime
     };
   }
   if (stablecoins?.change7dPct !== null && stablecoins?.change7dPct !== undefined) {
@@ -312,7 +321,7 @@ export function buildFactorVector(rawData) {
       value: stablecoins.change7dPct, unit: "pct",
       score: normalizeStablecoinChange7d(stablecoins.change7dPct),
       direction: stablecoins.change7dPct > 1 ? "bullish" : stablecoins.change7dPct < -1 ? "bearish" : "neutral",
-      confidence: 0.8, source_tier: 3, computed_at: computedAt
+      confidence: 0.8, source_tier: 3, computed_at: fetchTime
     };
   }
 
@@ -324,7 +333,7 @@ export function buildFactorVector(rawData) {
       score: normalizeTvl(tvl),
       change_7d_pct: defi.change7dPct ?? null,
       direction: tvl > 100e9 ? "bullish" : tvl < 50e9 ? "bearish" : "neutral",
-      confidence: 0.85, source_tier: 3, computed_at: computedAt
+      confidence: 0.85, source_tier: 3, computed_at: fetchTime
     };
   }
 
@@ -341,18 +350,18 @@ export function buildFactorVector(rawData) {
       trading_days: cgEtf.tradingDays,
       latest_date: cgEtf.latestDate,
       direction: flow > 200e6 ? "bullish" : flow < -200e6 ? "bearish" : "neutral",
-      confidence: 0.92, source_tier: 2, computed_at: computedAt
+      confidence: 0.92, source_tier: 2, computed_at: fetchTime
     };
   } else if (metrics.etfNetFlowUsd !== undefined && metrics.etfNetFlowUsd !== 0) {
     // fallback：新聞解析
     const flow = Number(metrics.etfNetFlowUsd);
-    const etfConfidence = String(metrics.etfFlowSource || "").includes("news") ? 0.55 : 0.92;
+    const etfConfidence = Number.isFinite(metrics.etfFlowConfidence) ? metrics.etfFlowConfidence : 0.55;
     factors["flows.etf_net_flow_7d"] = {
       value: flow, unit: "usd",
       score: normalizeEtfFlow7d(flow),
       source_detail: metrics.etfFlowSource || "unknown",
       direction: flow > 200e6 ? "bullish" : flow < -200e6 ? "bearish" : "neutral",
-      confidence: etfConfidence, source_tier: etfConfidence > 0.8 ? 2 : 4, computed_at: computedAt
+      confidence: etfConfidence, source_tier: etfConfidence > 0.8 ? 2 : 4, computed_at: fetchTime
     };
   }
 
@@ -367,19 +376,18 @@ export function buildFactorVector(rawData) {
       source_detail: cgLiq.source,
       exchanges: cgLiq.exchanges,
       direction: liq > 700e6 ? "bearish" : liq < 200e6 ? "neutral" : "caution",
-      confidence: 0.9, source_tier: 2, computed_at: computedAt
+      confidence: 0.9, source_tier: 2, computed_at: fetchTime
     };
   } else if (metrics.liquidationTotalUsd > 0) {
     // fallback：舊的 Coinalyze / 新聞解析
     const liq = Number(metrics.liquidationTotalUsd);
-    const liqConfidence = metrics.liquidationSource === "coinalyze" ? 0.95
-      : metrics.liquidationSource?.includes("exchange") ? 0.8 : 0.5;
+    const liqConfidence = Number.isFinite(metrics.liquidationConfidence) ? metrics.liquidationConfidence : 0.5;
     factors["derivatives.liquidation_7d"] = {
       value: liq, unit: "usd",
       score: normalizeLiquidation7d(liq),
       source_detail: metrics.liquidationSource || "unknown",
       direction: liq > 700e6 ? "bearish" : liq < 200e6 ? "neutral" : "caution",
-      confidence: liqConfidence, source_tier: liqConfidence > 0.9 ? 2 : 4, computed_at: computedAt
+      confidence: liqConfidence, source_tier: liqConfidence > 0.9 ? 2 : 4, computed_at: fetchTime
     };
   }
 
@@ -394,7 +402,7 @@ export function buildFactorVector(rawData) {
       bull_count: cryptoBull, bear_count: cryptoBear,
       direction: cryptoBull > cryptoBear ? "bullish" : cryptoBear > cryptoBull ? "bearish" : "neutral",
       confidence: Math.min(0.7, 0.3 + (cryptoBull + cryptoBear) * 0.05),
-      source_tier: 4, computed_at: computedAt
+      source_tier: 4, computed_at: fetchTime
     };
   }
 
@@ -407,7 +415,7 @@ export function buildFactorVector(rawData) {
       unit: "score", score: normalizeSignalBias(riskBull, riskBear),
       bull_count: riskBull, bear_count: riskBear,
       direction: riskBear > riskBull ? "bearish" : riskBull > riskBear ? "bullish" : "neutral",
-      confidence: 0.5, source_tier: 4, computed_at: computedAt
+      confidence: 0.5, source_tier: 4, computed_at: fetchTime
     };
   }
 
@@ -420,7 +428,7 @@ export function buildFactorVector(rawData) {
       unit: "score", score: normalizeSignalBias(polBull, polBear),
       bull_count: polBull, bear_count: polBear,
       direction: polBull > polBear ? "bullish" : polBear > polBull ? "bearish" : "neutral",
-      confidence: 0.65, source_tier: 3, computed_at: computedAt
+      confidence: 0.65, source_tier: 3, computed_at: fetchTime
     };
   }
 
@@ -440,7 +448,7 @@ export function buildFactorVector(rawData) {
         trend_direction: fr.trend_direction ?? "neutral", // 費率趨勢的多空含義
         exchange: fr.exchange,
         // 高正費率（多頭過熱）看跌；高負費率（空頭過熱）看漲
-        confidence: 0.95, source_tier: 2, computed_at: computedAt
+        confidence: 0.95, source_tier: 2, computed_at: fetchTime
       };
     }
 
@@ -455,7 +463,7 @@ export function buildFactorVector(rawData) {
           : 0,
         change_4h_pct: oi.change4hPct,
         direction: oi.direction,
-        confidence: 0.95, source_tier: 2, computed_at: computedAt
+        confidence: 0.95, source_tier: 2, computed_at: fetchTime
       };
     }
 
@@ -471,7 +479,7 @@ export function buildFactorVector(rawData) {
         ls_ratio: ls.lsRatio,
         direction: ls.direction,
         // 反指標：多頭過多看跌，空頭過多看漲（tier 2 = 機構 API）
-        confidence: 0.88, source_tier: 2, computed_at: computedAt
+        confidence: 0.88, source_tier: 2, computed_at: fetchTime
       };
     }
 
@@ -485,7 +493,7 @@ export function buildFactorVector(rawData) {
         buy_volume_usd: tv.buyVolumeUsd,
         sell_volume_usd: tv.sellVolumeUsd,
         direction: tv.direction,
-        confidence: 0.88, source_tier: 2, computed_at: computedAt
+        confidence: 0.88, source_tier: 2, computed_at: fetchTime
       };
     }
   }
@@ -512,7 +520,7 @@ export function buildFactorVector(rawData) {
       total_put_oi:   deribit.totalPutOI,
       total_call_oi:  deribit.totalCallOI,
       instrument_count: deribit.instrumentCount,
-      confidence:     0.88, source_tier: 2, computed_at: computedAt
+      confidence:     0.88, source_tier: 2, computed_at: fetchTime
     };
 
     // ── 近月 ATM 隱含波動率（IV）────────────────────────────────
@@ -531,7 +539,7 @@ export function buildFactorVector(rawData) {
         score:      Number(ivScore.toFixed(4)),
         // 高 IV 反映市場恐慌或強烈不確定性，通常 bearish；極端高 IV 後反彈概率上升但先跌
         direction:  iv < 55 ? "low_vol" : iv < 75 ? "elevated" : "high_vol",
-        confidence: 0.80, source_tier: 2, computed_at: computedAt
+        confidence: 0.80, source_tier: 2, computed_at: fetchTime
       };
     }
   }
@@ -547,7 +555,7 @@ export function buildFactorVector(rawData) {
         level: vd.vix.level,
         change_pct: vd.vix.changePct,
         direction: vd.vix.direction,
-        confidence: 0.95, source_tier: 1, computed_at: computedAt
+        confidence: 0.95, source_tier: 1, computed_at: fetchTime
       };
     }
     if (vd.dxy?.value !== undefined && vd.dxy?.value !== null) {
@@ -557,7 +565,7 @@ export function buildFactorVector(rawData) {
         score: normalizeDxy(vd.dxy.value),
         change_pct: vd.dxy.changePct,
         direction: vd.dxy.direction,
-        confidence: 0.95, source_tier: 1, computed_at: computedAt
+        confidence: 0.95, source_tier: 1, computed_at: fetchTime
       };
     }
   }
@@ -581,15 +589,156 @@ export function buildFactorVector(rawData) {
     score: upcoming24h.length > 0 ? -0.5 : 0, // 事件前夕通常增加不確定性
     events: upcoming24h.map((e) => e.title),
     direction: upcoming24h.length > 0 ? "caution" : "neutral",
-    confidence: 0.95, source_tier: 1, computed_at: computedAt
+    confidence: 0.95, source_tier: 1, computed_at: fetchTime
   };
   factors["event.high_impact_7d_count"] = {
     value: upcoming7d.length, unit: "count",
     score: 0, // 純計數，不直接評分
     events: upcoming7d.map((e) => e.title),
     direction: "neutral",
-    confidence: 0.95, source_tier: 1, computed_at: computedAt
+    confidence: 0.95, source_tier: 1, computed_at: fetchTime
   };
+
+  // ── §4.2 多幣種價格動量 factors（crypto.momentum.{sym}.*）──────────────
+  // 來源：momentumCollector（Binance 公開 API，每 5 分鐘 TTL）
+  // 支援：BTC、ETH、SOL、XRP
+  // 核心修正：regime engine 原本缺這一整個維度，無法偵測「恐慌中反彈」
+  //
+  // allMomentum 結構：{ BTC: {...}, ETH: {...}, SOL: {...}, XRP: {...} }
+  // 向後相容：若只有 btcMomentum，自動包裝成 allMomentum
+  const allMomentum = rawData.allMomentum || (rawData.btcMomentum ? { BTC: rawData.btcMomentum } : {});
+
+  for (const [sym, mom] of Object.entries(allMomentum)) {
+    if (!mom?.available) continue;
+    const symLower = sym.toLowerCase();
+
+    if (Number.isFinite(mom.return24h)) {
+      factors[`crypto.momentum.${symLower}.return_24h`] = {
+        value: mom.return24h, unit: "pct",
+        score: mom.scores.return_24h,
+        direction: mom.return24h > 1 ? "bullish" : mom.return24h < -1 ? "bearish" : "neutral",
+        confidence: 0.95, source_tier: 1, computed_at: fetchTime
+      };
+    }
+    if (Number.isFinite(mom.return7d)) {
+      factors[`crypto.momentum.${symLower}.return_7d`] = {
+        value: mom.return7d, unit: "pct",
+        score: mom.scores.return_7d,
+        direction: mom.return7d > 2 ? "bullish" : mom.return7d < -2 ? "bearish" : "neutral",
+        confidence: 0.95, source_tier: 1, computed_at: fetchTime
+      };
+    }
+    if (Number.isFinite(mom.return30d)) {
+      factors[`crypto.momentum.${symLower}.return_30d`] = {
+        value: mom.return30d, unit: "pct",
+        score: mom.scores.return_30d,
+        direction: mom.return30d > 5 ? "bullish" : mom.return30d < -5 ? "bearish" : "neutral",
+        confidence: 0.95, source_tier: 1, computed_at: fetchTime
+      };
+    }
+    if (mom.scores.ma_position !== null) {
+      factors[`crypto.momentum.${symLower}.ma_position`] = {
+        value: mom.ma50pos,
+        unit: "pct_from_ma",
+        score: mom.scores.ma_position,
+        ma50: mom.ma50,
+        ma200: mom.ma200,
+        ma50pos: mom.ma50pos,
+        ma200pos: mom.ma200pos,
+        direction: mom.scores.ma_position > 0.1 ? "bullish" : mom.scores.ma_position < -0.1 ? "bearish" : "neutral",
+        confidence: 0.95, source_tier: 1, computed_at: fetchTime
+      };
+    }
+    if (Number.isFinite(mom.rsi14)) {
+      factors[`crypto.momentum.${symLower}.rsi_14d`] = {
+        value: mom.rsi14, unit: "index",
+        score: mom.scores.rsi_14d,
+        direction: mom.rsi14 < 35 ? "oversold" : mom.rsi14 > 65 ? "overbought" : "neutral",
+        confidence: 0.92, source_tier: 1, computed_at: fetchTime
+      };
+    }
+  }
+
+  // ── §4.3 多幣種衍生品 factor（crypto.derivatives.{sym}.*）────────────────
+  // 來源：coinglassPerSymbol collector（30 分鐘 TTL）
+  // 這些 factor 不計入 composite_score（不修改 composite.js 權重），
+  // 但寫入 factor_snapshots 供下游交易系統直接讀取。
+  const cgPs = rawData.coinglassPerSymbol;
+  if (cgPs?.available && cgPs.symbols) {
+    for (const [SYM, data] of Object.entries(cgPs.symbols)) {
+      const sym = SYM.toLowerCase(); // key 用小寫：btc, eth, sol...
+      if (!data?.available) continue;
+
+      // funding_rate
+      if (data.fundingRate?.rate8h !== undefined && data.fundingRate.rate8h !== null) {
+        const fr     = data.fundingRate;
+        const score  = normalizeFundingRate(fr.rate8h);
+        factors[`crypto.derivatives.${sym}.funding_rate`] = {
+          value:       fr.rate8hPct,
+          unit:        "pct_8h",
+          score,
+          direction:   fr.direction,
+          confidence:  0.90,
+          source_tier: 1,
+          computed_at: fetchTime,
+          exchange:    "Binance"
+        };
+      }
+
+      // open_interest（change-based score）
+      if (data.openInterest?.totalUsd !== undefined && data.openInterest.totalUsd !== null) {
+        const oi = data.openInterest;
+        const oiScore = oi.change4hPct !== null
+          ? clamp(oi.change4hPct / 3.0)
+          : null;
+        factors[`crypto.derivatives.${sym}.open_interest`] = {
+          value:       oi.totalUsd,
+          unit:        "usd",
+          score:       oiScore,
+          change_4h_pct: oi.change4hPct,
+          direction:   oi.direction,
+          confidence:  oiScore !== null ? 0.85 : 0.60,
+          source_tier: 1,
+          computed_at: fetchTime
+        };
+      }
+
+      // long_short_ratio
+      if (data.longShortRatio?.longPct !== undefined && data.longShortRatio.longPct !== null) {
+        const ls = data.longShortRatio;
+        factors[`crypto.derivatives.${sym}.long_short_ratio`] = {
+          value:       ls.longPct,
+          unit:        "ratio",
+          score:       normalizeLongShortRatio(ls.longPct),
+          long_pct:    Number((ls.longPct * 100).toFixed(2)),
+          short_pct:   Number(((ls.shortPct ?? 1 - ls.longPct) * 100).toFixed(2)),
+          direction:   ls.direction,
+          confidence:  0.85,
+          source_tier: 1,
+          computed_at: fetchTime,
+          exchange:    "Binance"
+        };
+      }
+
+      // taker_cvd
+      if (data.takerVolume?.netPct !== undefined && data.takerVolume.netPct !== null) {
+        const tv = data.takerVolume;
+        factors[`crypto.derivatives.${sym}.taker_cvd`] = {
+          value:         tv.netUsd,
+          unit:          "usd",
+          score:         normalizeTakerCvd(tv.netPct),
+          net_pct:       tv.netPct,
+          buy_volume_usd:  tv.buyVolumeUsd,
+          sell_volume_usd: tv.sellVolumeUsd,
+          direction:     tv.direction,
+          confidence:    0.80,
+          source_tier:   1,
+          computed_at:   computedAt,
+          exchange:      "Binance"
+        };
+      }
+    }
+  }
 
   return factors;
 }

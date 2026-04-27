@@ -14,14 +14,19 @@ import { collectLiquidityIntel } from "../src/collectors/liquidityCollector.js";
 import { collectCoinalyzeLiquidationMetrics } from "../src/collectors/coinalyzeLiquidationCollector.js";
 import { collectMajorNoKeyLiquidationMetrics } from "../src/collectors/majorNoKeyLiquidationCollector.js";
 import { collectCoinglassDerivatives } from "../src/collectors/coinglassCollector.js";
+import { collectCoinglassPerSymbol } from "../src/collectors/coinglassPerSymbolCollector.js";
 import { collectVixDxy } from "../src/collectors/vixDxyCollector.js";
 import { collectDeribitOptions } from "../src/collectors/deribitCollector.js";
 import { collectJin10News } from "../src/collectors/jin10Collector.js";
+import { collectRssNews } from "../src/collectors/rssCollector.js";
+import { collectPanewsFlash } from "../src/collectors/panewsCollector.js";
+import { collectFedRegisterActions } from "../src/collectors/federalRegisterCollector.js";
+import { collectBtcMomentum, collectAllMomentum } from "../src/collectors/momentumCollector.js";
 import { buildAiSummary, buildTraderOutlookFromPayload } from "../src/lib/ai.js";
 import { enrichRecentMacroResults } from "../src/lib/macroResults.js";
 import { eventStatus } from "../src/lib/utils.js";
 import { upstashSetJson, upstashListPrepend, upstashListTrim } from "../src/lib/upstash.js";
-import { saveToSQLite, logUpdateToSQLite, saveFactorsAndGates, getPreviousRunFactors, saveCompositeHistory, saveJin10News } from "../src/lib/sqlite.js";
+import { saveToSQLite, logUpdateToSQLite, saveFactorsAndGates, getPreviousRunFactors, saveCompositeHistory, saveTrendHistory, saveJin10News, getPollerFactor } from "../src/lib/sqlite.js";
 import { computeCompositeScore, computeFactorDelta } from "../src/lib/composite.js";
 import { buildFactorVector } from "../src/lib/normalize.js";
 import { computeGates, gatesSummary } from "../src/lib/gates.js";
@@ -36,6 +41,8 @@ const CACHE_TTL = {
   cryptoImpact:         5 * MIN,   // 突發新聞：加密 RSS 隨時爆出
   globalRisk:           5 * MIN,   // 突發新聞：地緣事件突發性高
   coinglassDerivatives: 20 * MIN,  // 市場結構：4-8h K線，20分足夠
+  coinglassPerSymbol:   30 * MIN,  // 多幣種衍生品：28 API calls，30分鐘一次
+  allMomentum:           5 * MIN,  // 多幣種動量（BTC/ETH/SOL/XRP）：Binance 公開 API，5 分鐘
   coinalyzeLiquidation: 20 * MIN,  // 市場結構：清算同上
   noKeyLiquidation:     20 * MIN,  // 市場結構：備援清算
   liquidityIntel:       30 * MIN,  // 流動性：DeFiLlama 每小時更新
@@ -206,6 +213,7 @@ function validateAndNormalizeMetricsBeforePublish(metrics) {
     normalized.etfNetFlowUsd = Number(normalized.latestNewsEtfFlow.usd);
     normalized.etfCountWithAmount = 1;
     normalized.etfFlowSource = "news_latest_signal_validated";
+    normalized.etfFlowConfidence = 0.55;
     normalized.etfFlowSanityNote = "新聞 ETF 僅採最近一筆可量化值，避免多篇重複事件加總。";
   }
 
@@ -236,6 +244,14 @@ function validateAndNormalizeMetricsBeforePublish(metrics) {
     normalized.liquidationSanityNote = "數值異常偏大，已自動忽略";
   }
 
+  // 確保 confidence 欄位存在：若來源已設定但 confidence 漏填，給保守預設
+  if (normalized.etfNetFlowUsd && !Number.isFinite(normalized.etfFlowConfidence)) {
+    normalized.etfFlowConfidence = 0.55;
+  }
+  if (normalized.liquidationTotalUsd && !Number.isFinite(normalized.liquidationConfidence)) {
+    normalized.liquidationConfidence = 0.5;
+  }
+
   return normalized;
 }
 
@@ -243,7 +259,7 @@ async function main() {
   const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
   const writeToken = process.env.UPSTASH_REDIS_REST_TOKEN_WRITE;
 
-  const [usEvents, jpEvents, cryptoSignals, globalRiskSignals, rateCutData, marketIntel, policySignals, ratesIntel, liquidityIntel, coinalyzeLiquidation, noKeyLiquidation, coinglassDerivatives, vixDxy, deribitOptions] = await Promise.all([
+  const [usEvents, jpEvents, cryptoSignals, globalRiskSignals, rateCutData, marketIntel, policySignals, ratesIntel, liquidityIntel, coinalyzeLiquidation, noKeyLiquidation, coinglassDerivatives, vixDxy, deribitOptions, coinglassPerSymbol, allMomentum] = await Promise.all([
     withCache('usMacro',              CACHE_TTL.usMacro,             () => collectUsMacroEvents()),
     withCache('jpMacro',              CACHE_TTL.jpMacro,             () => collectJapanMacroEvents()),
     withCache('cryptoImpact',         CACHE_TTL.cryptoImpact,        () => collectCryptoImpactSignals()),
@@ -258,6 +274,8 @@ async function main() {
     withCache('coinglassDerivatives', CACHE_TTL.coinglassDerivatives,() => collectCoinglassDerivatives()),
     withCache('vixDxy',               CACHE_TTL.vixDxy,              () => collectVixDxy()),
     withCache('deribitOptions',       CACHE_TTL.deribitOptions,      () => collectDeribitOptions()),
+    withCache('coinglassPerSymbol',   CACHE_TTL.coinglassPerSymbol,  () => collectCoinglassPerSymbol()),
+    withCache('allMomentum',           CACHE_TTL.allMomentum,         () => collectAllMomentum()),
   ]);
 
   const cryptoSignalsPayload = Array.isArray(cryptoSignals?.signals) ? cryptoSignals.signals : (Array.isArray(cryptoSignals) ? cryptoSignals : []);
@@ -276,17 +294,21 @@ async function main() {
     cryptoSignalMetrics7d.liquidationTotalUsd = Number(coinalyzeLiquidation.liquidationTotalUsd7d);
     cryptoSignalMetrics7d.liquidationCountWithAmount = Number(coinalyzeLiquidation.samplesWithAmount || 0);
     cryptoSignalMetrics7d.liquidationSource = "coinalyze";
+    cryptoSignalMetrics7d.liquidationConfidence = 0.95;
     cryptoSignalMetrics7d.liquidationWindowHours = 7 * 24;
   } else if (noKeyLiquidation?.available && Number.isFinite(noKeyLiquidation.liquidationTotalUsdRecent)) {
     cryptoSignalMetrics7d.liquidationTotalUsd = Number(noKeyLiquidation.liquidationTotalUsdRecent);
     cryptoSignalMetrics7d.liquidationCountWithAmount = Number(noKeyLiquidation.liquidationCountRecent || 0);
     cryptoSignalMetrics7d.liquidationSource = String(noKeyLiquidation.source || "exchange_no_key");
+    cryptoSignalMetrics7d.liquidationConfidence = 0.8;
     cryptoSignalMetrics7d.liquidationWindowHours = Number(noKeyLiquidation.windowHours || 0);
   } else if (cryptoSignalMetrics7d?.liquidationFallback?.mode === "latest_news_signal") {
     cryptoSignalMetrics7d.liquidationSource = "news_latest_signal_fallback";
+    cryptoSignalMetrics7d.liquidationConfidence = 0.5;
     cryptoSignalMetrics7d.liquidationWindowHours = 24;
   } else {
     cryptoSignalMetrics7d.liquidationSource = "news_estimate";
+    cryptoSignalMetrics7d.liquidationConfidence = 0.5;
     cryptoSignalMetrics7d.liquidationWindowHours = 7 * 24;
   }
 
@@ -316,11 +338,13 @@ async function main() {
     liquidityIntel,
     marketIntel,
     coinglassDerivatives,
+    coinglassPerSymbol,
     vixDxy,
     deribitOptions,
     cryptoSignals: cryptoSignalsPayload,
     globalRiskSignals,
-    policySignals
+    policySignals,
+    allMomentum         // §4.2 多幣種價格動量（BTC/ETH/SOL/XRP）
   };
 
   const trendOutlook = await buildTraderOutlookFromPayload(rawDataToEvaluate);
@@ -330,6 +354,36 @@ async function main() {
 
   // ── Factor / Gate Pipeline（交易系統消息面來源）─────────────────
   const factorVector    = buildFactorVector(rawDataToEvaluate);
+
+  // ── DB-backed 高精度覆蓋（來自背景 poller，多交易所 z-score）────────────────
+  // 僅在 poller 數據新鮮時才覆蓋，舊 collector 資料保底
+  //
+  // 1. 清算 7D z-score（cg-liq-poller，15m 解析度，Binance+Bybit+OKX+Gate）
+  //    覆蓋 derivatives.liquidation_7d（原為 coinglassCollector 1d bucket）
+  const liqDbFactor = getPollerFactor("crypto.derivatives.BTC.liquidation_7d", 30);
+  if (liqDbFactor && factorVector["derivatives.liquidation_7d"]) {
+    factorVector["derivatives.liquidation_7d"].score       = liqDbFactor.score;
+    factorVector["derivatives.liquidation_7d"].direction   = liqDbFactor.direction;
+    factorVector["derivatives.liquidation_7d"].confidence  = liqDbFactor.confidence;
+    factorVector["derivatives.liquidation_7d"].source_detail = "coinglass_15m_multiexch_zscore";
+    factorVector["derivatives.liquidation_7d"].db_age_min  = liqDbFactor.age_min;
+    console.log(`[factor-override] liquidation_7d → DB z-score=${liqDbFactor.score} (${liqDbFactor.direction}, ${liqDbFactor.age_min}min old)`);
+  }
+
+  // 2. 資金費率 90D z-score（cg-fr-poller，多交易所 8h/1h，90d 歷史）
+  //    覆蓋 derivatives.btc_funding_rate（原為 coinglassCollector Binance 單一費率）
+  const frDbFactor = getPollerFactor("crypto.derivatives.BTC.funding_rate_zscore", 60);
+  if (frDbFactor && factorVector["derivatives.btc_funding_rate"]) {
+    factorVector["derivatives.btc_funding_rate"].score       = frDbFactor.score;
+    factorVector["derivatives.btc_funding_rate"].direction   = frDbFactor.direction;
+    factorVector["derivatives.btc_funding_rate"].confidence  = frDbFactor.confidence;
+    factorVector["derivatives.btc_funding_rate"].source_detail = "coinglass_multiexch_90d_zscore";
+    factorVector["derivatives.btc_funding_rate"].db_age_min  = frDbFactor.age_min;
+    console.log(`[factor-override] btc_funding_rate → DB z-score=${frDbFactor.score} (${frDbFactor.direction}, ${frDbFactor.age_min}min old)`);
+  } else if (!frDbFactor) {
+    console.log(`[factor-override] btc_funding_rate — DB factor stale/missing, using coinglassCollector fallback`);
+  }
+
   const gateConditions  = computeGates(factorVector);
   const gatesSummaryData = gatesSummary(gateConditions);
 
@@ -446,6 +500,26 @@ async function main() {
     console.warn(`[upstash] SKIPPED — UPSTASH_REDIS_REST_URL=${upstashUrl ? "OK" : "MISSING"}, TOKEN_WRITE=${writeToken ? "OK" : "MISSING"}`);
   }
 
+  // ── 聯邦公報行政令：寫入 SQLite（非同步，不阻塞主流程）──────────
+  collectFedRegisterActions({ limit: 20 }).then(result => {
+    if (!result.ok || result.items.length === 0) return;
+    saveJin10News(result.items, "fedregister");
+  }).catch(() => {});
+
+  // ── PANews 快訊：寫入 SQLite（非同步，不阻塞主流程）──────────────
+  collectPanewsFlash({ limit: 50 }).then(result => {
+    if (!result.ok || result.items.length === 0) return;
+    saveJin10News(result.items, "panews");
+  }).catch(() => {});
+
+  // ── RSS 快訊（CoinDesk + CoinTelegraph）：寫入 SQLite（非同步，不阻塞主流程）──
+  collectRssNews({ limit: 30 }).then(rssResults => {
+    for (const result of rssResults) {
+      if (!result.ok || result.items.length === 0) continue;
+      saveJin10News(result.items, result.source);
+    }
+  }).catch(() => {});
+
   // ── 金十快訊：寫入 SQLite + Upstash（非同步，不阻塞主流程）───────
   collectJin10News({ onlyImportant: true, limit: 30 }).then(async jin10Result => {
     if (!jin10Result.ok || jin10Result.items.length === 0) return;
@@ -472,13 +546,19 @@ async function main() {
   const sqliteResult = await saveToSQLite(payload);
   const factorGateResult = await saveFactorsAndGates(factorVector, gateConditions, {
     startedAt: payload.generatedAt,
-    collectorsOk: ["usMacro", "jpMacro", "cryptoImpact", "globalRisk", "rateCut", "marketIntel", "policy", "rates", "liquidity", "coinalyze", "noKeyLiq", "coinglassDerivatives", "vixDxy", "deribit"],
+    collectorsOk: ["usMacro", "jpMacro", "cryptoImpact", "globalRisk", "rateCut", "marketIntel", "policy", "rates", "liquidity", "coinalyze", "noKeyLiq", "coinglassDerivatives", "vixDxy", "deribit", "cgPerSymbol"],
     collectorsFailed: []
   });
 
   if (compositeScore) {
     await saveCompositeHistory(compositeScore, factorGateResult.runId || null);
   }
+
+  // 儲存趨勢判斷歷史（供回測驗證平台訊號有效性）
+  await saveTrendHistory(trendOutlook, {
+    compositeScore,
+    runId: factorGateResult.runId || null
+  });
 
   if (sqliteResult.ok) {
     await logUpdateToSQLite("success", 11, null);

@@ -80,6 +80,10 @@ export function normalizeJin10Item(item) {
     published_at = new Date().toISOString();
   }
 
+  // score: [-1, +1]，方向 × 強度，與 factor 系統同一尺度
+  const dirMultiplier = direction === "做多" ? 1 : direction === "做空" ? -1 : 0;
+  const score = dirMultiplier * ((confidence - 1) / 4); // confidence 1→0.0, 5→1.0
+
   return {
     id: String(item.id),
     published_at,
@@ -87,6 +91,7 @@ export function normalizeJin10Item(item) {
     link,
     direction,
     confidence,
+    score,
     commentary,
     is_important: item.important ? 1 : 0
   };
@@ -99,35 +104,55 @@ export function normalizeJin10Item(item) {
  * @param {object} opts
  * @param {boolean} opts.onlyImportant - 只回傳 important:true 的新聞（預設 true）
  * @param {number}  opts.limit         - 最多回傳幾筆（預設 30）
+ * @param {number}  opts.maxRetries    - 連線失敗最多重試次數（預設 2）
+ * @param {number}  opts.retryDelayMs  - 每次重試等待毫秒（預設 30000）
  */
-export async function collectJin10News({ onlyImportant = true, limit = 30 } = {}) {
-  try {
-    const url = new URL(JIN10_API);
-    url.searchParams.set("channel", "-8200");
-    url.searchParams.set("vip", "1");
+export async function collectJin10News({ onlyImportant = true, limit = 30, maxRetries = 2, retryDelayMs = 30_000 } = {}) {
+  const url = new URL(JIN10_API);
+  url.searchParams.set("channel", "-8200");
+  url.searchParams.set("vip", "1");
 
-    const res = await fetch(url.toString(), {
-      headers: JIN10_HEADERS,
-      signal: AbortSignal.timeout(15000)
-    });
+  let lastError;
 
-    if (!res.ok) return { ok: false, reason: `HTTP ${res.status}`, items: [] };
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    if (attempt > 0) {
+      console.log(`[jin10] 重試第 ${attempt} 次（等待 ${retryDelayMs / 1000}s 後）...`);
+      await new Promise(r => setTimeout(r, retryDelayMs));
+    }
 
-    const json = await res.json();
-    const rawItems = Array.isArray(json.data) ? json.data : [];
+    try {
+      const res = await fetch(url.toString(), {
+        headers: JIN10_HEADERS,
+        signal: AbortSignal.timeout(15000)
+      });
 
-    const filtered = rawItems.filter(item => {
-      const content = item.data?.content || "";
-      if (onlyImportant && !item.important) return false;
-      return CRYPTO_RELEVANT.test(content);
-    }).slice(0, limit);
+      if (!res.ok) {
+        lastError = `HTTP ${res.status}`;
+        console.warn(`[jin10] 第 ${attempt + 1} 次請求失敗：${lastError}`);
+        continue;
+      }
 
-    const items = filtered.map(normalizeJin10Item);
+      const json = await res.json();
+      const rawItems = Array.isArray(json.data) ? json.data : [];
 
-    console.log(`[jin10] 取得 ${items.length} 筆加密相關快訊（原始 ${rawItems.length} 筆）`);
-    return { ok: true, items };
-  } catch (e) {
-    console.warn(`[jin10] 無法取得資料：${e?.message || e}`);
-    return { ok: false, reason: String(e?.message || e), items: [] };
+      const filtered = rawItems.filter(item => {
+        const content = item.data?.content || "";
+        if (onlyImportant && !item.important) return false;
+        return CRYPTO_RELEVANT.test(content);
+      }).slice(0, limit);
+
+      const items = filtered.map(normalizeJin10Item);
+
+      const retryNote = attempt > 0 ? `（第 ${attempt + 1} 次嘗試成功）` : "";
+      console.log(`[jin10] 取得 ${items.length} 筆加密相關快訊（原始 ${rawItems.length} 筆）${retryNote}`);
+      return { ok: true, items };
+
+    } catch (e) {
+      lastError = e?.message || String(e);
+      console.warn(`[jin10] 第 ${attempt + 1} 次請求異常：${lastError}`);
+    }
   }
+
+  console.warn(`[jin10] 已重試 ${maxRetries} 次，全部失敗：${lastError}`);
+  return { ok: false, reason: lastError, items: [] };
 }
