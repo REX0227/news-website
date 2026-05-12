@@ -23,6 +23,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 
 dotenv.config({ path: path.join(__dirname, "..", ".env") });
+dotenv.config({ path: path.join(__dirname, "..", "..", ".env") });
 
 const DB_PATH    = path.join(__dirname, "..", "gecko.db");
 const CG_API_KEY = process.env.COINGLASS_API_KEY;
@@ -35,7 +36,7 @@ const SYMBOLS = [
 ];
 
 if (!CG_API_KEY) {
-  console.error("[liq-heatmap] COINGLASS_API_KEY not set"); process.exit(1);
+  console.error("[liq-heatmap] COINGLASS_API_KEY not set — will retry on next poll");
 }
 
 const db = new DatabaseSync(DB_PATH);
@@ -106,6 +107,10 @@ async function fetchHeatmap(cgSym) {
 }
 
 async function runPoll() {
+  if (!process.env.COINGLASS_API_KEY) {
+    console.log("[liq-heatmap] Skipping poll — COINGLASS_API_KEY not available");
+    return;
+  }
   const now = new Date();
   const computedAt = now.toISOString().replace("T", " ").slice(0, 19);
   const runId = `liq_heatmap_${now.toISOString().slice(0, 16).replace(/[T:]/g, "_")}`;
