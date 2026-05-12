@@ -33,9 +33,11 @@ const DB_PATH  = path.join(__dirname, "..", "gecko.db");
 const WRITE_MS = 5 * 60 * 1_000;   // 每 5 分鐘寫入
 const WINDOW_MS = 30 * 60 * 1_000; // 30 分鐘滾動視窗
 
+// Bybit WebSocket（Binance 在 GCP US IP 封鎖 HTTP 451）
+const BYBIT_WS_URL = "wss://stream.bybit.com/v5/public/linear";
 const STREAMS = [
-  { symbol: "BTC", stream: "btcusdt@depth10@1000ms" },
-  { symbol: "ETH", stream: "ethusdt@depth10@1000ms" },
+  { symbol: "BTC", topic: "orderbook.10.BTCUSDT" },
+  { symbol: "ETH", topic: "orderbook.10.ETHUSDT" },
 ];
 
 const db = new DatabaseSync(DB_PATH);
@@ -73,59 +75,67 @@ function getWindowAvg(symbol) {
   return sum / readings.length;
 }
 
-// ── WebSocket 連線 ────────────────────────────────────────────────────────────
+// ── WebSocket 連線（Bybit）───────────────────────────────────────────────────
 
-function connectStream({ symbol, stream }) {
-  const url = `wss://stream.binance.com:9443/ws/${stream}`;
-  let ws = null;
-  let reconnectTimer = null;
+let sharedWs = null;
+let reconnectTimer = null;
+const subscribedTopics = new Set();
 
-  function connect() {
-    ws = new WebSocket(url);
+function connectBybit() {
+  sharedWs = new WebSocket(BYBIT_WS_URL);
 
-    ws.on("open", () => {
-      console.log(`[ob-ws] Connected: ${stream}`);
-    });
+  sharedWs.on("open", () => {
+    console.log("[ob-ws] Connected to Bybit WebSocket");
+    // 訂閱所有 topics
+    const topics = STREAMS.map(s => s.topic);
+    sharedWs.send(JSON.stringify({ op: "subscribe", args: topics }));
+    topics.forEach(t => subscribedTopics.add(t));
+  });
 
-    ws.on("message", (raw) => {
-      try {
-        const data = JSON.parse(raw.toString());
-        // depth10: { bids: [[price, qty], ...], asks: [[price, qty], ...] }
-        const bids = data.bids ?? [];
-        const asks = data.asks ?? [];
+  sharedWs.on("message", (raw) => {
+    try {
+      const data = JSON.parse(raw.toString());
+      if (!data.topic || !data.data) return;
 
-        if (bids.length === 0 || asks.length === 0) return;
+      // Bybit orderbook: { topic: "orderbook.10.BTCUSDT", data: { b: [[price,qty],...], a: [[price,qty],...] } }
+      const stream = STREAMS.find(s => data.topic.includes(s.symbol + "USDT"));
+      if (!stream) return;
 
-        // 取前 10 檔，用量加權
-        const bidVol = bids.slice(0, 10).reduce((s, [, q]) => s + parseFloat(q), 0);
-        const askVol = asks.slice(0, 10).reduce((s, [, q]) => s + parseFloat(q), 0);
-        const total  = bidVol + askVol;
-        if (total <= 0) return;
+      const bids = data.data.b ?? [];
+      const asks = data.data.a ?? [];
+      if (bids.length === 0 || asks.length === 0) return;
 
-        const imbalance = (bidVol - askVol) / total;
-        addReading(symbol, imbalance);
-      } catch { /* skip bad frame */ }
-    });
+      const bidVol = bids.slice(0, 10).reduce((s, [, q]) => s + parseFloat(q), 0);
+      const askVol = asks.slice(0, 10).reduce((s, [, q]) => s + parseFloat(q), 0);
+      const total  = bidVol + askVol;
+      if (total <= 0) return;
 
-    ws.on("error", (err) => {
-      console.error(`[ob-ws] Error ${symbol}: ${err.message}`);
-    });
+      addReading(stream.symbol, (bidVol - askVol) / total);
+    } catch { /* skip bad frame */ }
+  });
 
-    ws.on("close", () => {
-      console.log(`[ob-ws] Disconnected ${symbol}, reconnecting in 5s…`);
-      reconnectTimer = setTimeout(connect, 5_000);
-    });
-  }
+  sharedWs.on("error", (err) => {
+    console.error(`[ob-ws] WebSocket error: ${err.message}`);
+  });
 
-  connect();
+  sharedWs.on("close", () => {
+    console.log("[ob-ws] Disconnected, reconnecting in 5s…");
+    subscribedTopics.clear();
+    reconnectTimer = setTimeout(connectBybit, 5_000);
+  });
 
-  return {
-    close: () => {
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      ws?.close();
+  // Bybit ping every 20s
+  const pingTimer = setInterval(() => {
+    if (sharedWs?.readyState === 1) {
+      sharedWs.send(JSON.stringify({ op: "ping" }));
     }
-  };
+  }, 20_000);
+
+  sharedWs.on("close", () => clearInterval(pingTimer));
 }
+
+function connectStream(_ignored) { /* no-op, use connectBybit instead */ }
+
 
 // ── 定期寫入 DB ───────────────────────────────────────────────────────────────
 
@@ -161,9 +171,10 @@ function writeFactors() {
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 
-console.log("[ob-ws] Starting Order Book Imbalance WebSocket (Binance)");
+console.log("[ob-ws] Starting Order Book Imbalance WebSocket (Bybit)");
+console.log(`[ob-ws] Topics: ${STREAMS.map(s => s.topic).join(", ")}`);
 
-const connections = STREAMS.map(connectStream);
+connectBybit();
 
 // 每 5 分鐘寫入 DB
 setInterval(writeFactors, WRITE_MS);
@@ -171,5 +182,5 @@ setInterval(writeFactors, WRITE_MS);
 // 立即寫一次（若有初始資料）
 setTimeout(writeFactors, 10_000);
 
-process.on("SIGINT",  () => { connections.forEach(c => c.close()); process.exit(0); });
-process.on("SIGTERM", () => { connections.forEach(c => c.close()); process.exit(0); });
+process.on("SIGINT",  () => { if (reconnectTimer) clearTimeout(reconnectTimer); sharedWs?.close(); process.exit(0); });
+process.on("SIGTERM", () => { if (reconnectTimer) clearTimeout(reconnectTimer); sharedWs?.close(); process.exit(0); });
