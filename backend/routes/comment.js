@@ -884,11 +884,22 @@ function computeCryptoScores(factors) {
     if (agg !== null) return adjScore(agg, "derivatives.btc_funding_rate", inv);
     return adjScore(safeScore(factors, "crypto.derivatives.BTC.funding_rate_zscore"), "crypto.derivatives.BTC.funding_rate_zscore", inv);
   })();
-  const etfScore     = adjScore(safeScore(factors, "flows.etf_net_flow_7d"),          "flows.etf_net_flow_7d",         inv);
-  const liq1hScore   = adjScore(
+  const etfScore   = adjScore(safeScore(factors, "flows.etf_net_flow_7d"), "flows.etf_net_flow_7d", inv);
+  const liq1hScore = adjScore(
     safeScore(factors, "crypto.derivatives.BTC.liquidation_1h") ?? safeScore(factors, "crypto.derivatives.btc.liquidation_1h"),
     "crypto.derivatives.BTC.liquidation_1h", inv
   );
+
+  // §Level1 Rate-of-change momentum factors（momentum-detector.js 每 5 分鐘寫入）
+  const frMomentum  = adjScore(safeScore(factors, "crypto.derivatives.BTC.funding_rate_momentum"), "crypto.derivatives.BTC.funding_rate_momentum", inv);
+  const liqSpike    = safeScore(factors, "crypto.derivatives.BTC.liq_spike");  // contrarian，不 flip
+  const oiMomentum  = adjScore(safeScore(factors, "crypto.derivatives.btc.oi_momentum"),  "crypto.derivatives.btc.oi_momentum",  inv);
+  const lsrMomentum = adjScore(safeScore(factors, "crypto.derivatives.btc.lsr_momentum"), "crypto.derivatives.btc.lsr_momentum", inv);
+  const cvdMomentum = adjScore(safeScore(factors, "crypto.derivatives.btc.cvd_momentum"), "crypto.derivatives.btc.cvd_momentum", inv);
+
+  // §Level2 Order Book + Heatmap（ob-ws.js + liq-heatmap-poller.js 寫入）
+  const obImbalance   = adjScore(safeScore(factors, "crypto.orderbook.BTC.bid_ask_imbalance"),      "crypto.orderbook.BTC.bid_ask_imbalance",      inv);
+  const heatmapPress  = adjScore(safeScore(factors, "crypto.derivatives.BTC.liq_heatmap_pressure"), "crypto.derivatives.BTC.liq_heatmap_pressure", inv);
 
   // §4.4 F&G contrarian（不做 inverse flip：contrarian logic 已內建非線性反指）
   const fgContrarian = (() => {
@@ -917,15 +928,19 @@ function computeCryptoScores(factors) {
   // ── 日內（最近 4-6h 動態）─────────────────────────────────────
   const intraday = (() => {
     const raw = weightedAvg([
-      { v: return24h,   w: 3.0 },
-      { v: cryptoBias,  w: 2.0 },
+      { v: return24h,   w: 2.0 },   // 落後，降權
+      { v: cryptoBias,  w: 1.5 },
       { v: liq1hScore,  w: 1.5 },
+      { v: liqSpike,    w: 2.5 },   // Level1：清算驟增=底部 contrarian
+      { v: obImbalance, w: 3.0 },   // Level2：即時買賣盤壓力（最即時信號）
+      { v: cvdMomentum, w: 2.5 },   // Level1：Taker CVD 方向動量
+      { v: frMomentum,  w: 1.5 },   // Level1：FR 加速方向
       { v: fgContrarian !== 0 ? fgContrarian : null, w: 1.0 }
     ]);
     if (raw === null) return null;
     const s = Number(Math.max(-1, Math.min(1, raw)).toFixed(3));
-    const partCount = [return24h, cryptoBias, liq1hScore].filter(v => v !== null).length;
-    return { ...labelScore(s), confidence: partCount >= 2 ? 0.68 : 0.45 };
+    const partCount = [return24h, liqSpike, obImbalance, cvdMomentum, frMomentum].filter(v => v !== null).length;
+    return { ...labelScore(s), confidence: partCount >= 3 ? 0.72 : partCount >= 2 ? 0.60 : 0.45 };
   })();
 
   // ── 短線 1-3d（趨勢確認）──────────────────────────────────────
@@ -934,18 +949,22 @@ function computeCryptoScores(factors) {
       ? Math.max(-1, Math.min(1, adjScore(fgScore, "sentiment.fear_greed", inv) + fgContrarian))
       : null;
     const raw = weightedAvg([
-      { v: return7d,     w: 1.0 },   // 3.0→1.0：落後動量，防 7d 均值回歸負 ρ
-      { v: cryptoBias,   w: 2.0 },
-      { v: stabChange,   w: 2.0 },   // 1.5→2.0：領先流量訊號
-      { v: fundingScore, w: 2.5 },   // 1.0→2.5：驗證最強領先指標
-      { v: oiScore,      w: 1.5 },   // 1.0→1.5
-      { v: fgAdj,        w: 2.0 },   // 1.5→2.0：反指 contrarian
-      { v: etfScore,     w: 1.5 }    // 1.0→1.5：機構資金流
+      { v: return7d,      w: 1.0 },   // 落後，防均值回歸
+      { v: cryptoBias,    w: 2.0 },
+      { v: stabChange,    w: 2.0 },   // 領先流量
+      { v: fundingScore,  w: 2.0 },   // FR zscore 水位
+      { v: frMomentum,    w: 2.5 },   // Level1：FR 方向變化（比水位更領先）
+      { v: lsrMomentum,   w: 2.0 },   // Level1：LSR 方向（散戶動向）
+      { v: oiMomentum,    w: 1.5 },   // Level1：OI 加速
+      { v: heatmapPress,  w: 1.5 },   // Level2：清算熱力圖壓力
+      { v: oiScore,       w: 1.0 },
+      { v: fgAdj,         w: 1.5 },
+      { v: etfScore,      w: 1.0 }
     ]);
     if (raw === null) return null;
     const s = Number(Math.max(-1, Math.min(1, raw)).toFixed(3));
-    const partCount = [return7d, cryptoBias, stabChange, fundingScore].filter(v => v !== null).length;
-    return { ...labelScore(s), confidence: partCount >= 2 ? 0.72 : 0.50 };
+    const partCount = [frMomentum, lsrMomentum, fundingScore, stabChange].filter(v => v !== null).length;
+    return { ...labelScore(s), confidence: partCount >= 3 ? 0.76 : partCount >= 2 ? 0.62 : 0.50 };
   })();
 
   // ── 中線 1-2w（趨勢方向）─────────────────────────────────────
