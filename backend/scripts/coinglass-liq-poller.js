@@ -35,7 +35,7 @@ const CG_BASE    = "https://open-api-v4.coinglass.com";
 const POLL_MS    = 15 * 60 * 1_000;  // 15 分鐘
 
 // 超過此時間的 bucket 永久凍結，禁止 Coinglass 事後覆寫
-const LOCK_THRESHOLD_MS = 48 * 60 * 60 * 1_000;  // 48 小時
+const LOCK_THRESHOLD_MS = 8 * 60 * 60 * 1_000;  // 8 小時
 
 const SYMBOLS = ["BTC", "ETH", "SOL", "BNB", "XRP", "DOGE", "ADA", "TRX", "FIL", "LINK"];
 const EXCHANGE_SET = "binance,bybit,okx,gate";

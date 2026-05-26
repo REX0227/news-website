@@ -34,7 +34,7 @@ INTERVAL_MS_MAP = {
 }
 
 # 超過此時間的時間序列資料點永久凍結，禁止 Coinglass 事後覆寫
-LOCK_THRESHOLD_MS = 48 * 3600 * 1000  # 48 小時（毫秒）
+LOCK_THRESHOLD_MS = 8 * 3600 * 1000  # 8 小時（毫秒）
 
 DEFAULT_UPSTASH_KEY = "cryptopulse:database:coinglass:derivatives"
 DEFAULT_LAST_UPDATED_KEY = "cryptopulse:database:coinglass:last_updated"

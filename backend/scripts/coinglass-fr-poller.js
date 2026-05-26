@@ -36,7 +36,7 @@ const CG_BASE    = "https://open-api-v4.coinglass.com";
 const POLL_MS    = 30 * 60 * 1_000;  // 30 分鐘
 
 // 超過此時間的資金費率記錄永久凍結，禁止 Coinglass 事後覆寫
-const LOCK_THRESHOLD_MS = 48 * 60 * 60 * 1_000;  // 48 小時
+const LOCK_THRESHOLD_MS = 8 * 60 * 60 * 1_000;  // 8 小時
 
 if (!CG_API_KEY) {
   console.error("[fr-poller] ERROR: COINGLASS_API_KEY not set in .env");
