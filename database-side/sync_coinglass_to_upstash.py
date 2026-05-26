@@ -15,6 +15,9 @@ from urllib.request import Request, urlopen
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_DIR = Path(__file__).resolve().parent
 
+# 永久稽核日誌：append-only JSONL，不截斷，完整記錄所有 Coinglass 竄改事件
+AUDIT_LOG_PATH = SCRIPT_DIR / "logs" / "revision-audit.jsonl"
+
 INTERVAL_MS_MAP = {
     "1m": 60 * 1000,
     "3m": 3 * 60 * 1000,
@@ -29,6 +32,9 @@ INTERVAL_MS_MAP = {
     "1d": 24 * 60 * 60 * 1000,
     "1w": 7 * 24 * 60 * 60 * 1000,
 }
+
+# 超過此時間的時間序列資料點永久凍結，禁止 Coinglass 事後覆寫
+LOCK_THRESHOLD_MS = 48 * 3600 * 1000  # 48 小時（毫秒）
 
 DEFAULT_UPSTASH_KEY = "cryptopulse:database:coinglass:derivatives"
 DEFAULT_LAST_UPDATED_KEY = "cryptopulse:database:coinglass:last_updated"
@@ -186,21 +192,80 @@ def get_record_identity(record: dict[str, Any]) -> str:
     return json.dumps(record, sort_keys=True, ensure_ascii=False)
 
 
-def merge_series(existing_items: list[dict[str, Any]], incoming_items: list[dict[str, Any]], max_items: int) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
-    merged: dict[str, dict[str, Any]] = {}
+def _values_differ(a: dict[str, Any], b: dict[str, Any]) -> bool:
+    """檢查兩筆同 timestamp 的 normalized record 數值是否有實質差異。"""
+    skip_keys = {"time", "timestamp", "syncId"}
+    for key in set(a) | set(b):
+        if key in skip_keys:
+            continue
+        va, vb = a.get(key), b.get(key)
+        if isinstance(va, float) and isinstance(vb, float):
+            if abs(va - vb) > 1e-9:
+                return True
+        elif va != vb:
+            return True
+    return False
 
+
+def _append_audit_log(entries: list[dict[str, Any]], stream_key: str, series_key: str) -> None:
+    """
+    永久寫入竄改稽核日誌（append-only JSONL）。
+    超過 200 筆 Upstash rolling window 的記錄仍完整保存於此檔。
+    """
+    if not entries:
+        return
+    AUDIT_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with AUDIT_LOG_PATH.open("a", encoding="utf-8") as f:
+        for entry in entries:
+            record = {"stream": stream_key, "series": series_key, **entry}
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+
+def merge_series(existing_items: list[dict[str, Any]], incoming_items: list[dict[str, Any]], max_items: int) -> tuple[list[dict[str, Any]], dict[str, Any] | None, list[dict[str, Any]]]:
+    now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+
+    # 以 existing 為基底建立初始 map（保存首次入庫的原始數值）
+    merged: dict[str, dict[str, Any]] = {}
     for item in existing_items:
         merged[get_record_identity(item)] = item
 
+    revisions: list[dict[str, Any]] = []
+
     for item in incoming_items:
-        merged[get_record_identity(item)] = item
+        identity = get_record_identity(item)
+        ts = get_record_timestamp(item)
+
+        if identity not in merged:
+            # 全新資料點 — 直接加入
+            merged[identity] = item
+        elif _values_differ(merged[identity], item):
+            age_ms = now_ms - ts
+            if age_ms > LOCK_THRESHOLD_MS:
+                # 超過 48h 時間鎖：攔截竄改，保留原始值，記錄修正
+                revisions.append({
+                    "identity": identity,
+                    "timestamp": ts,
+                    "action": "BLOCKED_TIME_LOCKED",
+                    "detectedAt": now_iso(),
+                })
+                # merged[identity] 保持不變（原始數值）
+            else:
+                # 48h 內允許更新，記錄修正軌跡
+                revisions.append({
+                    "identity": identity,
+                    "timestamp": ts,
+                    "action": "UPDATED",
+                    "detectedAt": now_iso(),
+                })
+                merged[identity] = item
+        # else: 同值，無需任何動作
 
     items = sorted(merged.values(), key=get_record_timestamp)
     if len(items) > max_items:
         items = items[-max_items:]
 
     latest = items[-1] if items else None
-    return items, latest
+    return items, latest, revisions
 
 
 def normalize_open_interest(item: dict[str, Any]) -> dict[str, Any]:
@@ -408,6 +473,7 @@ def build_store(existing_store: Any) -> dict[str, Any]:
         "streams": existing_store.get("streams", {}),
         "snapshots": existing_store.get("snapshots", {}),
         "syncState": existing_store.get("syncState", {}),
+        "revisionHistory": existing_store.get("revisionHistory", {}),
         "meta": {
             **(existing_store.get("meta", {}) if isinstance(existing_store.get("meta"), dict) else {}),
             "lastRunAt": now,
@@ -817,6 +883,7 @@ def sync_once(*, dry_run: bool, series_limit: int, fetch_limit: int) -> dict[str
             max_items = int(series.get("maxItems") or config.get("maxItems") or series_limit)
 
             if config.get("replaceSeries"):
+                # 快照類資料（如 Hyperliquid 鯨魚警報）不套用時間鎖，永遠取最新
                 deduped: dict[str, dict[str, Any]] = {}
                 for item in normalized_items:
                     deduped[get_record_identity(item)] = item
@@ -825,9 +892,32 @@ def sync_once(*, dry_run: bool, series_limit: int, fetch_limit: int) -> dict[str
                     merged_items = merged_items[-max_items:]
                 incremental_added = sum(1 for item in merged_items if get_record_identity(item) not in existing_identities)
                 latest_item = merged_items[-1] if merged_items else None
+                revisions: list[dict[str, Any]] = []
             else:
                 incremental_added = sum(1 for item in normalized_items if get_record_timestamp(item) > last_timestamp)
-                merged_items, latest_item = merge_series(existing_items, normalized_items, max_items)
+                merged_items, latest_item, revisions = merge_series(existing_items, normalized_items, max_items)
+
+            # ── 竄改記錄三軌並行 ──────────────────────────────────────────────────
+            if revisions:
+                blocked = sum(1 for r in revisions if r["action"] == "BLOCKED_TIME_LOCKED")
+                updated_rev = sum(1 for r in revisions if r["action"] == "UPDATED")
+
+                # 軌道 1：永久 JSONL 稽核日誌（append-only，不截斷，超過 200 筆也完整保留）
+                _append_audit_log(revisions, stream_key, series_key)
+
+                # 軌道 2：Upstash rolling window（最近 200 筆，供快速查閱）
+                store["revisionHistory"].setdefault(stream_key, {})
+                existing_revisions = store["revisionHistory"][stream_key].get(series_key, [])
+                store["revisionHistory"][stream_key][series_key] = (existing_revisions + revisions)[-200:]
+
+                if blocked:
+                    print(f"  [{stream_key}/{series_key}] ⚠ 攔截竄改 {blocked} 筆（時間鎖）, 允許更新 {updated_rev} 筆 → 已寫入 revision-audit.jsonl")
+            else:
+                blocked = 0
+
+            # 軌道 3：syncState 累計計數（跨 run 持久，永不歸零）
+            prev_state = store["syncState"][stream_key].get(series_key, {})
+            prev_total_blocked = prev_state.get("totalBlockedCount", 0) if isinstance(prev_state, dict) else 0
 
             store["streams"][stream_key]["series"][series_key] = merged_items
             store["snapshots"][stream_key][series_key] = latest_item
@@ -835,6 +925,8 @@ def sync_once(*, dry_run: bool, series_limit: int, fetch_limit: int) -> dict[str
                 "lastTimestamp": get_record_timestamp(latest_item) if latest_item else 0,
                 "lastSyncedAt": now_iso(),
                 "records": len(merged_items),
+                "revisionCount": len(revisions),
+                "totalBlockedCount": prev_total_blocked + blocked,
             }
 
             summary["streamSummary"].append({
