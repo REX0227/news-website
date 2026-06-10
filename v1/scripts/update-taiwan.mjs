@@ -51,7 +51,7 @@ async function pushToUpstash(key, value) {
       Authorization: `Bearer ${UPSTASH_WRITE_TOKEN}`,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify(typeof value === "string" ? value : JSON.stringify(value))
+    body: JSON.stringify(value)  // 單層編碼，Upstash 存字串，前端一次 parse 即可
   });
   return res.ok;
 }
