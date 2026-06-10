@@ -43,9 +43,12 @@ async function fetchWithFallback(dateStr) {
 
     let json;
     try { json = JSON.parse(res.text); } catch { continue; }
-    if (json?.stat !== "OK" || !Array.isArray(json.data) || json.data.length === 0) continue;
+    if (json?.stat !== "OK") continue;
+    // 新版 API：資料在 tables[0].data；舊版在 json.data
+    const data = json.tables?.[0]?.data ?? json.data;
+    if (!Array.isArray(data) || data.length === 0) continue;
 
-    return { yyyymmdd, json };
+    return { yyyymmdd, json, data };
   }
   return null;
 }
@@ -65,32 +68,31 @@ export async function collectTwseMargin() {
     };
   }
 
-  const { yyyymmdd, json } = fetched;
-  const rows = json.data;
+  const { yyyymmdd, data: rows } = fetched;
 
-  // fields: ["買進(仟元)", "賣出(仟元)", "現金償還(仟元)", "前日餘額(仟元)", "今日餘額(仟元)", "增減(仟元)"]
-  // row[0] = "融資(仟元)" or "融券(千股)"
-  const marginRow = rows.find(r => String(r[0] ?? "").includes("融資"));
+  // 新版 API fields（6欄）: ["項目","買進","賣出","現金(券)償還","前日餘額","今日餘額"]
+  // row[0]=項目, row[1]=買進, row[2]=賣出, row[3]=現金償還, row[4]=前日餘額, row[5]=今日餘額
+  const marginRow = rows.find(r => String(r[0] ?? "").includes("融資金額")); // 仟元列
   const shortRow  = rows.find(r => String(r[0] ?? "").includes("融券"));
 
-  // 融資餘額（仟元 → 億元）
+  // 融資餘額（仟元 → 億元；1億 = 10^5 仟元，保留1位小數）
   const marginBalance = marginRow ? (() => {
-    const raw = toNumber(marginRow[4]); // 今日餘額
-    return raw !== null ? Math.round(raw / 1e5) / 10 : null; // 仟元 → 億元
+    const raw = toNumber(marginRow[5]); // 今日餘額
+    return raw !== null ? Math.round(raw / 1e4) / 10 : null;
   })() : null;
 
   const marginPrev = marginRow ? (() => {
-    const raw = toNumber(marginRow[3]); // 前日餘額
-    return raw !== null ? Math.round(raw / 1e5) / 10 : null;
+    const raw = toNumber(marginRow[4]); // 前日餘額
+    return raw !== null ? Math.round(raw / 1e4) / 10 : null;
   })() : null;
 
   const marginChange = (marginBalance !== null && marginPrev !== null)
     ? Math.round((marginBalance - marginPrev) * 10) / 10
     : null;
 
-  // 融券餘額（千股）
-  const shortBalance = shortRow ? toNumber(shortRow[4]) : null;
-  const shortPrev    = shortRow ? toNumber(shortRow[3]) : null;
+  // 融券餘額（交易單位 ≒ 千股）
+  const shortBalance = shortRow ? toNumber(shortRow[5]) : null; // 今日餘額
+  const shortPrev    = shortRow ? toNumber(shortRow[4]) : null; // 前日餘額
   const shortChange  = (shortBalance !== null && shortPrev !== null)
     ? shortBalance - shortPrev
     : null;
