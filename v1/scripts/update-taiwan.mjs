@@ -59,7 +59,6 @@ async function pushToUpstash(key, value) {
 async function pushHistoryEntry(score, label) {
   if (!UPSTASH_URL || !UPSTASH_WRITE_TOKEN) return;
   const entry = JSON.stringify({ t: new Date().toISOString(), s: score, l: label });
-  // lpush + ltrim 保留最近 90 筆（約 90 個交易日）
   await fetch(`${UPSTASH_URL}/lpush/${encodeURIComponent(TW_HISTORY_KEY)}`, {
     method: "POST",
     headers: {
@@ -67,10 +66,6 @@ async function pushHistoryEntry(score, label) {
       "Content-Type": "application/json"
     },
     body: JSON.stringify(entry)
-  });
-  await fetch(`${UPSTASH_URL}/ltrim/${encodeURIComponent(TW_HISTORY_KEY)}/0/89`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${UPSTASH_WRITE_TOKEN}` }
   });
 }
 
