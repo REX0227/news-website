@@ -86,7 +86,7 @@ export async function collectTwseInstitutional() {
     // fields: ["單位名稱","買進金額","賣出金額","買賣超金額"]
     const raw = toNTD(row[3]);
     if (raw === null) return null;
-    return Math.round(raw / 1e4) / 10; // 千元→億元（保留1位小數）
+    return Math.round(raw / 1e7) / 10; // 元→億元（保留1位小數，BFI82U 單位為 NT$）
   };
 
   const foreignNetBuy = parseNetBuy(foreignRow);
