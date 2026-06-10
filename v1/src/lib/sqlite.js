@@ -27,6 +27,7 @@ function getDb() {
   _db = new DatabaseSync(DB_PATH);
   _db.exec("PRAGMA journal_mode = WAL");
   _db.exec("PRAGMA foreign_keys = ON");
+  _db.exec("PRAGMA busy_timeout = 5000");  // 寫入衝突時等待最多 5 秒，而非立即報錯
 
   _db.exec(`
     -- 原有表格（向後相容）
@@ -97,7 +98,23 @@ function getDb() {
     );
     CREATE INDEX IF NOT EXISTS idx_composite_history_time ON composite_history(recorded_at);
 
-    -- 金十數據快訊（永久保留，每筆唯一）
+    -- 趨勢判斷歷史（永久保留，供回測驗證平台訊號有效性）
+    CREATE TABLE IF NOT EXISTS trend_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      recorded_at TEXT NOT NULL,
+      short_term_trend TEXT,
+      mid_term_trend TEXT,
+      long_term_trend TEXT,
+      short_reason TEXT,
+      mid_reason TEXT,
+      long_reason TEXT,
+      composite_score REAL,
+      composite_label TEXT,
+      run_id TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_trend_history_time ON trend_history(recorded_at DESC);
+
+    -- 新聞快訊（永久保留，每筆唯一；source 區分來源）
     CREATE TABLE IF NOT EXISTS jin10_news (
       id TEXT PRIMARY KEY,
       published_at TEXT NOT NULL,
@@ -107,9 +124,11 @@ function getDb() {
       confidence INTEGER NOT NULL,
       commentary TEXT NOT NULL,
       is_important INTEGER DEFAULT 1,
-      saved_at TEXT NOT NULL
+      saved_at TEXT NOT NULL,
+      source TEXT NOT NULL DEFAULT 'jin10'
     );
     CREATE INDEX IF NOT EXISTS idx_jin10_published ON jin10_news(published_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_jin10_source ON jin10_news(source, published_at DESC);
   `);
 
   return _db;
@@ -405,14 +424,14 @@ export async function saveCompositeHistory(compositeScore, runId = null) {
  * @param {Array} items - collectJin10News() 回傳的 items
  * @returns {{ ok: boolean, inserted: number }}
  */
-export function saveJin10News(items = []) {
+export function saveJin10News(items = [], source = "jin10") {
   if (!items.length) return { ok: true, inserted: 0 };
   try {
     const db = getDb();
     const stmt = db.prepare(`
       INSERT OR IGNORE INTO jin10_news
-        (id, published_at, content, link, direction, confidence, commentary, is_important, saved_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (id, published_at, content, link, direction, confidence, commentary, is_important, saved_at, source)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const savedAt = new Date().toISOString();
     let inserted = 0;
@@ -420,11 +439,11 @@ export function saveJin10News(items = []) {
       const result = stmt.run(
         item.id, item.published_at, item.content, item.link,
         item.direction, item.confidence, item.commentary,
-        item.is_important ?? 1, savedAt
+        item.is_important ?? 1, savedAt, item.source ?? source
       );
       if (result.changes > 0) inserted++;
     }
-    if (inserted > 0) console.log(`[sqlite] jin10_news: 新增 ${inserted} 筆`);
+    if (inserted > 0) console.log(`[sqlite] jin10_news(${source}): 新增 ${inserted} 筆`);
     return { ok: true, inserted };
   } catch (err) {
     console.error("[sqlite] saveJin10News error:", err.message);
@@ -453,6 +472,64 @@ export function getJin10News(limit = 50, offset = 0) {
 }
 
 /**
+ * 儲存一筆趨勢判斷到長期歷史資料表
+ *
+ * @param {object} trendOutlook - buildTraderOutlookFromPayload() 的輸出
+ * @param {object} [opts] - { compositeScore?, runId? }
+ */
+export async function saveTrendHistory(trendOutlook, opts = {}) {
+  try {
+    const db = getDb();
+    db.prepare(`
+      INSERT INTO trend_history
+        (recorded_at, short_term_trend, mid_term_trend, long_term_trend,
+         short_reason, mid_reason, long_reason,
+         composite_score, composite_label, run_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      new Date().toISOString(),
+      trendOutlook?.shortTermTrend  ?? null,
+      trendOutlook?.midTermTrend    ?? null,
+      trendOutlook?.longTermTrend   ?? null,
+      trendOutlook?.shortReason     ?? null,
+      trendOutlook?.midReason       ?? null,
+      trendOutlook?.longReason      ?? null,
+      Number.isFinite(opts.compositeScore?.score) ? opts.compositeScore.score : null,
+      opts.compositeScore?.label    ?? null,
+      opts.runId                    ?? null
+    );
+    console.log(`[sqlite] trend_history saved: short=${trendOutlook?.shortTermTrend}, mid=${trendOutlook?.midTermTrend}, long=${trendOutlook?.longTermTrend}`);
+    return { ok: true };
+  } catch (err) {
+    console.error("[sqlite] Failed to save trend_history:", err.message);
+    return { ok: false, error: err.message };
+  }
+}
+
+/**
+ * 取得趨勢判斷歷史（由新到舊）
+ *
+ * @param {number} limitDays - 往前幾天
+ */
+export function getTrendHistory(limitDays = 30) {
+  try {
+    const db = getDb();
+    const since = new Date(Date.now() - limitDays * 24 * 60 * 60 * 1000).toISOString();
+    return db.prepare(`
+      SELECT recorded_at, short_term_trend, mid_term_trend, long_term_trend,
+             short_reason, mid_reason, long_reason,
+             composite_score, composite_label, run_id
+      FROM trend_history
+      WHERE recorded_at >= ?
+      ORDER BY recorded_at DESC
+    `).all(since);
+  } catch (err) {
+    console.error("[sqlite] getTrendHistory error:", err.message);
+    return [];
+  }
+}
+
+/**
  * 取得最近 N 次 pipeline runs 的摘要
  */
 export function getPipelineRuns(limit = 10) {
@@ -467,5 +544,194 @@ export function getPipelineRuns(limit = 10) {
   } catch (err) {
     console.error("[sqlite] getPipelineRuns error:", err.message);
     return [];
+  }
+}
+
+/**
+ * 從背景 poller 寫入的 factor_snapshots 讀取最新 factor 值
+ * 用於將 cg-liq-poller / cg-fr-poller 的 z-score 覆蓋進 v1 pipeline composite
+ *
+ * @param {string} factorKey     - 完整 factor key，如 'crypto.derivatives.BTC.liquidation_7d'
+ * @param {number} maxAgeMinutes - 允許最大新鮮度（分鐘），超過視為 stale 不使用
+ * @returns {{ score: number, value: number|null, direction: string, confidence: number, computed_at: string }|null}
+ */
+export function getPollerFactor(factorKey, maxAgeMinutes = 60) {
+  try {
+    const db = getDb();
+    const row = db.prepare(`
+      SELECT normalized_score, raw_value, direction, confidence, computed_at
+      FROM factor_snapshots
+      WHERE factor_key = ?
+      ORDER BY computed_at DESC
+      LIMIT 1
+    `).get(factorKey);
+
+    if (!row) return null;
+
+    const ageMs = Date.now() - new Date(row.computed_at).getTime();
+    if (ageMs > maxAgeMinutes * 60_000) return null;  // stale
+
+    return {
+      score:       row.normalized_score,
+      value:       row.raw_value,
+      direction:   row.direction,
+      confidence:  row.confidence,
+      computed_at: row.computed_at,
+      age_min:     Number((ageMs / 60_000).toFixed(1))
+    };
+  } catch (err) {
+    console.error(`[sqlite] getPollerFactor(${factorKey}) error:`, err.message);
+    return null;
+  }
+}
+
+// ── 台股 Tables 初始化（方案 B：獨立 tw_ 前綴，不影響既有資料）────
+
+function initTaiwanTables(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS tw_dashboard_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      data_date TEXT,
+      payload TEXT NOT NULL,
+      composite_score REAL,
+      composite_label TEXT,
+      composite_signal TEXT,
+      generated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_tw_dash_date ON tw_dashboard_snapshots(data_date DESC);
+
+    CREATE TABLE IF NOT EXISTS tw_institutional_flow (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      data_date TEXT NOT NULL UNIQUE,
+      foreign_net_buy REAL,
+      trust_net_buy REAL,
+      dealer_net_buy REAL,
+      total_net_buy REAL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_tw_inst_date ON tw_institutional_flow(data_date DESC);
+
+    CREATE TABLE IF NOT EXISTS tw_margin_balance (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      data_date TEXT NOT NULL UNIQUE,
+      margin_balance REAL,
+      margin_change REAL,
+      margin_change_pct REAL,
+      short_balance REAL,
+      short_change REAL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_tw_margin_date ON tw_margin_balance(data_date DESC);
+
+    CREATE TABLE IF NOT EXISTS tw_composite_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      data_date TEXT NOT NULL,
+      score REAL,
+      label TEXT,
+      signal TEXT,
+      coverage INTEGER,
+      recorded_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_tw_comp_date ON tw_composite_history(data_date DESC);
+  `);
+}
+
+// ── 台股資料寫入 ──────────────────────────────────────────────────
+
+export async function saveTaiwanToSQLite(payload) {
+  try {
+    const db = getDb();
+    initTaiwanTables(db);
+
+    const now = new Date().toISOString();
+    const dataDate = payload.dataDate ?? null;
+
+    // 1. 完整快照（最近 90 筆）
+    db.prepare(`
+      INSERT INTO tw_dashboard_snapshots
+        (data_date, payload, composite_score, composite_label, composite_signal, generated_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(
+      dataDate,
+      JSON.stringify(payload),
+      payload.composite?.score ?? null,
+      payload.composite?.label ?? null,
+      payload.composite?.signal ?? null,
+      payload.generatedAt ?? now
+    );
+
+    // 保留最近 90 筆快照
+    db.prepare(`
+      DELETE FROM tw_dashboard_snapshots
+      WHERE id NOT IN (SELECT id FROM tw_dashboard_snapshots ORDER BY id DESC LIMIT 90)
+    `).run();
+
+    // 2. 三大法人（每日唯一）
+    if (payload.institutional?.available && dataDate) {
+      const inst = payload.institutional;
+      db.prepare(`
+        INSERT INTO tw_institutional_flow
+          (data_date, foreign_net_buy, trust_net_buy, dealer_net_buy, total_net_buy, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(data_date) DO UPDATE SET
+          foreign_net_buy = excluded.foreign_net_buy,
+          trust_net_buy   = excluded.trust_net_buy,
+          dealer_net_buy  = excluded.dealer_net_buy,
+          total_net_buy   = excluded.total_net_buy
+      `).run(
+        dataDate,
+        inst.foreignNetBuyBillions ?? null,
+        inst.trustNetBuyBillions   ?? null,
+        inst.dealerNetBuyBillions  ?? null,
+        inst.totalNetBuyBillions   ?? null,
+        now
+      );
+    }
+
+    // 3. 融資融券（每日唯一）
+    if (payload.margin?.available && dataDate) {
+      const m = payload.margin;
+      db.prepare(`
+        INSERT INTO tw_margin_balance
+          (data_date, margin_balance, margin_change, margin_change_pct, short_balance, short_change, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(data_date) DO UPDATE SET
+          margin_balance    = excluded.margin_balance,
+          margin_change     = excluded.margin_change,
+          margin_change_pct = excluded.margin_change_pct,
+          short_balance     = excluded.short_balance,
+          short_change      = excluded.short_change
+      `).run(
+        dataDate,
+        m.marginBalanceBillions ?? null,
+        m.marginChangeBillions  ?? null,
+        m.marginChangePct       ?? null,
+        m.shortBalanceKShares   ?? null,
+        m.shortChangeKShares    ?? null,
+        now
+      );
+    }
+
+    // 4. 複合評分歷史
+    if (payload.composite?.score !== null && payload.composite?.score !== undefined) {
+      db.prepare(`
+        INSERT INTO tw_composite_history
+          (data_date, score, label, signal, coverage, recorded_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(
+        dataDate,
+        payload.composite.score,
+        payload.composite.label   ?? null,
+        payload.composite.signal  ?? null,
+        payload.composite.coverage ?? null,
+        now
+      );
+    }
+
+    console.log(`[sqlite] 台股資料寫入完成：${dataDate}`);
+    return { ok: true };
+  } catch (err) {
+    console.error("[sqlite] 台股寫入失敗:", err.message);
+    return { ok: false, error: err.message };
   }
 }

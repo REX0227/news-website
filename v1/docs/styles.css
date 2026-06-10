@@ -858,3 +858,132 @@ a { color: var(--accent); }
   color: #0f172a;
   border-color: var(--accent);
 }
+
+/* ── Page-level 頁籤（加密市場 / 台股時機）─────────────────────── */
+.page-tab-btn {
+  background: none;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 0.88em;
+  font-family: inherit;
+  padding: 5px 14px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.page-tab-btn:hover { color: var(--text); border-color: #4b5563; }
+.page-tab-btn.active {
+  background: #1e40af22;
+  color: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── 台股頁籤 ─────────────────────────────────────────────────── */
+.tw-empty { padding: 32px 0; text-align: center; }
+.tw-empty code { background: #1f2937; padding: 4px 8px; border-radius: 4px; font-size: 0.88em; }
+.tw-updated { font-size: 0.8em; color: var(--muted); margin-left: 12px; }
+.section-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 16px; }
+.section-header h2 { margin: 0; }
+
+.tw-score-card {
+  background: #111827;
+  border: 1px solid #1e3a5f;
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+.tw-score-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.tw-score-label { font-size: 0.75em; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+.tw-score-num { font-size: 2.4em; font-weight: 700; line-height: 1.1; margin-bottom: 8px; }
+.tw-signal-badge {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 20px;
+  font-size: 0.85em;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+.tw-taiex-box { text-align: right; }
+.tw-taiex-close { font-size: 1.6em; font-weight: 700; }
+.tw-taiex-chg { font-size: 0.95em; margin-top: 2px; }
+.tw-score-meta { margin-top: 12px; font-size: 0.78em; color: #4b5563; }
+
+.tw-panels-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+.tw-panel {
+  background: #111827;
+  border: 1px solid #1e3a5f;
+  border-radius: 8px;
+  padding: 16px 18px;
+}
+.tw-panel-title {
+  font-size: 0.78em;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 12px;
+}
+
+/* 因子表格 */
+.tw-factor-grid { display: flex; flex-direction: column; gap: 8px; }
+.tw-factor-header {
+  display: grid;
+  grid-template-columns: 1fr 80px 60px 120px;
+  gap: 8px;
+  font-size: 0.72em;
+  color: #4b5563;
+  text-transform: uppercase;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #1f2937;
+}
+.tw-factor-row {
+  display: grid;
+  grid-template-columns: 1fr 80px 60px 120px;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.88em;
+}
+.tw-factor-name { color: var(--text); }
+.tw-factor-raw { color: #93c5fd; font-variant-numeric: tabular-nums; font-size: 0.9em; }
+.tw-factor-dir { color: var(--muted); font-size: 0.85em; }
+
+/* 因子 bar */
+.tw-factor-bar-wrap { display: flex; align-items: center; gap: 6px; }
+.tw-factor-bar-track {
+  flex: 1;
+  height: 6px;
+  background: #1f2937;
+  border-radius: 3px;
+  position: relative;
+}
+.tw-factor-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s;
+}
+.tw-factor-bar-mid {
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  width: 1px;
+  height: 10px;
+  background: #334155;
+}
+.tw-factor-bar-val { font-size: 0.82em; font-variant-numeric: tabular-nums; min-width: 36px; }
+
+/* 法人 / 融資 / TAIEX 表格 */
+.tw-inst-grid, .tw-margin-grid, .tw-taiex-grid { display: flex; flex-direction: column; gap: 6px; }
+.tw-inst-row, .tw-margin-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9em;
+}
+.tw-inst-name, .tw-margin-name { color: var(--muted); }
+.tw-inst-val, .tw-margin-val { font-variant-numeric: tabular-nums; font-weight: 500; }
+.tw-data-note { margin-top: 10px; font-size: 0.75em; color: #4b5563; }
+.tw-mini-chart { margin-top: 10px; font-size: 1.1em; letter-spacing: 0.15em; color: #93c5fd; }

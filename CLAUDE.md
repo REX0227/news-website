@@ -40,6 +40,9 @@ node v1/scripts/update-data.mjs
 # V1：檢查 Upstash 目前 payload 摘要
 node v1/scripts/inspect-upstash.mjs
 
+# 台股進出場時機更新（獨立 pipeline，不影響加密市場 pipeline）
+node v1/scripts/update-taiwan.mjs
+
 # Polymarket ETH 預測市場賠率更新（輸出到 v1/docs/data/polymarket_eth.json）
 node scripts/polymarket_eth.mjs
 
