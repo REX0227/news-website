@@ -27,6 +27,7 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import net from 'node:net';
 import { fileURLToPath } from 'node:url';
+import { DatabaseSync } from 'node:sqlite';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -49,6 +50,14 @@ function acquireLock() {
 }
 
 await acquireLock();
+
+// ── 全域錯誤捕獲（防止 unhandled rejection / uncaught exception 導致 exit）──
+process.on('unhandledRejection', (reason) => {
+  console.error(`[keep-alive] unhandledRejection: ${reason instanceof Error ? reason.stack : reason}`);
+});
+process.on('uncaughtException', (err) => {
+  console.error(`[keep-alive] uncaughtException: ${err.stack}`);
+});
 // ──────────────────────────────────────────────────────────────────
 
 const FAST_INTERVAL_MS = 5  * 60 * 1000;  // 5 分鐘
@@ -107,16 +116,65 @@ async function runSlow() {
 // ── setTimeout 鏈式排程（防止重疊）───────────────────────────────
 function scheduleFast() {
   setTimeout(async () => {
-    await runFast();
-    scheduleFast(); // 跑完才排下一次
+    try {
+      await runFast();
+      await checkSla();
+    } catch (e) {
+      console.error(`[keep-alive] scheduleFast error: ${e.stack ?? e.message}`);
+    }
+    scheduleFast(); // 跑完才排下一次（即使出錯也繼續排程）
   }, FAST_INTERVAL_MS);
 }
 
 function scheduleSlow() {
   setTimeout(async () => {
-    await runSlow();
-    scheduleSlow(); // 跑完才排下一次
+    try {
+      await runSlow();
+    } catch (e) {
+      console.error(`[keep-alive] scheduleSlow error: ${e.stack ?? e.message}`);
+    }
+    scheduleSlow(); // 跑完才排下一次（即使出錯也繼續排程）
   }, SLOW_INTERVAL_MS);
+}
+
+// ── SLA 告警：30 分鐘無成功 pipeline → Slack webhook ─────────────
+const SLA_THRESHOLD_MS = 30 * 60 * 1000;
+const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL || null;
+let _slaAlertedAt = null; // 防止連續重複告警
+
+async function checkSla() {
+  if (!SLACK_WEBHOOK_URL) return; // 未設定 webhook 則跳過
+  try {
+    const db = new DatabaseSync(path.join(__dirname, 'backend/gecko.db'));
+    const row = db.prepare(
+      "SELECT completed_at FROM pipeline_runs ORDER BY rowid DESC LIMIT 1"
+    ).get();
+    const lastOk = row?.completed_at ? new Date(row.completed_at).getTime() : 0;
+    const staleness = Date.now() - lastOk;
+    if (staleness > SLA_THRESHOLD_MS) {
+      // 每次觸發最多告警一次（冷卻 30 分鐘）
+      const cooldown = _slaAlertedAt && (Date.now() - _slaAlertedAt) < SLA_THRESHOLD_MS;
+      if (!cooldown) {
+        _slaAlertedAt = Date.now();
+        const lastStr = row?.completed_at || '（從未成功）';
+        const staleMins = Math.round(staleness / 60000);
+        const body = JSON.stringify({
+          text: `⚠️ *CryptoPulse SLA 告警*\n上次成功 pipeline：${lastStr}\n已靜默 ${staleMins} 分鐘（門檻 30 分鐘）\nGCP: 34.70.39.177`
+        });
+        await fetch(SLACK_WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body,
+          signal: AbortSignal.timeout(8000)
+        });
+        console.error(`[${timestamp()}] [SLA] ⚠️ 告警已送出 — 靜默 ${staleMins} 分鐘`);
+      }
+    } else {
+      _slaAlertedAt = null; // pipeline 恢復，重置冷卻
+    }
+  } catch (e) {
+    console.error(`[${timestamp()}] [SLA] 檢查失敗：${e.message}`);
+  }
 }
 
 // ── 啟動：立即執行一次，再開始排程 ───────────────────────────────
@@ -126,5 +184,9 @@ console.log(`慢循環：每 ${SLOW_INTERVAL_MS / 60000} 分鐘（V3 Coinglass �
 console.log('按 Ctrl+C 停止\n');
 
 // 立即執行一次後才開始排程
-runFast().then(scheduleFast);
-runSlow().then(scheduleSlow);
+runFast()
+  .then(async () => { await checkSla(); scheduleFast(); })
+  .catch(e => { console.error(`[keep-alive] runFast startup error: ${e.stack ?? e.message}`); scheduleFast(); });
+runSlow()
+  .then(scheduleSlow)
+  .catch(e => { console.error(`[keep-alive] runSlow startup error: ${e.stack ?? e.message}`); scheduleSlow(); });
