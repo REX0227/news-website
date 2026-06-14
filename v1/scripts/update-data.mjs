@@ -371,17 +371,17 @@ async function main() {
   }
 
   // 2. 資金費率 90D z-score（cg-fr-poller，多交易所 8h/1h，90d 歷史）
-  //    覆蓋 derivatives.btc_funding_rate（原為 coinglassCollector Binance 單一費率）
+  //    覆蓋 crypto.derivatives.BTC.funding_rate（原為 coinglassCollector Binance 單一費率）
   const frDbFactor = getPollerFactor("crypto.derivatives.BTC.funding_rate_zscore", 60);
-  if (frDbFactor && factorVector["derivatives.btc_funding_rate"]) {
-    factorVector["derivatives.btc_funding_rate"].score       = frDbFactor.score;
-    factorVector["derivatives.btc_funding_rate"].direction   = frDbFactor.direction;
-    factorVector["derivatives.btc_funding_rate"].confidence  = frDbFactor.confidence;
-    factorVector["derivatives.btc_funding_rate"].source_detail = "coinglass_multiexch_90d_zscore";
-    factorVector["derivatives.btc_funding_rate"].db_age_min  = frDbFactor.age_min;
-    console.log(`[factor-override] btc_funding_rate → DB z-score=${frDbFactor.score} (${frDbFactor.direction}, ${frDbFactor.age_min}min old)`);
+  if (frDbFactor && factorVector["crypto.derivatives.BTC.funding_rate"]) {
+    factorVector["crypto.derivatives.BTC.funding_rate"].score       = frDbFactor.score;
+    factorVector["crypto.derivatives.BTC.funding_rate"].direction   = frDbFactor.direction;
+    factorVector["crypto.derivatives.BTC.funding_rate"].confidence  = frDbFactor.confidence;
+    factorVector["crypto.derivatives.BTC.funding_rate"].source_detail = "coinglass_multiexch_90d_zscore";
+    factorVector["crypto.derivatives.BTC.funding_rate"].db_age_min  = frDbFactor.age_min;
+    console.log(`[factor-override] BTC.funding_rate → DB z-score=${frDbFactor.score} (${frDbFactor.direction}, ${frDbFactor.age_min}min old)`);
   } else if (!frDbFactor) {
-    console.log(`[factor-override] btc_funding_rate — DB factor stale/missing, using coinglassCollector fallback`);
+    console.log(`[factor-override] BTC.funding_rate — DB factor stale/missing, using coinglassCollector fallback`);
   }
 
   const gateConditions  = computeGates(factorVector);

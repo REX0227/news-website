@@ -18,13 +18,13 @@ export const FACTOR_WEIGHTS = {
   "liquidity.stablecoin_change_7d":   0.04,
   "liquidity.defi_tvl":               0.03,
   "flows.etf_net_flow_7d":            0.12,
-  "derivatives.liquidation_7d":       0.06,
-  "derivatives.btc_funding_rate":     0.07,
-  "derivatives.btc_open_interest":    0.04,
-  "derivatives.btc_long_short_ratio": 0.08,
-  "derivatives.btc_taker_cvd":        0.07,
-  "derivatives.btc_put_call_ratio":   0.08,  // Deribit P/C 比
-  "derivatives.btc_iv":              0.04,  // Deribit 近月 ATM 隱含波動率（高 IV 偏看跌）
+  "derivatives.liquidation_7d":              0.06,
+  "crypto.derivatives.BTC.funding_rate":     0.07,
+  "crypto.derivatives.BTC.open_interest":    0.04,
+  "crypto.derivatives.BTC.long_short_ratio": 0.08,
+  "crypto.derivatives.BTC.taker_cvd":        0.07,
+  "crypto.derivatives.BTC.put_call_ratio":   0.08,  // Deribit P/C 比
+  "crypto.derivatives.BTC.iv":               0.04,  // Deribit 近月 ATM 隱含波動率（高 IV 偏看跌）
   "risk.geopolitical_bias":           0.04,
   "risk.regulatory_bias":             0.06,
   // event factors 不進入 composite（單向偏空且非持續訊號）
@@ -54,9 +54,16 @@ export function computeCompositeScore(factorMap) {
     : score <= -0.15 ? "偏空"
     : "中性";
 
+  const label_en = score >= 0.4  ? "strong_bull"
+    : score >= 0.15 ? "bull"
+    : score <= -0.4 ? "strong_bear"
+    : score <= -0.15 ? "bear"
+    : "neutral";
+
   return {
     score:        Number(score.toFixed(4)),
     label,
+    label_en,
     coverage:     usedFactors.length,
     total_factors: Object.keys(FACTOR_WEIGHTS).length,
     coverage_pct: Number((usedFactors.length / Object.keys(FACTOR_WEIGHTS).length * 100).toFixed(1))

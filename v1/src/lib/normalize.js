@@ -438,7 +438,7 @@ export function buildFactorVector(rawData) {
     const fr = cg.fundingRate;
     if (fr?.rate8h !== undefined && fr?.rate8h !== null) {
       const frScore = normalizeFundingRate(fr.rate8h);
-      factors["derivatives.btc_funding_rate"] = {
+      factors["crypto.derivatives.BTC.funding_rate"] = {
         value: fr.rate8hPct,       // 百分比形式（0.01 = 0.01%）
         unit: "pct_8h",
         score: frScore,
@@ -454,7 +454,7 @@ export function buildFactorVector(rawData) {
 
     const oi = cg.openInterest;
     if (oi?.totalUsd) {
-      factors["derivatives.btc_open_interest"] = {
+      factors["crypto.derivatives.BTC.open_interest"] = {
         value: oi.totalUsd,
         unit: "usd",
         // OI 本身不直接代表方向，用 change 判斷
@@ -470,7 +470,7 @@ export function buildFactorVector(rawData) {
     // ── 多空比 / CVD ──────────────────────────────────────────
     const ls = cg.longShortRatio;
     if (ls?.longPct !== undefined && ls?.longPct !== null) {
-      factors["derivatives.btc_long_short_ratio"] = {
+      factors["crypto.derivatives.BTC.long_short_ratio"] = {
         value: ls.longPct,
         unit: "ratio",           // 0~1，做多帳戶佔比
         score: normalizeLongShortRatio(ls.longPct),
@@ -485,7 +485,7 @@ export function buildFactorVector(rawData) {
 
     const tv = cg.takerVolume;
     if (tv?.netPct !== undefined && tv?.netPct !== null) {
-      factors["derivatives.btc_taker_cvd"] = {
+      factors["crypto.derivatives.BTC.taker_cvd"] = {
         value: tv.netUsd,
         unit: "usd",
         score: normalizeTakerCvd(tv.netPct),
@@ -511,7 +511,7 @@ export function buildFactorVector(rawData) {
       : pcr <= 1.3  ? -0.4
       : pcr <= 1.5  ? -0.7
       :               -1.0;              // 恐慌性對沖
-    factors["derivatives.btc_put_call_ratio"] = {
+    factors["crypto.derivatives.BTC.put_call_ratio"] = {
       value:          pcr,
       unit:           "ratio",
       score:          Number(pcrScore.toFixed(4)),
@@ -533,7 +533,7 @@ export function buildFactorVector(rawData) {
         : iv < 70  ? -0.2
         : iv < 90  ? -0.5
         :            -0.8;
-      factors["derivatives.btc_iv"] = {
+      factors["crypto.derivatives.BTC.iv"] = {
         value:      iv,
         unit:       "pct_annualized",  // 年化 IV%（如 60.5 = 60.5%）
         score:      Number(ivScore.toFixed(4)),

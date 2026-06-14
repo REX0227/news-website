@@ -121,11 +121,11 @@ export function computeGates(factors) {
    *   穩定幣變化     10% (tier 3)
    */
   const etfFlow     = factors["flows.etf_net_flow_7d"];
-  const lsRatio     = factors["derivatives.btc_long_short_ratio"];
-  const takerCvd    = factors["derivatives.btc_taker_cvd"];
+  const lsRatio     = factors["crypto.derivatives.BTC.long_short_ratio"];
+  const takerCvd    = factors["crypto.derivatives.BTC.taker_cvd"];
   const fearGreed   = factors["sentiment.fear_greed"];
   const stableChange = factors["liquidity.stablecoin_change_7d"];
-  const putCallRatio = factors["derivatives.btc_put_call_ratio"];  // Deribit P/C 比
+  const putCallRatio = factors["crypto.derivatives.BTC.put_call_ratio"];  // Deribit P/C 比
   const btcDomFactor = factors["sentiment.btc_dominance"];          // BTC 市佔率
 
   const bullishScore = (() => {
@@ -149,11 +149,11 @@ export function computeGates(factors) {
     numeric: Number(bullishScore.toFixed(4)),
     contributing_factors: [
       etfFlow      && "flows.etf_net_flow_7d",
-      lsRatio      && "derivatives.btc_long_short_ratio",
-      takerCvd     && "derivatives.btc_taker_cvd",
+      lsRatio      && "crypto.derivatives.BTC.long_short_ratio",
+      takerCvd     && "crypto.derivatives.BTC.taker_cvd",
       fearGreed    && "sentiment.fear_greed",
       stableChange && "liquidity.stablecoin_change_7d",
-      putCallRatio && "derivatives.btc_put_call_ratio",
+      putCallRatio && "crypto.derivatives.BTC.put_call_ratio",
       btcDomFactor && "sentiment.btc_dominance"
     ].filter(Boolean),
     reason: `加權多空評分 ${bullishScore > 0 ? "+" : ""}${bullishScore.toFixed(2)}（閾值 ±0.15）`,
