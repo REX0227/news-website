@@ -34,11 +34,11 @@ export function normInstitutionalTotal(billionsNTD) {
  * 融資餘額日變化（億元）
  * 融資增加 = 散戶加槓桿（短期偏多，但極端值反指標）
  * 融資減少 = 散戶去槓桿（短期偏空，但可能是健康洗盤）
- * MVP 採用簡單線性映射，基準：±30 億
+ * 全市場融資餘額約 5000-6000 億，日常波動 50-300 億，基準：±200 億
  */
 export function normMarginChange(changeBillions) {
   if (changeBillions == null || !Number.isFinite(changeBillions)) return null;
-  return clamp(changeBillions / 30);
+  return clamp(changeBillions / 200);
 }
 
 /**

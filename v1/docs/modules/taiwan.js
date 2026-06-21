@@ -8,6 +8,8 @@ const UPSTASH_READ_TOKEN = "gQAAAAAAAVvvAAIncDE4ZjIwMzAwMmMxNTI0N2UxYjk1ZGJkNDc2
 const TW_KEY             = "taiwan_dashboard:latest";
 const TW_HISTORY_KEY     = "taiwan_composite:history";
 
+let _historyChart = null;
+
 // ── 資料載入 ──────────────────────────────────────────────────────
 export async function loadTaiwanData() {
   try {
@@ -23,7 +25,7 @@ export async function loadTaiwanData() {
 
 export async function loadTaiwanHistory() {
   try {
-    const res = await fetch(`${UPSTASH_URL}/lrange/${encodeURIComponent(TW_HISTORY_KEY)}/0/89`, {
+    const res = await fetch(`${UPSTASH_URL}/lrange/${encodeURIComponent(TW_HISTORY_KEY)}/0/59`, {
       headers: { Authorization: `Bearer ${UPSTASH_READ_TOKEN}` }
     });
     if (!res.ok) return [];
@@ -66,7 +68,7 @@ function factorBar(score) {
 }
 
 // ── 渲染：主要評分卡片 ────────────────────────────────────────────
-function renderScoreCard(composite, taiex, dataDate) {
+function renderScoreCard(composite, taiex, dataDate, history) {
   const score = composite?.score ?? null;
   const label = composite?.label ?? "neutral";
   const signal = composite?.signal ?? "中性持平";
@@ -83,12 +85,27 @@ function renderScoreCard(composite, taiex, dataDate) {
     ? `<div class="tw-score-num" style="color:${color}">${score >= 0 ? "+" : ""}${score.toFixed(2)}</div>`
     : `<div class="tw-score-num" style="color:#475569">—</div>`;
 
+  // 與前一筆歷史比較（顯示方向箭頭）
+  let deltaEl = "";
+  if (history?.length >= 2 && score !== null) {
+    const prev = history[history.length - 2]?.s;
+    if (prev != null && Number.isFinite(prev)) {
+      const d = Math.round((score - prev) * 100) / 100;
+      const arrow = d > 0.01 ? "↑" : d < -0.01 ? "↓" : "→";
+      const dc    = d > 0.01 ? "#4ade80" : d < -0.01 ? "#f87171" : "#94a3b8";
+      deltaEl = `<span class="tw-score-delta" style="color:${dc}">${arrow} ${d > 0 ? "+" : ""}${d.toFixed(2)}</span>`;
+    }
+  }
+
   return `
     <div class="tw-score-card">
       <div class="tw-score-header">
         <div>
           <div class="tw-score-label">進出場訊號</div>
-          ${scoreDisplay}
+          <div style="display:flex;align-items:center;gap:10px">
+            ${scoreDisplay}
+            ${deltaEl}
+          </div>
           ${signalBadge(label, signal, color)}
         </div>
         <div class="tw-taiex-box">
@@ -142,6 +159,76 @@ function renderFactors(factors) {
       </div>
       ${rows}
     </div>`;
+}
+
+// ── 渲染：歷史走勢圖 ──────────────────────────────────────────────
+function renderHistoryChart(history) {
+  if (!history || history.length < 3) return "";
+  return `
+    <div class="tw-history-wrap">
+      <div class="tw-history-title">複合評分走勢（近 ${Math.min(history.length, 60)} 次）</div>
+      <canvas id="tw-history-chart" height="70"></canvas>
+    </div>`;
+}
+
+function drawHistoryChart(history) {
+  if (!history || history.length < 3) return;
+  const canvas = document.getElementById("tw-history-chart");
+  if (!canvas || typeof Chart === "undefined") return;
+
+  if (_historyChart) { _historyChart.destroy(); _historyChart = null; }
+
+  const recent = history.slice(-60);
+  const labels = recent.map(h => h.t ? h.t.slice(5, 10) : "");
+  const scores = recent.map(h => (typeof h.s === "number" ? h.s : null));
+  const pointColors = scores.map(s => {
+    if (s == null)   return "#475569";
+    if (s >= 0.4)    return "#4ade80";
+    if (s >= 0.15)   return "#86efac";
+    if (s >= -0.15)  return "#94a3b8";
+    if (s >= -0.4)   return "#fca5a5";
+    return "#f87171";
+  });
+
+  _historyChart = new Chart(canvas, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        data: scores,
+        borderColor: "#38bdf8",
+        borderWidth: 1.5,
+        pointRadius: recent.length > 30 ? 2 : 3,
+        pointBackgroundColor: pointColors,
+        fill: false,
+        tension: 0.3,
+        spanGaps: true
+      }]
+    },
+    options: {
+      animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: (items) => recent[items[0].dataIndex]?.t?.slice(0, 10) ?? "",
+            label: (ctx) => `評分: ${ctx.raw != null ? ctx.raw.toFixed(2) : "—"}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: "#475569", font: { size: 9 }, maxTicksLimit: 10 },
+          grid: { display: false }
+        },
+        y: {
+          min: -1, max: 1,
+          ticks: { color: "#64748b", font: { size: 9 }, count: 5 },
+          grid: { color: "#1e293b" }
+        }
+      }
+    }
+  });
 }
 
 // ── 渲染：法人資金流 ──────────────────────────────────────────────
@@ -231,7 +318,7 @@ function renderTaiex(taiex) {
 }
 
 // ── 主渲染 ────────────────────────────────────────────────────────
-export function renderTaiwan(data) {
+export function renderTaiwan(data, history = []) {
   const el = document.getElementById("taiwan-section");
   if (!el) return;
 
@@ -248,7 +335,7 @@ export function renderTaiwan(data) {
 
   const updatedAgo = generatedAt ? (() => {
     const mins = Math.round((Date.now() - new Date(generatedAt).getTime()) / 60000);
-    if (mins < 60)  return `${mins} 分鐘前`;
+    if (mins < 60)   return `${mins} 分鐘前`;
     if (mins < 1440) return `${Math.floor(mins/60)} 小時前`;
     return `${Math.floor(mins/1440)} 天前`;
   })() : "—";
@@ -259,7 +346,8 @@ export function renderTaiwan(data) {
       <span class="tw-updated">更新：${updatedAgo}</span>
     </div>
 
-    ${renderScoreCard(composite, taiex, dataDate)}
+    ${renderScoreCard(composite, taiex, dataDate, history)}
+    ${renderHistoryChart(history)}
 
     <div class="tw-panels-grid">
       <div class="tw-panel">
@@ -279,4 +367,7 @@ export function renderTaiwan(data) {
         ${renderTaiex(taiex)}
       </div>
     </div>`;
+
+  // 設定 innerHTML 後才能取得 canvas，此處同步執行沒問題
+  drawHistoryChart(history);
 }

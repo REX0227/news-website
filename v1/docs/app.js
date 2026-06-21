@@ -11,7 +11,7 @@ import { renderMeta, renderOverallTrend, renderOverview }     from './modules/ov
 import { renderPolicySignals, renderWindows,
          renderMacro, renderSignals, renderWhale,
          renderGlobalRisks }                                  from './modules/signals.js';
-import { loadTaiwanData, renderTaiwan }                       from './modules/taiwan.js';
+import { loadTaiwanData, loadTaiwanHistory, renderTaiwan }    from './modules/taiwan.js';
 
 // ── Regime / Comment ─────────────────────────────────────────────
 const API_BASE = window.location.origin + "/api";
@@ -378,10 +378,10 @@ function initPageViews() {
 // 台股資料初始載入 + 每小時輪詢（收盤後每日一次更新，60 分鐘夠用）
 async function bootstrapTaiwan() {
   try {
-    const data = await loadTaiwanData();
-    renderTaiwan(data);
+    const [data, history] = await Promise.all([loadTaiwanData(), loadTaiwanHistory()]);
+    renderTaiwan(data, history);
   } catch (_) {
-    renderTaiwan(null);
+    renderTaiwan(null, []);
   }
 }
 
