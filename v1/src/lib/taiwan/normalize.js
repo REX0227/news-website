@@ -72,3 +72,13 @@ export function normMomentum5d(pct) {
   if (pct == null || !Number.isFinite(pct)) return null;
   return clamp(pct / 5);
 }
+
+/**
+ * TAIFEX 外資 TX 期貨未平倉淨額口數
+ * 正值=淨多（看多），負值=淨空（看空）
+ * 歷史區間約 -150,000 ~ +80,000 口，飽和閾值 ±50,000
+ */
+export function normTaifexForeignOI(netContracts) {
+  if (netContracts == null || !Number.isFinite(netContracts)) return null;
+  return clamp(netContracts / 50000);
+}

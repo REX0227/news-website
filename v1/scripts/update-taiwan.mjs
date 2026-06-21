@@ -29,11 +29,12 @@ try {
   config({ path: path.resolve(__dirname, "../../../.env") });
 } catch { /* dotenv 不可用時靜默跳過 */ }
 
-import { collectTwseInstitutional } from "../src/collectors/twseInstitutionalCollector.js";
-import { collectTwseMargin }        from "../src/collectors/twseMarginCollector.js";
-import { collectTaiex }             from "../src/collectors/taiexCollector.js";
-import { buildTaiwanComposite }     from "../src/lib/taiwan/composite.js";
-import { saveTaiwanToSQLite }       from "../src/lib/sqlite.js";
+import { collectTwseInstitutional }     from "../src/collectors/twseInstitutionalCollector.js";
+import { collectTwseMargin }            from "../src/collectors/twseMarginCollector.js";
+import { collectTaiex }                 from "../src/collectors/taiexCollector.js";
+import { collectTaifexForeignFutures }  from "../src/collectors/taifexForeignFuturesCollector.js";
+import { buildTaiwanComposite }         from "../src/lib/taiwan/composite.js";
+import { saveTaiwanToSQLite }           from "../src/lib/sqlite.js";
 
 const UPSTASH_URL         = process.env.UPSTASH_REDIS_REST_URL;
 const UPSTASH_WRITE_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN_WRITE;
@@ -73,8 +74,8 @@ async function run() {
   console.log("[taiwan] 開始更新台股資料…");
   const startAt = Date.now();
 
-  // ── 1. 並行抓取三個資料源 ────────────────────────────────────────
-  const [institutional, margin, taiex] = await Promise.all([
+  // ── 1. 並行抓取四個資料源 ────────────────────────────────────────
+  const [institutional, margin, taiex, taifexFutures] = await Promise.all([
     collectTwseInstitutional().catch(e => {
       console.warn("[taiwan] 三大法人抓取失敗:", e.message);
       return { available: false, error: e.message };
@@ -86,15 +87,20 @@ async function run() {
     collectTaiex().catch(e => {
       console.warn("[taiwan] TAIEX 抓取失敗:", e.message);
       return { available: false, error: e.message };
+    }),
+    collectTaifexForeignFutures().catch(e => {
+      console.warn("[taiwan] TAIFEX 期貨抓取失敗:", e.message);
+      return { available: false, error: e.message };
     })
   ]);
 
   console.log(`[taiwan] 三大法人: ${institutional.available ? `外資 ${institutional.foreignNetBuyBillions} 億` : "不可用"}`);
   console.log(`[taiwan] 融資融券: ${margin.available ? `融資 ${margin.marginChangeBillions > 0 ? "+" : ""}${margin.marginChangeBillions} 億` : "不可用"}`);
   console.log(`[taiwan] TAIEX:   ${taiex.available ? `${taiex.close} (${taiex.changePct > 0 ? "+" : ""}${taiex.changePct}%)` : "不可用"}`);
+  console.log(`[taiwan] 期貨OI:  ${taifexFutures.available ? `外資淨額 ${taifexFutures.netOI > 0 ? "+" : ""}${taifexFutures.netOI} 口` : "不可用"}`);
 
   // ── 2. 計算複合評分 ──────────────────────────────────────────────
-  const composite = buildTaiwanComposite({ institutional, margin, taiex });
+  const composite = buildTaiwanComposite({ institutional, margin, taiex, taifexFutures });
   console.log(`[taiwan] 複合評分: ${composite.score} → ${composite.label} (${composite.signal})`);
 
   // ── 3. 組合完整 payload ──────────────────────────────────────────
@@ -104,11 +110,13 @@ async function run() {
     institutional,
     margin,
     taiex,
+    taifexFutures,
     composite,
     sources: {
-      institutional: institutional.source ?? null,
-      margin:        margin.source ?? null,
-      taiex:         taiex.source ?? null
+      institutional:  institutional.source ?? null,
+      margin:         margin.source ?? null,
+      taiex:          taiex.source ?? null,
+      taifexFutures:  taifexFutures.source ?? null
     }
   };
 

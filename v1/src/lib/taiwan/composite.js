@@ -19,17 +19,19 @@ import {
   normMarginChange,
   normShortChange,
   normMaDirection,
-  normMomentum5d
+  normMomentum5d,
+  normTaifexForeignOI
 } from "./normalize.js";
 
 // 因子權重（加總後自動正規化，不必等於 1）
 const FACTOR_WEIGHTS = {
-  "tw.foreign_net_buy":       0.35,  // 外資：最重要
-  "tw.institutional_total":   0.20,  // 三大法人合計
-  "tw.taiex_ma_direction":    0.20,  // MA 方向（技術面）
-  "tw.taiex_momentum_5d":     0.15,  // 近5日動能
-  "tw.margin_change":         0.05,  // 融資變化（弱訊號）
-  "tw.short_change":          0.05   // 融券變化（弱訊號）
+  "tw.foreign_net_buy":          0.28,  // 外資現貨買賣超
+  "tw.taifex_foreign_futures_oi":0.27,  // 外資期貨未平倉淨額（前瞻性強）
+  "tw.institutional_total":      0.15,  // 三大法人合計
+  "tw.taiex_ma_direction":       0.15,  // MA 方向（技術面）
+  "tw.taiex_momentum_5d":        0.10,  // 近5日動能
+  "tw.margin_change":            0.03,  // 融資變化（弱訊號）
+  "tw.short_change":             0.02   // 融券變化（弱訊號）
 };
 
 function scoreLabel(score) {
@@ -62,7 +64,7 @@ function scoreColor(label) {
   return map[label] ?? "#94a3b8";
 }
 
-export function buildTaiwanComposite({ institutional, margin, taiex }) {
+export function buildTaiwanComposite({ institutional, margin, taiex, taifexFutures }) {
   const factors = {};
 
   // ─── 外資買賣超 ────────────────────────────────────────────────
@@ -83,6 +85,18 @@ export function buildTaiwanComposite({ institutional, margin, taiex }) {
       rawUnit:   "億元",
       direction: st === null ? "n/a" : st > 0.15 ? "買超" : st < -0.15 ? "賣超" : "中性",
       weight:    FACTOR_WEIGHTS["tw.institutional_total"]
+    };
+  }
+
+  // ─── TAIFEX 外資期貨未平倉 ────────────────────────────────────
+  if (taifexFutures?.available) {
+    const sf = normTaifexForeignOI(taifexFutures.netOI);
+    factors["tw.taifex_foreign_futures_oi"] = {
+      score:     sf,
+      raw:       taifexFutures.netOI,
+      rawUnit:   "口",
+      direction: sf === null ? "n/a" : sf > 0.1 ? "淨多（看多）" : sf < -0.1 ? "淨空（看空）" : "中性",
+      weight:    FACTOR_WEIGHTS["tw.taifex_foreign_futures_oi"]
     };
   }
 

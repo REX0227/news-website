@@ -125,12 +125,13 @@ function renderScoreCard(composite, taiex, dataDate, history) {
 
 // ── 渲染：因子明細 ────────────────────────────────────────────────
 const FACTOR_LABELS = {
-  "tw.foreign_net_buy":     "外資買賣超",
-  "tw.institutional_total": "三大法人合計",
-  "tw.margin_change":       "融資餘額變化",
-  "tw.short_change":        "融券回補訊號",
-  "tw.taiex_ma_direction":  "均線方向（5MA/20MA）",
-  "tw.taiex_momentum_5d":   "近5日動能"
+  "tw.foreign_net_buy":            "外資現貨買賣超",
+  "tw.taifex_foreign_futures_oi":  "外資期貨未平倉（TX）",
+  "tw.institutional_total":        "三大法人合計",
+  "tw.margin_change":              "融資餘額變化",
+  "tw.short_change":               "融券回補訊號",
+  "tw.taiex_ma_direction":         "均線方向（5MA/20MA）",
+  "tw.taiex_momentum_5d":          "近5日動能"
 };
 
 function renderFactors(factors) {
@@ -317,6 +318,37 @@ function renderTaiex(taiex) {
     <div class="tw-data-note">資料日期：${taiex.dataDate ?? "—"}</div>`;
 }
 
+// ── 渲染：TAIFEX 期貨部位 ─────────────────────────────────────────
+function renderTaifexFutures(tf) {
+  if (!tf?.available) {
+    return `<p style="color:#475569">外資期貨資料不可用</p>`;
+  }
+  const netCol = tf.netOI > 0 ? "#4ade80" : tf.netOI < 0 ? "#f87171" : "#94a3b8";
+  const dir    = tf.netOI > 0 ? "淨多（看多）" : tf.netOI < 0 ? "淨空（看空）" : "中性";
+  return `
+    <div class="tw-margin-grid">
+      <div class="tw-margin-row">
+        <span class="tw-margin-name">未平倉淨額口數</span>
+        <span class="tw-margin-val" style="color:${netCol};font-size:1.05em">
+          ${tf.netOI > 0 ? "+" : ""}${tf.netOI.toLocaleString()} 口
+        </span>
+      </div>
+      <div class="tw-margin-row">
+        <span class="tw-margin-name">方向</span>
+        <span class="tw-margin-val" style="color:${netCol}">${dir}</span>
+      </div>
+      <div class="tw-margin-row">
+        <span class="tw-margin-name">多方未平倉</span>
+        <span class="tw-margin-val">${tf.longOI?.toLocaleString() ?? "—"} 口</span>
+      </div>
+      <div class="tw-margin-row">
+        <span class="tw-margin-name">空方未平倉</span>
+        <span class="tw-margin-val">${tf.shortOI?.toLocaleString() ?? "—"} 口</span>
+      </div>
+    </div>
+    <div class="tw-data-note">資料日期：${tf.dataDate ?? "—"}</div>`;
+}
+
 // ── 主渲染 ────────────────────────────────────────────────────────
 export function renderTaiwan(data, history = []) {
   const el = document.getElementById("taiwan-section");
@@ -331,7 +363,7 @@ export function renderTaiwan(data, history = []) {
     return;
   }
 
-  const { composite, institutional, margin, taiex, dataDate, generatedAt } = data;
+  const { composite, institutional, margin, taiex, taifexFutures, dataDate, generatedAt } = data;
 
   const updatedAgo = generatedAt ? (() => {
     const mins = Math.round((Date.now() - new Date(generatedAt).getTime()) / 60000);
@@ -355,7 +387,11 @@ export function renderTaiwan(data, history = []) {
         ${renderFactors(composite?.factors)}
       </div>
       <div class="tw-panel">
-        <div class="tw-panel-title">三大法人資金流</div>
+        <div class="tw-panel-title">外資期貨部位（TX）</div>
+        ${renderTaifexFutures(taifexFutures)}
+      </div>
+      <div class="tw-panel">
+        <div class="tw-panel-title">三大法人現貨資金流</div>
         ${renderInstitutional(institutional)}
       </div>
       <div class="tw-panel">
