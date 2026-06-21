@@ -238,6 +238,20 @@ function spearman(xs, ys) {
   return 1 - (6 * dSq) / (n * (n * n - 1));
 }
 
+// ── Daily Dedup ───────────────────────────────────────────────────────────────
+// 每個 UTC 日只保留最後一筆，解決測試期（即時收集，~66筆/天）
+// 與開發期（回填，~1筆/天）解析度不一致的問題。
+// 輸入 rows 必須已按 computed_at ASC 排序。
+
+function dedupDaily(rows) {
+  const byDay = new Map();
+  for (const r of rows) {
+    const day = r.computed_at.substring(0, 10); // YYYY-MM-DD
+    byDay.set(day, r); // 同日後覆蓋前，最終保留最新一筆
+  }
+  return [...byDay.values()].sort((a, b) => a.computed_at.localeCompare(b.computed_at));
+}
+
 // ── 統計輔助 ──────────────────────────────────────────────────────────────────
 
 function mean(arr) { return arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : null; }
@@ -267,18 +281,20 @@ async function runMethodB(dayCandles, periodFilter, timeframes) {
     if (periodFilter === "dev")  periodWhere = `AND computed_at <= '${DEV_CUTOFF}'`;
     if (periodFilter === "test") periodWhere = `AND computed_at >= '${TEST_START}'`;
 
-    const rows = db.prepare(`
+    const rawRows = db.prepare(`
       SELECT computed_at, ${scoreCol} AS score, regime_label
       FROM asset_comments
       WHERE asset_class = 'crypto' AND ${scoreCol} IS NOT NULL
       ${periodWhere}
       ORDER BY computed_at ASC
     `).all();
+    const rows = dedupDaily(rawRows); // 每日只取最後一筆，避免即時收集造成 autocorrelation
 
     if (rows.length < 5) {
       console.log(`  [${tf}] 資料不足（${rows.length} 筆），跳過`);
       continue;
     }
+    console.log(`  [${tf}] dedup 後：${rawRows.length} → ${rows.length} 筆（日頻）`);
 
     const trades = [];
     for (const row of rows) {
@@ -372,13 +388,14 @@ async function runMethodC(dayCandles, timeframes) {
     const holdDays = HOLD_DAYS[tf];
     const scoreCol = tf === "long_term" ? "score_mid_term" : `score_${tf}`;
 
-    const rows = db.prepare(`
+    const rawRowsC = db.prepare(`
       SELECT computed_at, ${scoreCol} AS score
       FROM asset_comments
       WHERE asset_class = 'crypto' AND ${scoreCol} IS NOT NULL
         AND computed_at <= '${DEV_CUTOFF}'
-      ORDER BY score DESC
+      ORDER BY computed_at ASC
     `).all();
+    const rows = dedupDaily(rawRowsC).sort((a, b) => b.score - a.score);
 
     if (rows.length < 10) {
       console.log(`  [${tf}] dev 期資料不足（${rows.length} 筆），跳過`);
@@ -435,12 +452,12 @@ async function runMethodD(dayCandles, timeframes) {
     const holdDays = HOLD_DAYS[tf];
     const scoreCol = tf === "long_term" ? "score_mid_term" : `score_${tf}`;
 
-    const rows = db.prepare(`
+    const rows = dedupDaily(db.prepare(`
       SELECT computed_at, ${scoreCol} AS score
       FROM asset_comments
       WHERE asset_class = 'crypto' AND ${scoreCol} IS NOT NULL
       ORDER BY computed_at ASC
-    `).all();
+    `).all());
 
     if (rows.length < 35) {
       console.log(`  [${tf}] 資料不足（${rows.length} 筆），跳過`);
@@ -583,14 +600,14 @@ async function runMethodF(dayCandles, timeframes) {
     const holdDays = HOLD_DAYS[tf];
     const scoreCol = tf === "long_term" ? "score_mid_term" : `score_${tf}`;
 
-    // 只用 dev 期
-    const rows = db.prepare(`
+    // 只用 dev 期（dedup 到日頻）
+    const rows = dedupDaily(db.prepare(`
       SELECT computed_at, ${scoreCol} AS score
       FROM asset_comments
       WHERE asset_class = 'crypto' AND ${scoreCol} IS NOT NULL
         AND computed_at <= '${DEV_CUTOFF}'
       ORDER BY computed_at ASC
-    `).all();
+    `).all());
 
     if (rows.length < 15) {
       console.log(`  [${tf}] dev 期資料不足（${rows.length} 筆），跳過`);
