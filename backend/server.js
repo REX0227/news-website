@@ -6,6 +6,12 @@ import dotenv from "dotenv";
 import { initializeDatabase } from "./database.js";
 import apiRouter from "./routes/api.js";
 import v2Router from "./routes/v2.js";
+import openapiRouter from "./routes/openapi.js";
+import commentRouter from "./routes/comment.js";
+import streamRouter from "./routes/stream.js";
+import memoryRouter from "./routes/memory.js";
+import kgRouter from "./routes/kg.js";
+import signalRouter from "./routes/signal.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,9 +36,22 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 
+// Global version headers — every API response carries these
+app.use("/api", (_req, res, next) => {
+  res.setHeader("X-API-Version", "2.4.0");
+  res.setHeader("X-Classifier-Version", "2.4.0");
+  next();
+});
+
 // API routes
 app.use("/api", apiRouter);
 app.use("/api/v2", v2Router);
+app.use("/api", openapiRouter);
+app.use("/api/comment", commentRouter);
+app.use("/api/stream", streamRouter);
+app.use("/api/v2/memory", memoryRouter);
+app.use("/api/v2/kg", kgRouter);
+app.use("/api/v2", signalRouter);
 
 // V1 主前端
 app.use(express.static(DOCS_PATH));
