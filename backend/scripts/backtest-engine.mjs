@@ -61,6 +61,53 @@ const db = new DatabaseSync(DB_PATH);
 db.exec("PRAGMA journal_mode = WAL");
 db.exec("PRAGMA busy_timeout = 5000");
 
+// 確保三張回測表存在（獨立腳本不經 server initializeDatabase）
+db.exec(`
+  CREATE TABLE IF NOT EXISTS backtest_results (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id         TEXT NOT NULL,
+    period         TEXT NOT NULL,
+    timeframe      TEXT NOT NULL,
+    entry_at       TEXT NOT NULL,
+    score          REAL,
+    direction      TEXT NOT NULL,
+    entry_price    REAL,
+    exit_price     REAL,
+    period_min     REAL,
+    period_max     REAL,
+    forward_return REAL,
+    pnl            REAL,
+    mae            REAL,
+    quality_score  REAL,
+    method         TEXT DEFAULT 'score',
+    computed_at    TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_bt_timeframe ON backtest_results(timeframe, period, entry_at);
+
+  CREATE TABLE IF NOT EXISTS event_study_results (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    computed_at TEXT NOT NULL,
+    event_type  TEXT NOT NULL,
+    event_at    TEXT NOT NULL,
+    entry_price REAL,
+    return_1h   REAL,
+    return_4h   REAL,
+    return_24h  REAL,
+    return_7d   REAL
+  );
+  CREATE INDEX IF NOT EXISTS idx_event_type ON event_study_results(event_type, event_at);
+
+  CREATE TABLE IF NOT EXISTS enhanced_validation (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    computed_at TEXT NOT NULL,
+    window_days INTEGER,
+    type        TEXT NOT NULL,
+    timeframe   TEXT,
+    result_json TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_ev_type_time ON enhanced_validation(type, computed_at DESC);
+`);
+
 const run_id    = `bt_${Date.now()}`;
 const computedAt = new Date().toISOString();
 
