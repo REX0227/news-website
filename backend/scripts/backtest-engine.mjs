@@ -1,21 +1,22 @@
 /**
- * backtest-engine.mjs — CryptoPulse 回測引擎
+ * backtest-engine.mjs — CryptoPulse 回測引擎 v2.0
  *
- * 實作新版架構方法 B/C/D/E/F：
+ * 實作新版架構方法 B/C/D/E/F + BTC 基準：
+ *   ★  BTC Buy & Hold 基準（對照組）
  *   B. 虛擬倉位 P&L → Sharpe / MaxDD / WinRate / ProfitFactor / quality_score（含 MAE）
  *   C. Quintile 分析（分位數 vs. forward return 單調性）
- *   D. 滾動 IC / ICIR（30 天視窗 Spearman ρ）
+ *   D. 滾動 IC / ICIR（30 天視窗，開發期/測試期分開計算）
  *   E. 事件研究（regime 切換後 1h/4h/24h/7d 報酬分佈）
  *   F. Monte Carlo 顯著性檢驗（1000 次打亂 regime → p-value）
  *
- * 開發期：asset_comments.computed_at ≤ 2026-01-31（所有門檻只用此期計算）
- * 測試期：asset_comments.computed_at ≥ 2026-02-01（forward validation，不調整門檻）
+ * 開發期：asset_comments.computed_at ≤ 2026-01-31（門檻校準期，不動）
+ * 測試期：asset_comments.computed_at ≥ 2026-02-01（forward validation）
  *
  * 執行：
  *   node backend/scripts/backtest-engine.mjs
- *   node backend/scripts/backtest-engine.mjs --period=dev
- *   node backend/scripts/backtest-engine.mjs --period=test
- *   node backend/scripts/backtest-engine.mjs --timeframe=mid_term
+ *   node backend/scripts/backtest-engine.mjs --threshold=0.15
+ *   node backend/scripts/backtest-engine.mjs --period=dev|test|all
+ *   node backend/scripts/backtest-engine.mjs --timeframe=short_term|mid_term|long_term
  *   node backend/scripts/backtest-engine.mjs --skip-event-study
  */
 
@@ -42,15 +43,17 @@ const ARG_TIMEFRAME = args.find(a => a.startsWith("--timeframe="))?.split("=")[1
 const SKIP_EVENT    = args.includes("--skip-event-study");
 const MONTE_TRIALS  = 1000;
 
-// dev/test 分界
+// dev/test 分界（固定，不隨 threshold 變動）
 const DEV_CUTOFF = "2026-01-31T23:59:59Z";
 const TEST_START = "2026-02-01T00:00:00Z";
 
 // 持倉天數（由 timeframe 決定）
 const HOLD_DAYS = { short_term: 3, mid_term: 7, long_term: 14 };
 
-// 做多/空門檻（只用 dev 期資料計算，test 期直接套用）
-const ENTRY_THRESHOLD = 0.3;
+// ★ 優先 1：進場門檻可由 CLI 傳入（預設 0.3，建議嘗試 0.15）
+const ENTRY_THRESHOLD = parseFloat(
+  args.find(a => a.startsWith("--threshold="))?.split("=")[1] ?? "0.3"
+);
 
 // MAE 標準化係數（5% 以上 MAE 扣滿 1.0 quality）
 const MAE_NORM = 0.05;
@@ -252,6 +255,76 @@ function dedupDaily(rows) {
   return [...byDay.values()].sort((a, b) => a.computed_at.localeCompare(b.computed_at));
 }
 
+// ── 優先 4：動態資料可用性偵測 ────────────────────────────────────────────────
+// 因 score_mid_term 比 score_short_term 晚加入系統，
+// 需動態確認每個時框「實際上第一筆有效分數」在哪天。
+
+function detectScoreAvailability(scoreCol) {
+  try {
+    const r = db.prepare(`
+      SELECT
+        MIN(computed_at)   AS earliest,
+        MAX(computed_at)   AS latest,
+        COUNT(*)           AS total,
+        SUM(CASE WHEN computed_at <= ? THEN 1 ELSE 0 END) AS dev_rows,
+        SUM(CASE WHEN computed_at >= ? THEN 1 ELSE 0 END) AS test_rows,
+        SUM(CASE WHEN ABS(${scoreCol}) > ?
+                  AND computed_at <= ? THEN 1 ELSE 0 END) AS dev_above_thresh,
+        SUM(CASE WHEN ABS(${scoreCol}) > ?
+                  AND computed_at >= ? THEN 1 ELSE 0 END) AS test_above_thresh
+      FROM asset_comments
+      WHERE asset_class = 'crypto' AND ${scoreCol} IS NOT NULL
+    `).get(DEV_CUTOFF, TEST_START, ENTRY_THRESHOLD, DEV_CUTOFF, ENTRY_THRESHOLD, TEST_START);
+    return r;
+  } catch { return null; }
+}
+
+// ── 優先 5：BTC Buy & Hold 基準 ───────────────────────────────────────────────
+
+async function runBtcBenchmark(dayCandles) {
+  console.log("\n[★] BTC Buy & Hold 基準（對照組）...");
+
+  // 找最早有 crypto asset_comment 的日期作為比較起點
+  const firstComment = db.prepare(`
+    SELECT MIN(computed_at) AS earliest FROM asset_comments WHERE asset_class='crypto'
+  `).get();
+  const dataStart = firstComment?.earliest ?? "2021-01-01T00:00:00Z";
+
+  const segments = [
+    { label: "開發期", from: dataStart, to: DEV_CUTOFF },
+    { label: "測試期", from: TEST_START, to: new Date().toISOString() },
+    { label: "全期",   from: dataStart,  to: new Date().toISOString() }
+  ];
+
+  for (const seg of segments) {
+    const p0 = getCloseAt(dayCandles, seg.from);
+    const p1 = getCloseAt(dayCandles, seg.to);
+    if (!p0 || !p1) { console.log(`  ${seg.label}: 缺價格資料`); continue; }
+
+    const totalReturn = (p1 - p0) / p0;
+    const days = (new Date(seg.to) - new Date(seg.from)) / 86_400_000;
+    const annReturn = Math.pow(1 + totalReturn, 365 / days) - 1;
+
+    // 計算持倉期間每日報酬（用於 Sharpe）
+    const segCandles = dayCandles.filter(c =>
+      c.openTime >= new Date(seg.from).getTime() &&
+      c.openTime <= new Date(seg.to).getTime()
+    );
+    const dailyReturns = [];
+    for (let i = 1; i < segCandles.length; i++) {
+      dailyReturns.push((segCandles[i].close - segCandles[i-1].close) / segCandles[i-1].close);
+    }
+    const m = mean(dailyReturns) ?? 0;
+    const s = std(dailyReturns) ?? 1e-9;
+    const sharpe = (m / s) * Math.sqrt(365);
+
+    console.log(
+      `  ${seg.label}（${seg.from.substring(0,10)} → ${seg.to.substring(0,10)}）` +
+      `  BTC: ${(totalReturn*100).toFixed(1)}%  年化: ${(annReturn*100).toFixed(1)}%  Sharpe: ${sharpe.toFixed(3)}`
+    );
+  }
+}
+
 // ── 統計輔助 ──────────────────────────────────────────────────────────────────
 
 function mean(arr) { return arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : null; }
@@ -443,76 +516,95 @@ async function runMethodC(dayCandles, timeframes) {
   }
 }
 
-// ── 方法 D — 滾動 IC / ICIR ──────────────────────────────────────────────────
+// ── 方法 D — 滾動 IC / ICIR（★ 優先 3：dev/test 分開計算）────────────────────
 
 async function runMethodD(dayCandles, timeframes) {
-  console.log("\n[D] 滾動 IC / ICIR（30 天視窗）...");
+  console.log("\n[D] 滾動 IC / ICIR（30 天視窗，dev/test 分開）...");
 
   for (const tf of timeframes) {
     const holdDays = HOLD_DAYS[tf];
     const scoreCol = tf === "long_term" ? "score_mid_term" : `score_${tf}`;
+    const WINDOW_DAYS = 30;
 
-    const rows = dedupDaily(db.prepare(`
+    // 抓全部資料（dedup），再依 period 切分
+    const allRows = dedupDaily(db.prepare(`
       SELECT computed_at, ${scoreCol} AS score
       FROM asset_comments
       WHERE asset_class = 'crypto' AND ${scoreCol} IS NOT NULL
       ORDER BY computed_at ASC
     `).all());
 
-    if (rows.length < 35) {
-      console.log(`  [${tf}] 資料不足（${rows.length} 筆），跳過`);
+    if (allRows.length < 15) {
+      console.log(`  [${tf}] 資料不足（${allRows.length} 筆），跳過`);
       continue;
     }
 
-    // 先計算所有 forward return
+    // 計算 forward return 後依 period 拆分
     const withFR = [];
-    for (const row of rows) {
+    for (const row of allRows) {
       const fr = calcPeriodStats(dayCandles, row.computed_at, holdDays);
-      if (fr !== null) withFR.push({ ts: row.computed_at, score: row.score, forward_return: fr.forward_return });
-    }
-
-    if (withFR.length < 35) { console.log(`  [${tf}] 有效配對不足，跳過`); continue; }
-
-    // 每 30 天計算一次 ρ（滾動視窗）
-    const WINDOW_DAYS = 30;
-    const rollingRho  = [];
-    const rollingDates = [];
-
-    for (let i = 0; i < withFR.length; i++) {
-      const anchor = new Date(withFR[i].ts).getTime();
-      const window = withFR.filter(r => {
-        const d = new Date(r.ts).getTime();
-        return d >= anchor - WINDOW_DAYS * 24 * 3_600_000 && d <= anchor;
-      });
-      if (window.length < 10) continue;
-
-      const rho = spearman(window.map(r => r.score), window.map(r => r.forward_return));
-      if (rho !== null) {
-        rollingRho.push(rho);
-        rollingDates.push(withFR[i].ts);
+      if (fr !== null) {
+        withFR.push({
+          ts: row.computed_at,
+          score: row.score,
+          forward_return: fr.forward_return,
+          period: row.computed_at <= DEV_CUTOFF ? "dev" : "test"
+        });
       }
     }
 
-    if (rollingRho.length < 3) { console.log(`  [${tf}] rolling rho 不足，跳過`); continue; }
+    // 分別對 dev / test / all 三個子集做滾動 IC
+    const segments = [
+      { label: "dev",  data: withFR.filter(r => r.period === "dev") },
+      { label: "test", data: withFR.filter(r => r.period === "test") },
+      { label: "all",  data: withFR }
+    ];
 
-    const IC   = mean(rollingRho);
-    const ICIR = IC !== null && std(rollingRho) ? IC / std(rollingRho) : null;
+    const segResults = {};
 
-    const result = {
-      timeframe: tf,
-      window_days: WINDOW_DAYS,
-      n_windows: rollingRho.length,
-      IC: IC !== null ? +IC.toFixed(4) : null,
-      ICIR: ICIR !== null ? +ICIR.toFixed(4) : null,
-      rho_min: +Math.min(...rollingRho).toFixed(4),
-      rho_max: +Math.max(...rollingRho).toFixed(4),
-      rho_series: rollingDates.map((d, i) => ({ date: d, rho: +rollingRho[i].toFixed(4) }))
-    };
+    for (const seg of segments) {
+      if (seg.data.length < WINDOW_DAYS) {
+        console.log(`  [${tf}][${seg.label}] 資料不足（${seg.data.length} 筆），跳過`);
+        continue;
+      }
 
-    const stableFlag = (ICIR !== null && ICIR > 0.5) ? "✅ 穩定" : "⚠️ 不穩定";
-    console.log(`  [${tf}] IC=${IC?.toFixed(4)} ICIR=${ICIR?.toFixed(4)} ${stableFlag}`);
+      const rollingRho  = [];
+      const rollingDates = [];
 
-    insertEV.run(computedAt, WINDOW_DAYS, "rolling_ic", tf, JSON.stringify(result));
+      for (let i = 0; i < seg.data.length; i++) {
+        const anchor = new Date(seg.data[i].ts).getTime();
+        const win = seg.data.filter(r => {
+          const d = new Date(r.ts).getTime();
+          return d >= anchor - WINDOW_DAYS * 24 * 3_600_000 && d <= anchor;
+        });
+        if (win.length < 10) continue;
+        const rho = spearman(win.map(r => r.score), win.map(r => r.forward_return));
+        if (rho !== null) { rollingRho.push(rho); rollingDates.push(seg.data[i].ts); }
+      }
+
+      if (rollingRho.length < 3) continue;
+
+      const IC   = mean(rollingRho);
+      const ICIR = IC !== null && std(rollingRho) ? IC / std(rollingRho) : null;
+      segResults[seg.label] = { IC, ICIR, n: rollingRho.length, rollingRho, rollingDates };
+
+      const flag = (ICIR !== null && ICIR > 0.5) ? "✅" : "⚠️";
+      console.log(`  [${tf}][${seg.label}] n=${rollingRho.length} IC=${IC?.toFixed(4)} ICIR=${ICIR?.toFixed(4)} ${flag}`);
+    }
+
+    // 存全期結果
+    if (segResults.all || segResults.dev) {
+      const s = segResults.all ?? segResults.dev;
+      const result = {
+        timeframe: tf,
+        window_days: WINDOW_DAYS,
+        dev:  segResults.dev  ? { IC: +segResults.dev.IC.toFixed(4),  ICIR: +segResults.dev.ICIR.toFixed(4),  n: segResults.dev.n  } : null,
+        test: segResults.test ? { IC: +segResults.test.IC.toFixed(4), ICIR: +segResults.test.ICIR.toFixed(4), n: segResults.test.n } : null,
+        all:  segResults.all  ? { IC: +segResults.all.IC.toFixed(4),  ICIR: +segResults.all.ICIR.toFixed(4),  n: segResults.all.n  } : null,
+        rho_series: s.rollingDates.map((d, i) => ({ date: d, rho: +s.rollingRho[i].toFixed(4) }))
+      };
+      insertEV.run(computedAt, WINDOW_DAYS, "rolling_ic", tf, JSON.stringify(result));
+    }
   }
 }
 
@@ -669,11 +761,25 @@ async function runMethodF(dayCandles, timeframes) {
 
 async function main() {
   console.log("=".repeat(60));
-  console.log("CryptoPulse 回測引擎 v1.0");
-  console.log(`period=${ARG_PERIOD}  timeframe=${ARG_TIMEFRAME}  run_id=${run_id}`);
+  console.log("CryptoPulse 回測引擎 v2.0");
+  console.log(`period=${ARG_PERIOD}  timeframe=${ARG_TIMEFRAME}  threshold=${ENTRY_THRESHOLD}  run_id=${run_id}`);
   console.log(`開發期截止：${DEV_CUTOFF}`);
   console.log(`測試期起始：${TEST_START}`);
   console.log("=".repeat(60));
+
+  // ★ 優先 4：輸出各時框資料可用性
+  console.log("\n[0] 資料可用性偵測...");
+  for (const tf of ["short_term", "mid_term"]) {
+    const scoreCol = tf === "long_term" ? "score_mid_term" : `score_${tf}`;
+    const avail = detectScoreAvailability(scoreCol);
+    if (avail) {
+      console.log(
+        `  [${tf}] 最早=${avail.earliest?.substring(0,10) ?? "—"}  dev=${avail.dev_rows}筆` +
+        `（門檻內=${avail.dev_above_thresh}）  test=${avail.test_rows}筆` +
+        `（門檻內=${avail.test_above_thresh}）`
+      );
+    }
+  }
 
   // 決定要跑的 timeframes
   const allTF = ["short_term", "mid_term", "long_term"];
@@ -683,9 +789,6 @@ async function main() {
     console.error(`未知 timeframe：${ARG_TIMEFRAME}`);
     process.exit(1);
   }
-
-  // 最長持倉天數
-  const maxHold = Math.max(...timeframes.map(tf => HOLD_DAYS[tf]));
 
   // 抓資料（覆蓋足夠長的歷史）
   console.log("\n抓取 Kraken BTC 日線（最近 900 天）...");
@@ -703,13 +806,16 @@ async function main() {
     }
   }
 
+  // ★ 優先 5：BTC Buy & Hold 基準
+  await runBtcBenchmark(dayCandles);
+
   // 方法 B：虛擬倉位 P&L
   await runMethodB(dayCandles, ARG_PERIOD, timeframes);
 
   // 方法 C：Quintile 分析（僅 dev 期）
   await runMethodC(dayCandles, timeframes);
 
-  // 方法 D：滾動 IC / ICIR
+  // 方法 D：滾動 IC / ICIR（dev/test 分開）
   await runMethodD(dayCandles, timeframes);
 
   // 方法 E：事件研究
@@ -718,11 +824,32 @@ async function main() {
   // 方法 F：Monte Carlo（僅 dev 期）
   await runMethodF(dayCandles, timeframes);
 
+  // ★ 優先 6：下次評估建議
+  const nextReviewDate = (() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 6);
+    return d.toISOString().substring(0, 7); // YYYY-MM
+  })();
+
+  const testRowCount = db.prepare(`
+    SELECT COUNT(*) AS n FROM backtest_results WHERE run_id=? AND period='test'
+  `).get(run_id)?.n ?? 0;
+
   console.log("\n" + "=".repeat(60));
   console.log("✅ 回測完成");
   console.log(`   backtest_results 新增：查詢 run_id='${run_id}'`);
   console.log("   enhanced_validation 新增：rolling_ic / quantile / monte_carlo");
   console.log("   event_study_results 新增：regime 切換事件後報酬");
+  console.log("\n[建議]");
+  console.log(`  · 測試期新增交易筆數：${testRowCount}`);
+  if (testRowCount < 30) {
+    console.log(`  · 測試期交易筆數偏少（<30），建議積累更多測試期資料再評估`);
+    console.log(`  · 建議 ${nextReviewDate} 或測試期達 50 筆後重跑 --period=test`);
+  } else {
+    console.log(`  · 測試期樣本足夠，建議 ${nextReviewDate} 重新校準 threshold`);
+    console.log(`  · 若 mid_term/long_term ICIR 測試期 < 0.5，考慮提高門檻至 0.3`);
+  }
+  console.log(`  · 定期執行：node backend/scripts/backtest-engine.mjs --threshold=${ENTRY_THRESHOLD}`);
   console.log("=".repeat(60));
 }
 
