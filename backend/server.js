@@ -12,6 +12,7 @@ import streamRouter from "./routes/stream.js";
 import memoryRouter from "./routes/memory.js";
 import kgRouter from "./routes/kg.js";
 import signalRouter from "./routes/signal.js";
+import dailyAdviceRouter from "./routes/daily-advice.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -52,6 +53,7 @@ app.use("/api/stream", streamRouter);
 app.use("/api/v2/memory", memoryRouter);
 app.use("/api/v2/kg", kgRouter);
 app.use("/api/v2", signalRouter);
+app.use("/api/v2", dailyAdviceRouter);
 
 // V1 主前端
 app.use(express.static(DOCS_PATH));

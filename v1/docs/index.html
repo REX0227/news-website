@@ -63,6 +63,102 @@
         line-height: 1.6; border-left: 3px solid #1e40af; padding-left: 12px;
       }
 
+      /* ── 每日投資建議 ─────────────────────────────────────────────── */
+      .da-wrapper {
+        display: grid;
+        grid-template-columns: 1fr 200px;
+        gap: 16px;
+        align-items: start;
+      }
+      @media (max-width: 720px) { .da-wrapper { grid-template-columns: 1fr; } }
+
+      .da-nav {
+        display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
+        flex-wrap: wrap;
+      }
+      .da-nav-btn {
+        padding: 5px 12px; border-radius: 6px; font-size: 0.85em;
+        background: #1e293b; color: #94a3b8; border: 1px solid #334155;
+        cursor: pointer;
+      }
+      .da-nav-btn:hover:not(:disabled) { background: #273549; color: #e2e8f0; }
+      .da-nav-btn:disabled { opacity: 0.35; cursor: default; }
+      #da-current-date {
+        font-size: 1em; font-weight: 600; color: #38bdf8; flex: 1;
+      }
+
+      .da-card {
+        border: 1px solid #1e3a5f; border-radius: 10px;
+        padding: 18px 20px; background: #0a111e;
+      }
+      .da-headline {
+        font-size: 1.05em; font-weight: 700; color: #e2e8f0;
+        margin-bottom: 14px; line-height: 1.5;
+        display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap;
+      }
+      .da-dir-badge {
+        font-size: 0.78em; font-weight: 700;
+        border: 1px solid currentColor; border-radius: 4px;
+        padding: 1px 7px; white-space: nowrap; flex-shrink: 0;
+      }
+      .da-regime-tag {
+        font-size: 0.72em; color: #64748b; background: #0f172a;
+        border: 1px solid #1e3a5f; border-radius: 4px; padding: 1px 6px;
+        white-space: nowrap; flex-shrink: 0;
+      }
+      .da-section { margin-bottom: 13px; }
+      .da-section-label {
+        font-size: 0.78em; color: #64748b; text-transform: uppercase;
+        letter-spacing: 0.05em; margin-bottom: 5px; font-weight: 600;
+      }
+      .da-section-body {
+        font-size: 0.91em; color: #cbd5e1; line-height: 1.65;
+      }
+      .da-actions { display: flex; flex-direction: column; gap: 7px; }
+      .da-action-item {
+        font-size: 0.9em; color: #cbd5e1; display: flex;
+        align-items: flex-start; gap: 8px; line-height: 1.55;
+      }
+      .da-action-tag {
+        font-size: 0.75em; font-weight: 700; border-radius: 4px;
+        padding: 1px 6px; white-space: nowrap; flex-shrink: 0;
+      }
+      .da-action-tag.short { background:#1e3a5f; color:#38bdf8; }
+      .da-action-tag.mid   { background:#1e3353; color:#c084fc; }
+      .da-action-tag.long  { background:#1c3a2a; color:#4ade80; }
+      .da-meta {
+        margin-top: 12px; font-size: 0.78em; color: #475569;
+        display: flex; gap: 12px; border-top: 1px solid #1e293b; padding-top: 10px;
+      }
+      .da-loading, .da-empty, .da-error {
+        color: #475569; font-size: 0.9em; padding: 14px 0;
+      }
+      .da-error { color: #f87171; }
+
+      /* 歷史列表 */
+      .da-list-panel {
+        background: #0a111e; border: 1px solid #1e3a5f; border-radius: 10px;
+        padding: 12px 0; max-height: 480px; overflow-y: auto;
+      }
+      .da-list-title {
+        font-size: 0.75em; color: #64748b; text-transform: uppercase;
+        letter-spacing: 0.06em; padding: 0 14px 8px; font-weight: 600;
+        border-bottom: 1px solid #1e293b; margin-bottom: 4px;
+      }
+      .da-list-item {
+        display: flex; align-items: center; gap: 7px;
+        padding: 7px 14px; cursor: pointer; transition: background 0.15s;
+        font-size: 0.82em;
+      }
+      .da-list-item:hover { background: #111827; }
+      .da-list-item.da-list-active { background: #0f1f38; }
+      .da-list-dot {
+        width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+      }
+      .da-list-date { color: #94a3b8; flex: 1; }
+      .da-list-date em { font-style: normal; color: #38bdf8; font-size: 0.85em; }
+      .da-list-dir { font-weight: 600; font-size: 0.88em; white-space: nowrap; }
+
       /* Liquidation monitor section */
       .liq-monitor-grid {
         display: grid;
@@ -146,6 +242,28 @@
         <h2>宏觀 Regime</h2>
         <div id="regime-panel" class="regime-panel">
           <p style="color:#475569">載入中…</p>
+        </div>
+      </section>
+
+      <!-- ── Section 0b: 每日投資建議 ────────────────────────────── -->
+      <section id="daily-advice-section">
+        <h2>每日投資建議</h2>
+
+        <div class="da-nav">
+          <button class="da-nav-btn" id="da-prev">&#8592; 前一天</button>
+          <span id="da-current-date"></span>
+          <button class="da-nav-btn" id="da-next">下一天 &#8594;</button>
+          <button class="da-nav-btn" id="da-today">回今天</button>
+        </div>
+
+        <div class="da-wrapper">
+          <div id="daily-advice-content">
+            <p class="da-loading">載入中…</p>
+          </div>
+          <div class="da-list-panel">
+            <div class="da-list-title">歷史記錄</div>
+            <div id="daily-advice-list"></div>
+          </div>
         </div>
       </section>
 

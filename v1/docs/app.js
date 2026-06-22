@@ -12,6 +12,7 @@ import { renderPolicySignals, renderWindows,
          renderMacro, renderSignals, renderWhale,
          renderGlobalRisks }                                  from './modules/signals.js';
 import { loadTaiwanData, loadTaiwanHistory, renderTaiwan }    from './modules/taiwan.js';
+import { initDailyAdviceNav, renderDailyAdviceList }          from './modules/daily-advice.js';
 
 // ── Regime / Comment ─────────────────────────────────────────────
 const API_BASE = window.location.origin + "/api";
@@ -328,6 +329,9 @@ bootstrapPromise
       refreshRegime(),
       refreshLiquidations(),
     ]);
+    // 每日投資建議（獨立初始化，不影響主資料 pipeline）
+    initDailyAdviceNav();
+    renderDailyAdviceList();
     if (state.dashboardData) renderGate(state.dashboardData);
     // SSE 連線（bootstrap 完成後才啟動，避免首次渲染衝突）
     connectEventsSSE();
@@ -348,7 +352,7 @@ setInterval(() => {
 
 // 頁籤切換（top-nav）
 const CRYPTO_SECTION_IDS = [
-  'regime-section', 'gate-section', 'liquidation-section',
+  'daily-advice-section', 'regime-section', 'gate-section', 'liquidation-section',
   'overview-section', 'windows-section', 'signals-section', 'macro-section'
 ];
 

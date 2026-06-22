@@ -276,6 +276,25 @@ export function initializeDatabase() {
       result_json TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_ev_type_time ON enhanced_validation(type, computed_at DESC);
+
+    -- ── §每日投資建議 ─────────────────────────────────────────────────────────
+    CREATE TABLE IF NOT EXISTS daily_advice (
+      date               TEXT PRIMARY KEY,   -- YYYY-MM-DD
+      headline           TEXT NOT NULL DEFAULT '',   -- 標題行
+      what_happened      TEXT NOT NULL DEFAULT '',   -- 發生了什麼
+      why_important      TEXT NOT NULL DEFAULT '',   -- 為什麼重要
+      my_view            TEXT NOT NULL DEFAULT '',   -- 我的看法
+      action_short       TEXT NOT NULL DEFAULT '',   -- 短線操作建議
+      action_mid         TEXT NOT NULL DEFAULT '',   -- 中線操作建議
+      action_long        TEXT NOT NULL DEFAULT '',   -- 長線操作建議
+      watch_indicators   TEXT NOT NULL DEFAULT '',   -- 觀察指標
+      overall_direction  TEXT NOT NULL DEFAULT 'neutral',  -- bullish/bearish/neutral/cautious
+      regime_label       TEXT NOT NULL DEFAULT '',
+      author             TEXT NOT NULL DEFAULT 'manual',
+      created_at         TEXT NOT NULL,
+      updated_at         TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_daily_advice_date ON daily_advice(date DESC);
   `);
 
   console.log(`[database] Initialized SQLite at ${DB_PATH}`);
